@@ -18,20 +18,20 @@ This guide will walk you through the entire contribution process, from setting u
 1. [Code of Conduct](#-code-of-conduct)
 2. [License](#-license)
 3. [Ways to Contribute](#-ways-to-contribute)
-Quick Start
-4. [Points & Difficulty Levels](#-points--difficulty-levels)
-5. [Contribution Guidelines](#-contribution-guidelines)
-6. [PR review Process](#-pr-review-process)
-7. [How To Contribute](#-how-to-contribute)
-8. [Need More Help](#-need-more-help)
-9. [Attribution](#-attribution)
-10. [Thank you for your contribution](#thank-you-for-your-contribution)
+4. [Quick Start](#-Quick-Start)
+5. [Points & Difficulty Levels](#-points--difficulty-levels)
+6. [Contribution Guidelines](#-contribution-guidelines)
+7. [PR review Process](#-pr-review-process)
+8. [How To Contribute](#-how-to-contribute)
+9. [Need More Help](#-need-more-help)
+10. [Attribution](#-attribution)
+11. [Thank you for your contribution](#thank-you-for-your-contribution)
 
 ![Line](https://user-images.githubusercontent.com/85225156/171937799-8fc9e255-9889-4642-9c92-6df85fb86e82.gif)
 
 ## 📜 Code of Conduct
 
-We expect all contributors to follow our [`Code of Conduct`](Coming Soon).
+We expect all contributors to follow our `Coming Soon`.
 
 By participating in this project, you agree to maintain a **respectful and inclusive environment** for everyone.
 
@@ -39,7 +39,7 @@ By participating in this project, you agree to maintain a **respectful and inclu
 
 ## 📜 License
 
-By contributing to this project, you agree that your contributions will be licensed under the [`MIT License`](Coming Soon).
+By contributing to this project, you agree that your contributions will be licensed under the `Coming Soon`.
 
 ![Line](https://user-images.githubusercontent.com/85225156/171937799-8fc9e255-9889-4642-9c92-6df85fb86e82.gif)
 
@@ -91,7 +91,7 @@ npm start
 | Level 2 | 5 |
 | Level 3 | 10  |
 
-> **Note:** The scoring system applies only to GSSOC contributors.
+> **Note:** The scoring system applies only to NSoC'26 contributors.
 
 ![Line](https://user-images.githubusercontent.com/85225156/171937799-8fc9e255-9889-4642-9c92-6df85fb86e82.gif)
 
