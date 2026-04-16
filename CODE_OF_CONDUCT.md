@@ -140,7 +140,7 @@ This Code of Conduct is adapted from the [Contributor Covenant (v3.0)](https://w
 
 Enforcement guidelines inspired by [Mozilla’s code of conduct enforcement ladder](https://github.com/mozilla/diversity).  
 
-We thank every contributor, maintainer, and member for **making UI-Verse a safe, inclusive, and inspiring space.** ✨💡  
+We thank every contributor, maintainer, and member for **making GearGuard:The-Ultimate-Maintenance-Tracker a safe, inclusive, and inspiring space.** ✨💡  
 
 <p align="center">
   <img src="https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif" width="350" alt="Celebration GIF">
@@ -152,7 +152,7 @@ We thank every contributor, maintainer, and member for **making UI-Verse a safe,
 
 This is more than just rules — it’s about building a community where **creativity, collaboration, and kindness** thrive together.  
 
-Let’s make **GearGuard-The-Ultimate-Maintenance-Tracker** a place where everyone feels welcome to **learn, contribute, and innovate.** 🍰🤖💡 
+Let’s make **GearGuard:The-Ultimate-Maintenance-Tracker** a place where everyone feels welcome to **learn, contribute, and innovate.** 🍰🤖💡 
 
 <p align="center">
   <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcGxnMGpmaDl3MTR2aDIwZjlneTdkcHZkNGRlbTkxbm83ZHRoMnN4dCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/wIVA0zh5pt0G5YtcAL/giphy.gif" width="350" alt="Community GIF">
