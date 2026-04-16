@@ -18,7 +18,7 @@ This guide will walk you through the entire contribution process, from setting u
 1. [Code of Conduct](#-code-of-conduct)
 2. [License](#-license)
 3. [Ways to Contribute](#-ways-to-contribute)
-4. [Quick Start](#-Quick-Start)
+4. [Quick Start](#-quick-start)
 5. [Points & Difficulty Levels](#-points--difficulty-levels)
 6. [Contribution Guidelines](#-contribution-guidelines)
 7. [PR review Process](#-pr-review-process)
