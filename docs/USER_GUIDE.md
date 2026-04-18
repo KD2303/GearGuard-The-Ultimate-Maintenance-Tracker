@@ -44,7 +44,7 @@ Create a `.env` file in the root directory:
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/gearguard
 NODE_ENV=development
-JWT_SECRET=dev_secret_replace_in_production
+JWT_SECRET=<YOUR_JWT_SECRET_STRING>
 ```
 
 
