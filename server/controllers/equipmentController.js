@@ -1,5 +1,6 @@
 const { Equipment, MaintenanceTeam, TeamMember, MaintenanceRequest } = require('../models');
 
+
 // Get all equipment
 exports.getAllEquipment = async (req, res) => {
   try {

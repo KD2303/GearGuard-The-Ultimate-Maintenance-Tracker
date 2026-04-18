@@ -1,22 +1,57 @@
-const { MaintenanceRequest, Equipment, MaintenanceTeam, TeamMember } = require('../models');
+const {
+  MaintenanceRequest,
+  Equipment,
+  MaintenanceTeam,
+  TeamMember,
+} = require("../models");
+const { logActivity } = require("../utils/logActivity");
+
+// Remove empty-string ObjectId/date fields so Mongoose validation doesn't fail
+const sanitizeBody = (body) => {
+  const cleaned = { ...body };
+
+  const objectIdFields = [
+    "equipmentId",
+    "teamId",
+    "assignedToId",
+    "createdById",
+  ];
+  objectIdFields.forEach((f) => {
+    if (cleaned[f] === "" || cleaned[f] === null) delete cleaned[f];
+  });
+
+  if (cleaned.scheduledDate === "" || cleaned.scheduledDate === null)
+    delete cleaned.scheduledDate;
+  if (cleaned.completedDate === "" || cleaned.completedDate === null)
+    delete cleaned.completedDate;
+
+  return cleaned;
+};
+
+const getDisplayName = (doc, fallback = "") => {
+  if (!doc) return fallback;
+  return doc.name || doc.title || doc.requestNumber || fallback;
+};
 
 // Generate request number
 const generateRequestNumber = async () => {
   const date = new Date();
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
 
   const regex = new RegExp(`^REQ-${year}${month}-`);
-  const lastRequest = await MaintenanceRequest.findOne({ requestNumber: { $regex: regex } }).sort({ requestNumber: -1 });
+  const lastRequest = await MaintenanceRequest.findOne({
+    requestNumber: { $regex: regex },
+  }).sort({ requestNumber: -1 });
 
   let sequence = 1;
   if (lastRequest && lastRequest.requestNumber) {
-    const parts = lastRequest.requestNumber.split('-');
-    const lastSequence = parseInt(parts[2] || '0', 10);
+    const parts = lastRequest.requestNumber.split("-");
+    const lastSequence = parseInt(parts[2] || "0", 10);
     if (!isNaN(lastSequence)) sequence = lastSequence + 1;
   }
 
-  return `REQ-${year}${month}-${String(sequence).padStart(4, '0')}`;
+  return `REQ-${year}${month}-${String(sequence).padStart(4, "0")}`;
 };
 
 // Get all requests
@@ -30,11 +65,12 @@ exports.getAllRequests = async (req, res) => {
     if (teamId) where.teamId = teamId;
 
     const requests = await MaintenanceRequest.find(where)
-      .populate('equipment')
-      .populate('team')
-      .populate('assignedTo')
-      .populate('createdBy')
+      .populate("equipment")
+      .populate("team")
+      .populate("assignedTo")
+      .populate("createdBy")
       .sort({ createdAt: -1 });
+
     res.json(requests);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -45,12 +81,12 @@ exports.getAllRequests = async (req, res) => {
 exports.getRequestById = async (req, res) => {
   try {
     const request = await MaintenanceRequest.findById(req.params.id)
-      .populate('equipment')
-      .populate('team')
-      .populate('assignedTo')
-      .populate('createdBy');
+      .populate("equipment")
+      .populate("team")
+      .populate("assignedTo")
+      .populate("createdBy");
 
-    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (!request) return res.status(404).json({ error: "Request not found" });
     res.json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -60,28 +96,75 @@ exports.getRequestById = async (req, res) => {
 // Create request with auto-fill logic
 exports.createRequest = async (req, res) => {
   try {
+    const payload = sanitizeBody(req.body);
     const requestNumber = await generateRequestNumber();
 
-    if (req.body.equipmentId) {
-      const equipment = await Equipment.findById(req.body.equipmentId)
-        .populate('maintenanceTeam')
-        .populate('defaultTechnician');
+    let equipmentDoc = null;
+    let oldEquipmentStatus = null;
 
-      if (equipment) {
-        if (!req.body.teamId && equipment.maintenanceTeamId) req.body.teamId = equipment.maintenanceTeamId;
-        if (!req.body.assignedToId && equipment.defaultTechnicianId) req.body.assignedToId = equipment.defaultTechnicianId;
+    if (payload.equipmentId) {
+      equipmentDoc = await Equipment.findById(payload.equipmentId)
+        .populate("maintenanceTeam")
+        .populate("defaultTechnician");
 
-        await Equipment.findByIdAndUpdate(equipment._id, { status: 'under-maintenance' });
+      if (equipmentDoc) {
+        oldEquipmentStatus = equipmentDoc.status;
+
+        if (!payload.teamId && equipmentDoc.maintenanceTeamId)
+          payload.teamId = equipmentDoc.maintenanceTeamId;
+        if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
+          payload.assignedToId = equipmentDoc.defaultTechnicianId;
+
+        await Equipment.findByIdAndUpdate(equipmentDoc._id, {
+          status: "under-maintenance",
+        });
       }
     }
 
-    const request = await MaintenanceRequest.create({ ...req.body, requestNumber });
+    const request = await MaintenanceRequest.create({
+      ...payload,
+      requestNumber,
+    });
 
     const requestWithRelations = await MaintenanceRequest.findById(request._id)
-      .populate('equipment')
-      .populate('team')
-      .populate('assignedTo')
-      .populate('createdBy');
+      .populate("equipment")
+      .populate("team")
+      .populate("assignedTo")
+      .populate("createdBy");
+
+    const userName = requestWithRelations?.createdBy?.name || "";
+
+    // Activity: request created
+    await logActivity({
+      type: "request_created",
+      title: "New Maintenance Request",
+      description: `${getDisplayName(requestWithRelations.equipment)} - ${requestWithRelations.subject || requestWithRelations.requestNumber}`,
+      userName,
+      metadata: {
+        priority: requestWithRelations.priority,
+        stage: requestWithRelations.stage,
+        requestNumber: requestWithRelations.requestNumber,
+      },
+      entityType: "request",
+      entityId: String(requestWithRelations._id),
+    });
+
+    // Activity: equipment status changed (if we changed it)
+    if (
+      equipmentDoc &&
+      oldEquipmentStatus &&
+      oldEquipmentStatus !== "under-maintenance"
+    ) {
+      await logActivity({
+        type: "equipment_updated",
+        title: "Equipment Status Changed",
+        description: `${equipmentDoc.name} - Status changed to under-maintenance`,
+        userName,
+        metadata: { from: oldEquipmentStatus, to: "under-maintenance" },
+        entityType: "equipment",
+        entityId: String(equipmentDoc._id),
+      });
+    }
 
     res.status(201).json(requestWithRelations);
   } catch (error) {
@@ -92,27 +175,80 @@ exports.createRequest = async (req, res) => {
 // Update request
 exports.updateRequest = async (req, res) => {
   try {
-    const request = await MaintenanceRequest.findById(req.params.id);
-    if (!request) return res.status(404).json({ error: 'Request not found' });
+    const payload = sanitizeBody(req.body);
 
-    if (req.body.stage) {
-      if (req.body.stage === 'repaired') {
-        req.body.completedDate = new Date();
-        if (request.equipmentId) await Equipment.findByIdAndUpdate(request.equipmentId, { status: 'active' });
+    const request = await MaintenanceRequest.findById(req.params.id)
+      .populate("equipment")
+      .populate("createdBy");
+
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const prevStage = request.stage;
+    const prevPriority = request.priority;
+
+    // Handle stage side-effects (equipment status updates)
+    if (payload.stage) {
+      if (payload.stage === "repaired") {
+        payload.completedDate = new Date();
+        if (request.equipmentId)
+          await Equipment.findByIdAndUpdate(request.equipmentId, {
+            status: "active",
+          });
       }
-      if (req.body.stage === 'scrap') {
-        req.body.completedDate = new Date();
-        if (request.equipmentId) await Equipment.findByIdAndUpdate(request.equipmentId, { status: 'scrapped' });
+      if (payload.stage === "scrap") {
+        payload.completedDate = new Date();
+        if (request.equipmentId)
+          await Equipment.findByIdAndUpdate(request.equipmentId, {
+            status: "scrapped",
+          });
       }
     }
 
-    await MaintenanceRequest.findByIdAndUpdate(req.params.id, req.body);
+    await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload);
 
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
-      .populate('equipment')
-      .populate('team')
-      .populate('assignedTo')
-      .populate('createdBy');
+      .populate("equipment")
+      .populate("team")
+      .populate("assignedTo")
+      .populate("createdBy");
+
+    const userName = updatedRequest?.createdBy?.name || "";
+    const newStage = updatedRequest.stage;
+    const completed = newStage === "repaired" || newStage === "scrap";
+
+    await logActivity({
+      type: completed ? "request_completed" : "request_updated",
+      title: completed ? "Request Completed" : "Request Updated",
+      description: `${getDisplayName(updatedRequest.equipment)} - ${updatedRequest.subject || updatedRequest.requestNumber}`,
+      userName,
+      metadata: {
+        priority: updatedRequest.priority,
+        prevPriority,
+        prevStage,
+        stage: newStage,
+        requestNumber: updatedRequest.requestNumber,
+      },
+      entityType: "request",
+      entityId: String(updatedRequest._id),
+    });
+
+    // If equipment status changed due to stage update, log it too
+    if (
+      request.equipment &&
+      payload.stage &&
+      (payload.stage === "repaired" || payload.stage === "scrap")
+    ) {
+      const toStatus = payload.stage === "scrap" ? "scrapped" : "active";
+      await logActivity({
+        type: "equipment_updated",
+        title: "Equipment Status Changed",
+        description: `${request.equipment.name} - Status changed to ${toStatus}`,
+        userName,
+        metadata: { to: toStatus },
+        entityType: "equipment",
+        entityId: String(request.equipment._id),
+      });
+    }
 
     res.json(updatedRequest);
   } catch (error) {
@@ -124,23 +260,64 @@ exports.updateRequest = async (req, res) => {
 exports.updateRequestStage = async (req, res) => {
   try {
     const { stage } = req.body;
-    const request = await MaintenanceRequest.findById(req.params.id);
-    if (!request) return res.status(404).json({ error: 'Request not found' });
+    const request = await MaintenanceRequest.findById(req.params.id)
+      .populate("equipment")
+      .populate("createdBy");
+
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const prevStage = request.stage;
 
     await MaintenanceRequest.findByIdAndUpdate(req.params.id, { stage });
 
-    if (stage === 'repaired' || stage === 'scrap') {
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completedDate: new Date() });
+    if (stage === "repaired" || stage === "scrap") {
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, {
+        completedDate: new Date(),
+      });
       if (request.equipmentId) {
-        const newStatus = stage === 'scrap' ? 'scrapped' : 'active';
-        await Equipment.findByIdAndUpdate(request.equipmentId, { status: newStatus });
+        const newStatus = stage === "scrap" ? "scrapped" : "active";
+        await Equipment.findByIdAndUpdate(request.equipmentId, {
+          status: newStatus,
+        });
       }
     }
 
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
-      .populate('equipment')
-      .populate('team')
-      .populate('assignedTo');
+      .populate("equipment")
+      .populate("team")
+      .populate("assignedTo")
+      .populate("createdBy");
+
+    const userName = updatedRequest?.createdBy?.name || "";
+    const completed = stage === "repaired" || stage === "scrap";
+
+    await logActivity({
+      type: completed ? "request_completed" : "request_updated",
+      title: completed ? "Request Completed" : "Request Updated",
+      description: `${getDisplayName(updatedRequest.equipment)} - ${updatedRequest.subject || updatedRequest.requestNumber}`,
+      userName,
+      metadata: {
+        priority: updatedRequest.priority,
+        prevStage,
+        stage,
+        requestNumber: updatedRequest.requestNumber,
+      },
+      entityType: "request",
+      entityId: String(updatedRequest._id),
+    });
+
+    if (updatedRequest.equipment && completed) {
+      const toStatus = stage === "scrap" ? "scrapped" : "active";
+      await logActivity({
+        type: "equipment_updated",
+        title: "Equipment Status Changed",
+        description: `${updatedRequest.equipment.name} - Status changed to ${toStatus}`,
+        userName,
+        metadata: { to: toStatus },
+        entityType: "equipment",
+        entityId: String(updatedRequest.equipment._id),
+      });
+    }
 
     res.json(updatedRequest);
   } catch (error) {
@@ -151,9 +328,25 @@ exports.updateRequestStage = async (req, res) => {
 // Delete request
 exports.deleteRequest = async (req, res) => {
   try {
-    const request = await MaintenanceRequest.findByIdAndDelete(req.params.id);
-    if (!request) return res.status(404).json({ error: 'Request not found' });
-    res.json({ message: 'Request deleted successfully' });
+    const request = await MaintenanceRequest.findByIdAndDelete(req.params.id)
+      .populate("equipment")
+      .populate("createdBy");
+
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const userName = request?.createdBy?.name || "";
+
+    await logActivity({
+      type: "request_updated",
+      title: "Request Deleted",
+      description: `${getDisplayName(request.equipment)} - ${request.subject || request.requestNumber}`,
+      userName,
+      metadata: { requestNumber: request.requestNumber },
+      entityType: "request",
+      entityId: String(request._id),
+    });
+
+    res.json({ message: "Request deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -163,15 +356,15 @@ exports.deleteRequest = async (req, res) => {
 exports.getCalendarEvents = async (req, res) => {
   try {
     const { start, end } = req.query;
-    const where = { type: 'preventive' };
+    const where = { type: "preventive" };
 
     if (start && end) {
       where.scheduledDate = { $gte: new Date(start), $lte: new Date(end) };
     }
 
     const requests = await MaintenanceRequest.find(where)
-      .populate('equipment')
-      .populate('assignedTo');
+      .populate("equipment")
+      .populate("assignedTo");
 
     res.json(requests);
   } catch (error) {

@@ -51,19 +51,22 @@ const RequestModal: React.FC<RequestModalProps> = ({
     loadData();
   }, []);
 
-  // Auto-fill team and technician when equipment is selected
-  useEffect(() => {
-    if (formData.equipmentId) {
-      const selectedEquipment = equipment.find((e) => e.id === formData.equipmentId);
-      if (selectedEquipment) {
-        setFormData((prev) => ({
-          ...prev,
-          teamId: selectedEquipment.maintenanceTeamId || prev.teamId,
-          assignedToId: selectedEquipment.defaultTechnicianId || prev.assignedToId,
-        }));
-      }
-    }
-  }, [formData.equipmentId, equipment]);
+ // Auto-fill team and technician when equipment is selected
+useEffect(() => {
+  if (!formData.equipmentId) return;
+
+  const selectedEquipment = equipment.find(
+    (e) => e._id.toString() === formData.equipmentId
+  );
+
+  if (!selectedEquipment) return;
+
+  setFormData((prev) => ({
+    ...prev,
+    teamId: selectedEquipment.maintenanceTeamId?.toString() || '',
+    assignedToId: selectedEquipment.defaultTechnicianId?.toString() || '',
+  }));
+}, [formData.equipmentId, equipment]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +162,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
           >
             <option value="">Select equipment...</option>
             {equipment.map((item) => (
-              <option key={item.id} value={item.id}>
+              <option key={item._id} value={item._id}>
                 {item.name} - {item.serialNumber}
               </option>
             ))}
@@ -177,7 +180,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
           >
             <option value="">Select team...</option>
             {teams.map((team) => (
-              <option key={team.id} value={team.id}>
+              <option key={team._id} value={team._id}>
                 {team.name}
               </option>
             ))}
@@ -197,9 +200,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
           >
             <option value="">Select technician...</option>
             {members
-              .filter((m) => !formData.teamId || m.teamId === formData.teamId)
               .map((member) => (
-                <option key={member.id} value={member.id}>
+                <option key={member._id} value={member._id.toString()}>
                   {member.name} {member.role && `(${member.role})`}
                 </option>
               ))}

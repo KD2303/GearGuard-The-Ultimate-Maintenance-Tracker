@@ -422,11 +422,10 @@ gearguard/
 ├── .env.example                     # Env template
 ├── .gitignore
 ├── package.json                     # Root dependencies
-├── README.md                        # Quick start guide
-├── API.md                           # API documentation
-├── DEPLOYMENT.md                    # Deployment guide
-├── FEATURES.md                      # Feature checklist
-├── START_HERE.md                    # Getting started
-├── ARCHITECTURE.md                  # This file
+├── README.md                        # Quick start + feature checklist
+├── docs/API.md                      # API documentation
+├── docs/DEPLOYMENT.md               # Deployment guide
+├── docs/USER_GUIDE.md               # End-user manual
+├── docs/ARCHITECTURE.md             # This file
 └── setup.ps1                        # Setup script
 ```
