@@ -12,16 +12,18 @@
 ## 🛠️ Project Setup
 
 ### Prerequisites
-- Node.js (v16 or higher)
-- PostgreSQL database
-- npm or yarn package manager
+- Node.js (v18 or higher)
+- MongoDB (local or Atlas) accessible
+- npm package manager
+
 
 ### Installation Steps
 
 #### 1. **Clone and Install Dependencies**
 ```bash
 # Navigate to project root
-cd "D:\Dev Stuff\Gear Guard"
+cd GearGuard-The-Ultimate-Maintenance-Tracker
+
 
 # Install server dependencies
 cd server
@@ -33,22 +35,18 @@ npm install
 ```
 
 #### 2. **Database Setup**
-```bash
-# Create PostgreSQL database
-psql -U postgres
-CREATE DATABASE gearguard;
-\q
+Ensure MongoDB is running locally or you have an Atlas connection string ready. The database will be created automatically.
 
-# The database tables will be created automatically by Sequelize
-```
 
 #### 3. **Environment Configuration**
-Create `.env` file in the server directory:
+Create a `.env` file in the root directory:
 ```env
-PORT=3001
-DATABASE_URL=postgresql://username:password@localhost:5432/gearguard
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/gearguard
 NODE_ENV=development
+JWT_SECRET=dev_secret_replace_in_production
 ```
+
 
 #### 4. **Start the Application**
 
@@ -643,7 +641,7 @@ GET /api/requests/calendar
 - Verify backend server is running
 
 **3. Database Errors**
-- Check PostgreSQL is running
+- Check MongoDB is running
 - Verify connection string in .env
 - Ensure database exists
 
@@ -655,7 +653,7 @@ GET /api/requests/calendar
 1. ✅ Teams manage members
 2. ✅ Equipment tracked with full details
 3. ✅ Requests flow through stages
-4. ✅ Everything stored in PostgreSQL
+4. ✅ Everything stored in MongoDB
 5. ✅ Activity log tracks all actions
 6. ✅ Calendar visualizes schedules
 7. ✅ Dashboard provides overview
@@ -666,4 +664,4 @@ GET /api/requests/calendar
 - Equipment
 - MaintenanceRequests
 
-**All data persists in PostgreSQL with proper relationships!**
+**All data persists in MongoDB with proper relationships!**
