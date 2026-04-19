@@ -18,6 +18,8 @@ exports.getAllEquipment = async (req, res) => {
 exports.getEquipmentById = async (req, res) => {
   try {
     const equipment = await Equipment.findById(req.params.id)
+      .populate('maintenanceTeamId', 'name specialization')
+      .populate('defaultTechnicianId', 'name email role')
       .populate('maintenanceTeam')
       .populate('defaultTechnician');
 
