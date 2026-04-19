@@ -29,7 +29,18 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onUpdate }) => {
     }),
   }));
 
-  const isOverdue = request.scheduledDate && new Date(request.scheduledDate) < new Date() && request.stage !== 'repaired';
+  const isOverdue = (date?: string, stage?: string) => {
+    if (!date) return false;
+
+    const today = new Date();
+    const due = new Date(date);
+
+    // remove time part
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
+
+    return due < today && stage !== 'repaired';
+  };
 
   const priorityColors = {
     low: 'default',
@@ -48,15 +59,18 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onUpdate }) => {
       ref={drag}
       style={{ opacity: isDragging ? 0.5 : 1 }}
       className={`kanban-card bg-white p-4 rounded-lg shadow-sm border-2 mb-3 ${
-        isOverdue ? 'border-red-300' : 'border-gray-200'
-      }`}
+        isOverdue(request.scheduledDate, request.stage)
+        ? 'border-red-400 bg-red-50'
+        : 'border-gray-200'
+    }`}
     >
-      {isOverdue && (
+      {isOverdue(request.scheduledDate, request.stage) && (
         <div className="flex items-center text-red-600 text-xs mb-2">
+          <span className="h-2 w-2 bg-red-500 rounded-full animate-ping mr-2"></span>
           <AlertCircle className="h-3 w-3 mr-1" />
           Overdue
-        </div>
-      )}
+      </div>
+    )}
       
       <div className="flex items-start justify-between mb-2">
         <h4 className="font-medium text-gray-900 text-sm">{request.subject}</h4>
