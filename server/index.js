@@ -44,6 +44,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Routes
+app.use("/api/auth", require("./routes/auth"));
 app.use("/api/equipment", equipmentRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/members", memberRoutes);
@@ -63,10 +64,12 @@ app.get("/api/health", (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({
-    error: "Something went wrong!",
-    message: process.env.NODE_ENV === "development" ? err.message : undefined,
-  });
+  const status = err.statusCode || 500;
+  const message =
+    process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
+      : err.message;
+  res.status(status).json({ error: message });
 });
 
 // 404 handler
