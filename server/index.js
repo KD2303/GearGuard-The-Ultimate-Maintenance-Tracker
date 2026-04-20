@@ -50,6 +50,7 @@ app.use("/api/members", memberRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/activities", activitiesRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use('/api/search', require('./routes/search'));
 
 // Health check
 app.get("/api/health", (req, res) => {
