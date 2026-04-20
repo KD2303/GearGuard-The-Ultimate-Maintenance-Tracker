@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const equipmentController = require('../controllers/equipmentController');
+const protect = require('../middleware/auth');
+
+router.use(protect);
 
 router.get('/', equipmentController.getAllEquipment);
 router.get('/:id', equipmentController.getEquipmentById);
