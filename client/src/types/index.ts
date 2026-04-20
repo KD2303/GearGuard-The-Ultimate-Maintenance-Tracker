@@ -120,4 +120,36 @@ export interface Notification {
   updatedAt: string;
 }
 
+export interface SearchEquipmentResult {
+  _id: string;
+  name: string;
+  serialNumber: string;
+  category: string;
+  location: string;
+  status: string;
+}
+
+export interface SearchRequestResult {
+  _id: string;
+  requestNumber: string;
+  subject: string;
+  stage: string;
+  priority: string;
+  type: string;
+  scheduledDate?: string;
+  equipmentId?: {
+    _id: string;
+    name: string;
+  };
+  assignedToId?: {
+    _id: string;
+    name: string;
+  };
+}
+
+export interface GlobalSearchResults {
+  equipment: SearchEquipmentResult[];
+  requests: SearchRequestResult[];
+}
+
 export * from './activity';
