@@ -20,7 +20,7 @@ interface RequestCardProps {
   onUpdate: () => void;
 }
 
-const RequestCard: React.FC<RequestCardProps> = ({ request, onUpdate }) => {
+const RequestCard: React.FC<RequestCardProps> = ({ request }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'REQUEST',
     item: { id: request.id, stage: request.stage },

@@ -20,7 +20,7 @@ const SOCKET_URL = 'http://localhost:5005';
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [, setSocket] = useState<Socket | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
