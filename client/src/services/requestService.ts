@@ -1,5 +1,5 @@
 import api from './api';
-import { MaintenanceRequest, CreateMaintenanceRequestDto } from '../types';
+import { MaintenanceRequest, CreateMaintenanceRequestDto, RequestFilters } from '../types';
 
 export const requestService = {
   getAll: async (filters?: { stage?: string; type?: string; teamId?: string }): Promise<MaintenanceRequest[]> => {
@@ -35,4 +35,15 @@ export const requestService = {
     const response = await api.get('/requests/calendar', { params: { start, end } });
     return response.data;
   },
+};
+
+export const getFiltered = async (filters: RequestFilters): Promise<MaintenanceRequest[]> => {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value && value.trim() !== '') {
+      params.append(key, value);
+    }
+  });
+  const response = await api.get(`/requests?${params.toString()}`);
+  return response.data;
 };

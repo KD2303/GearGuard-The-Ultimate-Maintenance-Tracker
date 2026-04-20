@@ -120,4 +120,26 @@ export interface Notification {
   updatedAt: string;
 }
 
+export interface RequestFilters {
+  stage: string;
+  type: string;
+  priority: string;
+  teamId: string;
+  assignedToId: string;
+  startDate: string;
+  endDate: string;
+  search: string;
+}
+
+export const defaultFilters: RequestFilters = {
+  stage: '',
+  type: '',
+  priority: '',
+  teamId: '',
+  assignedToId: '',
+  startDate: '',
+  endDate: '',
+  search: '',
+};
+
 export * from './activity';
