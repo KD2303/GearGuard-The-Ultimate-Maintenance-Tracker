@@ -8,6 +8,7 @@ import { Clock, User, AlertCircle, Plus } from 'lucide-react';
 import Button from '../components/Button';
 import RequestModal from '../components/RequestModal';
 import FilterBar from '../components/FilterBar';
+import { TouchBackend } from 'react-dnd-touch-backend';
 
 const STAGES = [
   { id: 'new', title: 'New', color: 'bg-blue-50 border-blue-200' },
@@ -60,7 +61,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onUpdate: _onUpdate 
     <div
       ref={drag}
       style={{ opacity: isDragging ? 0.5 : 1 }}
-      className={`kanban-card bg-white p-4 rounded-lg shadow-sm border-2 mb-3 ${
+      className={`kanban-card bg-white p-4 rounded-lg shadow-sm border-2 mb-3 min-h-[56px] touch-none ${
         isOverdue(request.scheduledDate, request.stage)
           ? 'border-red-400 bg-red-50'
           : 'border-gray-200'
@@ -138,8 +139,8 @@ const Column: React.FC<ColumnProps> = ({ stage, requests, onDrop, onUpdate }) =>
   return (
     <div
       ref={drop}
-      className={`kanban-column flex-1 min-w-[280px] rounded-lg border-2 p-4 ${stage.color} ${
-        isOver ? 'drag-over' : ''
+      className={`kanban-column w-full sm:flex-1 sm:min-w-[280px] sm:flex-shrink-0 rounded-lg border-2 p-4 ${stage.color} ${
+  isOver ? 'drag-over' : ''
       }`}
     >
       <div className="flex items-center justify-between mb-4">
@@ -212,7 +213,7 @@ const KanbanBoard: React.FC = () => {
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={typeof window !== 'undefined' && 'ontouchstart' in window ? TouchBackend : HTML5Backend}>
       <div>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Maintenance Requests</h2>
@@ -233,7 +234,12 @@ const KanbanBoard: React.FC = () => {
             No requests match your current filters.
           </div>
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <>
+            
+            <p className="text-xs text-gray-400 text-center mb-2 sm:hidden">
+              ← Swipe to see all columns →
+            </p>
+          <div className="flex flex-col gap-4 pb-4 sm:flex-row sm:overflow-x-auto sm:pb-4">
             {STAGES.map((stage) => (
               <Column
                 key={stage.id}
@@ -244,6 +250,7 @@ const KanbanBoard: React.FC = () => {
               />
             ))}
           </div>
+          </>
         )}
 
         {isModalOpen && (
