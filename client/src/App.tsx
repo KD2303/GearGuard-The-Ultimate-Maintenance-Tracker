@@ -30,7 +30,16 @@ function App() {
           </Routes>
         </Layout>
       </Router>
-      <Toaster />
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            fontSize: "14px",
+          },
+        }}
+      />
     </NotificationProvider>
   );
 }
