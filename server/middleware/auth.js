@@ -1,25 +1,45 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/user");
 
-exports.verifyToken = (req, res, next) => {
+const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader) {
-      return res.status(401).json({ msg: "No token provided" });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Not authorized, no token provided" });
     }
 
-    // Expect: Bearer TOKEN
     const token = authHeader.split(" ")[1];
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "secretkey"
-    );
+    if (!token) {
+      return res.status(401).json({ error: "Not authorized, token missing" });
+    }
 
-    req.user = decoded;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      return res.status(401).json({ error: "Not authorized, user no longer exists" });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ error: "Not authorized, account is deactivated" });
+    }
+
+    req.user = user;
     next();
-
   } catch (error) {
-    return res.status(401).json({ msg: "Invalid or expired token" });
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ error: "Not authorized, invalid token" });
+    }
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Not authorized, token has expired" });
+    }
+    res.status(500).json({ error: error.message });
   }
 };
+
+// Named export for backward compatibility with equipment.js
+exports.verifyToken = protect;
+
+module.exports = protect;
