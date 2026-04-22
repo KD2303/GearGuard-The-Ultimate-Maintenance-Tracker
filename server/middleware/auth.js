@@ -39,7 +39,4 @@ const protect = async (req, res, next) => {
   }
 };
 
-// Named export for backward compatibility with equipment.js
-exports.verifyToken = protect;
-
 module.exports = protect;
