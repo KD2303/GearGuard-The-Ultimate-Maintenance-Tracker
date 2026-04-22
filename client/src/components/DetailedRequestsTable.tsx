@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { MaintenanceRequest } from '../types';
 import { requestService } from '../services/requestService';
 import Badge from './Badge';
-import { 
-  Calendar, 
-  AlertCircle, 
-  Clock, 
-  User, 
+import Button from './Button';
+import Papa from 'papaparse';
+import {
+  Calendar,
+  AlertCircle,
+  Clock,
+  User,
   Package,
   FileText,
   Settings,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import Spinner from './Spinner';
 
 const DetailedRequestsTable = () => {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
@@ -46,70 +49,120 @@ const DetailedRequestsTable = () => {
   };
 
   const sortedRequests = [...requests].sort((a, b) => {
-    let aValue: any = a[sortField as keyof MaintenanceRequest];
-    let bValue: any = b[sortField as keyof MaintenanceRequest];
+    const aValue: any = a[sortField as keyof MaintenanceRequest];
+    const bValue: any = b[sortField as keyof MaintenanceRequest];
 
     if (aValue === undefined) return 1;
     if (bValue === undefined) return -1;
 
-    if (typeof aValue === 'string') {
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
       return sortDirection === 'asc'
         ? aValue.localeCompare(bValue)
         : bValue.localeCompare(aValue);
     }
 
-    return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    return sortDirection === 'asc'
+      ? (aValue ?? 0) - (bValue ?? 0)
+      : (bValue ?? 0) - (aValue ?? 0);
   });
+
+  const handleExport = () => {
+    if (!sortedRequests || sortedRequests.length === 0) return;
+
+    const exportData = sortedRequests.map((request) => ({
+      'Request Date': request.createdAt
+        ? new Date(request.createdAt).toLocaleDateString('en-GB')
+        : '',
+      'Request ID': request.requestNumber || '',
+      Subject: request.subject || '',
+      Priority: request.priority || '',
+      Stage: request.stage || '',
+      Equipment: request.equipment?.name || 'Unassigned',
+      'Assigned To': request.assignedTo?.name || 'Unassigned',
+      Type: request.type || '',
+      Description: request.description || '',
+      'Scheduled Date': request.scheduledDate
+        ? new Date(request.scheduledDate).toLocaleDateString('en-GB')
+        : '',
+      Team: request.team?.name || 'Unassigned',
+      Duration: request.duration ? `${request.duration} hrs` : '',
+      Cost: request.cost ?? '',
+      'Completed Date': request.completedDate
+        ? new Date(request.completedDate).toLocaleDateString('en-GB')
+        : '',
+      Notes: request.notes || '',
+    }));
+
+    const csv = Papa.unparse(exportData);
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'maintenance-requests.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-700';
-      case 'high': return 'bg-orange-100 text-orange-700';
-      case 'medium': return 'bg-yellow-100 text-yellow-700';
-      case 'low': return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'urgent':
+        return 'bg-red-100 text-red-700';
+      case 'high':
+        return 'bg-orange-100 text-orange-700';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-700';
+      case 'low':
+        return 'bg-green-100 text-green-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
     }
   };
 
   const getStageColor = (stage: string) => {
     switch (stage) {
-      case 'new': return 'bg-blue-100 text-blue-700';
-      case 'in-progress': return 'bg-yellow-100 text-yellow-700';
-      case 'repaired': return 'bg-green-100 text-green-700';
-      case 'scrap': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'new':
+        return 'bg-blue-100 text-blue-700';
+      case 'in-progress':
+        return 'bg-yellow-100 text-yellow-700';
+      case 'repaired':
+        return 'bg-green-100 text-green-700';
+      case 'scrap':
+        return 'bg-red-100 text-red-700';
+      default:
+        return 'bg-gray-100 text-gray-700';
     }
   };
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <Clock className="w-4 h-4 text-gray-400" />;
-    return sortDirection === 'asc' ? (
-      <ChevronUp className="w-4 h-4 text-blue-600" />
-    ) : (
-      <ChevronDown className="w-4 h-4 text-blue-600" />
-    );
+    return sortDirection === 'asc'
+      ? <ChevronUp className="w-4 h-4 text-blue-600" />
+      : <ChevronDown className="w-4 h-4 text-blue-600" />;
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-12 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
+      <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
+        <Spinner size="md" label="Loading requests..." />
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-lg shadow">
-      <div className="border-b border-gray-200 px-6 py-4">
-        <h2 className="text-xl font-semibold text-gray-900">All Maintenance Requests</h2>
-        <p className="text-sm text-gray-500 mt-1">Detailed view of all requests with full information</p>
+      <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">All Maintenance Requests</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Detailed view of all requests with full information
+          </p>
+        </div>
+        <Button onClick={handleExport}>Export CSV</Button>
       </div>
 
       <div className="overflow-x-auto">
@@ -172,11 +225,11 @@ const DetailedRequestsTable = () => {
               </th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedRequests.map((request) => (
-              <>
+              <Fragment key={request.id}>
                 <tr
-                  key={request.id}
                   className="hover:bg-gray-50 transition-colors cursor-pointer"
                   onClick={() => setExpandedRow(expandedRow === request.id ? null : request.id)}
                 >
@@ -216,6 +269,7 @@ const DetailedRequestsTable = () => {
                     </button>
                   </td>
                 </tr>
+
                 {expandedRow === request.id && (
                   <tr className="bg-gray-50">
                     <td colSpan={8} className="px-6 py-4">
@@ -270,7 +324,7 @@ const DetailedRequestsTable = () => {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>

@@ -55,17 +55,50 @@ const generateRequestNumber = async () => {
   return `REQ-${year}${month}-${String(sequence).padStart(4, "0")}`;
 };
 
-// Get all requests
+// Get all requests (with advanced filtering)
 exports.getAllRequests = async (req, res) => {
   try {
-    const { stage, type, teamId } = req.query;
-    const where = {};
+    const {
+      stage,
+      type,
+      priority,
+      teamId,
+      assignedToId,
+      startDate,
+      endDate,
+      search,
+    } = req.query;
 
-    if (stage) where.stage = stage;
-    if (type) where.type = type;
-    if (teamId) where.teamId = teamId;
+    const query = {};
 
-    const requests = await MaintenanceRequest.find(where)
+    if (stage) query.stage = stage;
+    if (type) query.type = type;
+    if (priority) query.priority = priority;
+    if (teamId) query.teamId = teamId;
+    if (assignedToId) query.assignedToId = assignedToId;
+
+    if (startDate || endDate) {
+      query.scheduledDate = {};
+      if (startDate) query.scheduledDate.$gte = new Date(startDate);
+      if (endDate) query.scheduledDate.$lte = new Date(endDate);
+    }
+
+    if (search) {
+      const matchingEquipment = await Equipment.find({
+        name: { $regex: search, $options: 'i' },
+      }).select('_id');
+
+      const equipmentIds = matchingEquipment.map((e) => e._id);
+
+      query.$or = [
+        { subject: { $regex: search, $options: 'i' } },
+        { requestNumber: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { equipmentId: { $in: equipmentIds } },
+      ];
+    }
+
+    const requests = await MaintenanceRequest.find(query)
       .populate("equipment")
       .populate("team")
       .populate("assignedTo")

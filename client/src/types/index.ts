@@ -1,4 +1,5 @@
 export interface Equipment {
+  _id?: string;
   id: string;
   name: string;
   serialNumber: string;
@@ -15,9 +16,11 @@ export interface Equipment {
   currentMileage?: number;
   fuelType?: 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'CNG';
   notes?: string;
-  maintenanceTeamId?: string;
+  /** Raw ObjectId string OR populated object (when returned from getEquipmentById) */
+  maintenanceTeamId?: string | { _id: string; name: string; specialization?: string };
   maintenanceTeam?: MaintenanceTeam;
-  defaultTechnicianId?: string;
+  /** Raw ObjectId string OR populated object (when returned from getEquipmentById) */
+  defaultTechnicianId?: string | { _id: string; name: string; email?: string; role?: string };
   defaultTechnician?: TeamMember;
   openRequestsCount?: number;
   createdAt?: string;
@@ -116,5 +119,27 @@ export interface Notification {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface RequestFilters {
+  stage: string;
+  type: string;
+  priority: string;
+  teamId: string;
+  assignedToId: string;
+  startDate: string;
+  endDate: string;
+  search: string;
+}
+
+export const defaultFilters: RequestFilters = {
+  stage: '',
+  type: '',
+  priority: '',
+  teamId: '',
+  assignedToId: '',
+  startDate: '',
+  endDate: '',
+  search: '',
+};
 
 export * from './activity';

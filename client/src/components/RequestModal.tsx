@@ -31,7 +31,13 @@ const RequestModal: React.FC<RequestModalProps> = ({
     teamId: '',
     assignedToId: '',
   });
-  
+
+  const [autoFilled, setAutoFilled] = useState({
+    category: '',
+    maintenanceTeam: '',
+    maintenanceTeamId: '',
+  });
+
   const [equipment, setEquipment] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
@@ -51,22 +57,35 @@ const RequestModal: React.FC<RequestModalProps> = ({
     loadData();
   }, []);
 
- // Auto-fill team and technician when equipment is selected
-useEffect(() => {
-  if (!formData.equipmentId) return;
-
-  const selectedEquipment = equipment.find(
-    (e) => e._id.toString() === formData.equipmentId
-  );
-
-  if (!selectedEquipment) return;
-
-  setFormData((prev) => ({
-    ...prev,
-    teamId: selectedEquipment.maintenanceTeamId?.toString() || '',
-    assignedToId: selectedEquipment.defaultTechnicianId?.toString() || '',
-  }));
-}, [formData.equipmentId, equipment]);
+  // Auto-fill category and team when equipment is selected
+  const handleEquipmentChange = async (equipmentId: string) => {
+    setFormData(prev => ({ ...prev, equipmentId }));
+    if (!equipmentId) {
+      setAutoFilled({ category: '', maintenanceTeam: '', maintenanceTeamId: '' });
+      return;
+    }
+    try {
+      const eq = await equipmentService.getById(equipmentId);
+      const teamObj = typeof eq.maintenanceTeamId === 'object' && eq.maintenanceTeamId !== null
+        ? eq.maintenanceTeamId as { _id: string; name: string; specialization?: string }
+        : null;
+      const techObj = typeof eq.defaultTechnicianId === 'object' && eq.defaultTechnicianId !== null
+        ? eq.defaultTechnicianId as { _id: string; name: string; email?: string; role?: string }
+        : null;
+      setAutoFilled({
+        category: eq.category || '',
+        maintenanceTeam: teamObj?.name || '',
+        maintenanceTeamId: teamObj?._id || '',
+      });
+      setFormData(prev => ({
+        ...prev,
+        teamId: teamObj?._id || prev.teamId,
+        assignedToId: techObj?._id || prev.assignedToId,
+      }));
+    } catch (error) {
+      console.error('Failed to fetch equipment details:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,8 +101,13 @@ useEffect(() => {
     }
   };
 
+  const handleClose = () => {
+    setAutoFilled({ category: '', maintenanceTeam: '', maintenanceTeamId: '' });
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Maintenance Request" size="lg">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Create Maintenance Request" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -155,9 +179,7 @@ useEffect(() => {
           </label>
           <select
             value={formData.equipmentId}
-            onChange={(e) =>
-              setFormData({ ...formData, equipmentId: e.target.value })
-            }
+            onChange={(e) => handleEquipmentChange(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Select equipment...</option>
@@ -167,6 +189,32 @@ useEffect(() => {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Category (auto-filled)
+          </label>
+          <input
+            type="text"
+            value={autoFilled.category}
+            readOnly
+            placeholder="Select equipment to auto-fill"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Maintenance Team (auto-filled)
+          </label>
+          <input
+            type="text"
+            value={autoFilled.maintenanceTeam}
+            readOnly
+            placeholder="Select equipment to auto-fill"
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+          />
         </div>
 
         <div>
@@ -223,7 +271,7 @@ useEffect(() => {
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={handleClose}>
             Cancel
           </Button>
           <Button type="submit" disabled={loading}>
