@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import Spinner from './Spinner';
 
 const DetailedRequestsTable = () => {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
@@ -146,15 +147,8 @@ const DetailedRequestsTable = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-12 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
+      <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
+        <Spinner size="md" label="Loading requests..." />
       </div>
     );
   }

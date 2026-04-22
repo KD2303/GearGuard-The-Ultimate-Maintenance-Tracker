@@ -5,6 +5,7 @@ import { Equipment, MaintenanceRequest } from '../types';
 import { equipmentService } from '../services/equipmentService';
 import Badge from './Badge';
 import { Calendar, MapPin, Wrench, AlertCircle } from 'lucide-react';
+import Spinner from './Spinner';
 
 interface EquipmentDetailModalProps {
   equipment: Equipment;
@@ -168,7 +169,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           </div>
 
           {loading ? (
-            <p className="text-gray-500">Loading...</p>
+            <div className="py-8"><Spinner size="md" label="Loading history..." /></div>
           ) : maintenanceHistory.length > 0 ? (
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {maintenanceHistory.map((request) => (

@@ -7,6 +7,7 @@ import { Plus, Users } from 'lucide-react';
 import TeamModal from '../components/TeamModal';
 import MemberModal from '../components/MemberModal';
 import AssignmentsPanel from '../components/AssignmentsPanel';
+import Spinner from '../components/Spinner';
 
 const TeamsPage: React.FC = () => {
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
@@ -31,7 +32,7 @@ const TeamsPage: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <div className="text-center py-8">Loading teams...</div>;
+    return <Spinner size="lg" label="Loading teams..." centered />;
   }
 
   return (

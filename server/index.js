@@ -8,7 +8,7 @@ const activitiesRoutes = require("./routes/activities");
 const cors = require("cors");
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
-
+require("dotenv").config();
 
 const { syncDatabase } = require("./models");
 const equipmentRoutes = require("./routes/equipment");

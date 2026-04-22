@@ -7,6 +7,7 @@ import Badge from '../components/Badge';
 import { Clock, User, AlertCircle, Plus } from 'lucide-react';
 import Button from '../components/Button';
 import RequestModal from '../components/RequestModal';
+import Spinner from '../components/Spinner';
 import FilterBar from '../components/FilterBar';
 
 const STAGES = [
@@ -122,7 +123,7 @@ interface ColumnProps {
   onUpdate: () => void;
 }
 
-const Column: React.FC<ColumnProps> = ({ stage, requests, onDrop, onUpdate }) => {
+const Column: React.FC<ColumnProps> = ({ stage, requests, onDrop,}) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'REQUEST',
     drop: (item: { id: string; stage: string }) => {
@@ -151,7 +152,7 @@ const Column: React.FC<ColumnProps> = ({ stage, requests, onDrop, onUpdate }) =>
 
       <div className="space-y-2">
         {requests.map((request) => (
-          <RequestCard key={request.id} request={request} onUpdate={onUpdate} />
+          <RequestCard key={request.id} request={request} onUpdate={() => {}}/>
         ))}
       </div>
     </div>
@@ -208,7 +209,7 @@ const KanbanBoard: React.FC = () => {
   );
 
   if (loading) {
-    return <div className="text-center py-8">Loading requests...</div>;
+    return <Spinner size="lg" label="Loading requests..." centered />;
   }
 
   return (

@@ -6,6 +6,7 @@ import Button from '../components/Button';
 import { Plus, Wrench, MapPin, Calendar, Car, Gauge, Fuel } from 'lucide-react';
 import EquipmentModal from '../components/EquipmentModal';
 import EquipmentDetailModal from '../components/EquipmentDetailModal';
+import Spinner from '../components/Spinner';
 
 const VehicleList: React.FC = () => {
   const [vehicles, setVehicles] = useState<Equipment[]>([]);
@@ -38,7 +39,7 @@ const VehicleList: React.FC = () => {
   } as const;
 
   if (loading) {
-    return <div className="text-center py-8">Loading vehicles...</div>;
+    return <Spinner size="lg" label="Loading vehicles..." centered />;
   }
 
   return (

@@ -3,6 +3,7 @@ import { TeamMember } from '../types';
 import { teamService } from '../services/teamService';
 import { Calendar, User, Mail, Phone, UserCheck } from 'lucide-react';
 import Button from './Button';
+import Spinner from './Spinner';
 
 const AssignmentsPanel = () => {
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -52,15 +53,8 @@ const AssignmentsPanel = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
+      <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
+        <Spinner size="md" label="Loading assignments..." />
       </div>
     );
   }

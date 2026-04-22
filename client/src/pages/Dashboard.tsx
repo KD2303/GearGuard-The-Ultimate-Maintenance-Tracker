@@ -7,6 +7,7 @@ import { Wrench, Box, Users, AlertCircle, Clock, Search } from 'lucide-react';
 import Badge from '../components/Badge';
 import TeamActivity from '../components/TeamActivity';
 import QuickActionCards from '../components/QuickActionCards';
+import Spinner from '../components/Spinner';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({
@@ -101,14 +102,7 @@ const Dashboard: React.FC = () => {
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+    return <Spinner size="lg" label="Loading dashboard..." centered />;
   }
 
   return (
