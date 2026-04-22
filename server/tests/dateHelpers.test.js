@@ -3,12 +3,12 @@ const dateHelpers = require('../utils/dateHelpers');
 describe('Date Helper Utility Functions', () => {
   describe('formatDate', () => {
     test('should format date to DD-MM-YYYY', () => {
-      const date = new Date('2024-01-15');
+      const date = new Date(2024, 0, 15);
       expect(dateHelpers.formatDate(date, 'DD-MM-YYYY')).toBe('15-01-2024');
     });
 
     test('should format date to YYYY-MM-DD', () => {
-      const date = new Date('2024-01-15');
+      const date = new Date(2024, 0, 15);
       expect(dateHelpers.formatDate(date, 'YYYY-MM-DD')).toBe('2024-01-15');
     });
 
@@ -17,20 +17,20 @@ describe('Date Helper Utility Functions', () => {
     });
 
     test('should default to DD-MM-YYYY format', () => {
-      const date = new Date('2024-05-20');
+      const date = new Date(2024, 4, 20);
       expect(dateHelpers.formatDate(date)).toBe('20-05-2024');
     });
   });
 
   describe('calculateDuration', () => {
     test('should calculate duration in days between two dates', () => {
-      const start = new Date('2024-01-01');
-      const end = new Date('2024-01-08');
+      const start = new Date(2024, 0, 1);
+      const end = new Date(2024, 0, 8);
       expect(dateHelpers.calculateDuration(start, end)).toBe(7);
     });
 
     test('should handle same date', () => {
-      const date = new Date('2024-01-01');
+      const date = new Date(2024, 0, 1);
       expect(dateHelpers.calculateDuration(date, date)).toBe(0);
     });
 
@@ -73,13 +73,13 @@ describe('Date Helper Utility Functions', () => {
 
   describe('addDaysToDate', () => {
     test('should add days to date', () => {
-      const date = new Date('2024-01-01');
+      const date = new Date(2024, 0, 1);
       const result = dateHelpers.addDaysToDate(date, 5);
       expect(result.getDate()).toBe(6);
     });
 
     test('should handle negative days', () => {
-      const date = new Date('2024-01-10');
+      const date = new Date(2024, 0, 10);
       const result = dateHelpers.addDaysToDate(date, -5);
       expect(result.getDate()).toBe(5);
     });
@@ -92,12 +92,12 @@ describe('Date Helper Utility Functions', () => {
 
   describe('getMonthYearString', () => {
     test('should return YYYYMM format', () => {
-      const date = new Date('2024-05-15');
+      const date = new Date(2024, 4, 15);
       expect(dateHelpers.getMonthYearString(date)).toBe('202405');
     });
 
     test('should pad month with zero', () => {
-      const date = new Date('2024-01-15');
+      const date = new Date(2024, 0, 15);
       expect(dateHelpers.getMonthYearString(date)).toBe('202401');
     });
 
@@ -108,23 +108,23 @@ describe('Date Helper Utility Functions', () => {
 
   describe('isWithinDateRange', () => {
     test('should return true for date within range', () => {
-      const start = new Date('2024-01-01');
-      const date = new Date('2024-01-15');
-      const end = new Date('2024-01-31');
+      const start = new Date(2024, 0, 1);
+      const date = new Date(2024, 0, 15);
+      const end = new Date(2024, 0, 31);
       expect(dateHelpers.isWithinDateRange(date, start, end)).toBe(true);
     });
 
     test('should return true for date equal to start', () => {
-      const start = new Date('2024-01-01');
-      const date = new Date('2024-01-01');
-      const end = new Date('2024-01-31');
+      const start = new Date(2024, 0, 1);
+      const date = new Date(2024, 0, 1);
+      const end = new Date(2024, 0, 31);
       expect(dateHelpers.isWithinDateRange(date, start, end)).toBe(true);
     });
 
     test('should return false for date outside range', () => {
-      const start = new Date('2024-01-01');
-      const date = new Date('2024-02-15');
-      const end = new Date('2024-01-31');
+      const start = new Date(2024, 0, 1);
+      const date = new Date(2024, 1, 15);
+      const end = new Date(2024, 0, 31);
       expect(dateHelpers.isWithinDateRange(date, start, end)).toBe(false);
     });
 
