@@ -5,6 +5,7 @@ import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { Wrench, Box, Users, AlertCircle, Clock, Search } from 'lucide-react';
 import Badge from '../components/Badge';
+import { MaintenanceRequest } from '../types';
 import TeamActivity from '../components/TeamActivity';
 import QuickActionCards from '../components/QuickActionCards';
 import Spinner from '../components/Spinner';
@@ -18,7 +19,7 @@ const Dashboard: React.FC = () => {
     underMaintenance: 0,
     totalTeams: 0,
   });
-  const [recentRequests, setRecentRequests] = useState<any[]>([]);
+  const [recentRequests, setRecentRequests] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

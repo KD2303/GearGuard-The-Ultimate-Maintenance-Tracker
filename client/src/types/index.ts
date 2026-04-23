@@ -28,6 +28,7 @@ export interface Equipment {
 }
 
 export interface MaintenanceTeam {
+  _id?: string;
   id: string;
   name: string;
   description?: string;
@@ -39,6 +40,7 @@ export interface MaintenanceTeam {
 }
 
 export interface TeamMember {
+  _id?: string;
   id: string;
   name: string;
   email: string;
@@ -53,6 +55,7 @@ export interface TeamMember {
 }
 
 export interface MaintenanceRequest {
+  _id?: string;
   id: string;
   requestNumber: string;
   subject: string;

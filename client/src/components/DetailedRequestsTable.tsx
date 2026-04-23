@@ -20,7 +20,9 @@ import Spinner from './Spinner';
 const DetailedRequestsTable = () => {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<string>('createdAt');
+  type SortField = 'createdAt' | 'priority' | 'stage';
+
+  const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -39,7 +41,7 @@ const DetailedRequestsTable = () => {
     }
   };
 
-  const handleSort = (field: string) => {
+  const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -48,9 +50,16 @@ const DetailedRequestsTable = () => {
     }
   };
 
+  const getSortValue = (request: MaintenanceRequest, field: SortField) => {
+    if (field === 'createdAt') {
+      return request.createdAt ? new Date(request.createdAt).getTime() : undefined;
+    }
+    return request[field];
+  };
+
   const sortedRequests = [...requests].sort((a, b) => {
-    const aValue: any = a[sortField as keyof MaintenanceRequest];
-    const bValue: any = b[sortField as keyof MaintenanceRequest];
+    const aValue = getSortValue(a, sortField);
+    const bValue = getSortValue(b, sortField);
 
     if (aValue === undefined) return 1;
     if (bValue === undefined) return -1;
@@ -138,7 +147,7 @@ const DetailedRequestsTable = () => {
     }
   };
 
-  const SortIcon = ({ field }: { field: string }) => {
+  const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <Clock className="w-4 h-4 text-gray-400" />;
     return sortDirection === 'asc'
       ? <ChevronUp className="w-4 h-4 text-blue-600" />
