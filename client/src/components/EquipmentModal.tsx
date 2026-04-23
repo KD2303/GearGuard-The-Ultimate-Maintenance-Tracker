@@ -67,7 +67,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Equipment Name *
             </label>
             <input
@@ -75,12 +75,12 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Serial Number *
             </label>
             <input
@@ -90,21 +90,21 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               onChange={(e) =>
                 setFormData({ ...formData, serialNumber: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Category *
             </label>
             <select
               required
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
             >
               <option value="">Select category...</option>
               <option value="Machine">Machine</option>
@@ -117,7 +117,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Location *
             </label>
             <input
@@ -125,14 +125,14 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               required
               value={formData.location}
               onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Department
             </label>
             <input
@@ -141,13 +141,13 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               onChange={(e) =>
                 setFormData({ ...formData, department: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
               placeholder="e.g., Production, IT"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Assigned To
             </label>
             <input
@@ -156,7 +156,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               onChange={(e) =>
                 setFormData({ ...formData, assignedTo: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
               placeholder="Employee name"
             />
           </div>
@@ -164,7 +164,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Manufacturer
             </label>
             <input
@@ -173,26 +173,26 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               onChange={(e) =>
                 setFormData({ ...formData, manufacturer: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Model
             </label>
             <input
               type="text"
               value={formData.model}
               onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Purchase Date
             </label>
             <input
@@ -201,12 +201,12 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               onChange={(e) =>
                 setFormData({ ...formData, purchaseDate: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
               Warranty Expiry
             </label>
             <input
@@ -215,20 +215,20 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               onChange={(e) =>
                 setFormData({ ...formData, warrantyExpiry: e.target.value })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-dark"
             />
           </div>
         </div>
 
         {formData.category.toLowerCase() === 'vehicle' && (
-          <div className="bg-orange-50 p-4 rounded-xl space-y-4 border border-orange-100">
+          <div className="bg-orange-50 dark:bg-gray-800 p-4 rounded-xl border border-orange-100 dark:border-gray-700 transition-colors">
             <h4 className="text-sm font-bold text-orange-800 flex items-center">
               <Car className="h-4 w-4 mr-2" />
               Vehicle Details
             </h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-orange-700 mb-1">
+                <label className="block text-sm font-medium text-orange-700 dark:text-orange-300 mb-1">
                   License Plate
                 </label>
                 <input
@@ -236,29 +236,29 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
                   value={formData.licensePlate}
                   onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
                   placeholder="e.g., ABC-1234"
-                  className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                  className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500  bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-orange-700 mb-1">
+                <label className="block text-sm font-medium text-orange-700 dark:text-orange-300 mb-1">
                   Current Mileage (km)
                 </label>
                 <input
                   type="number"
                   value={formData.currentMileage}
                   onChange={(e) => setFormData({ ...formData, currentMileage: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                  className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-orange-700 mb-1">
+              <label className="block text-sm font-medium text-orange-700 dark:text-orange-300 mb-1">
                 Fuel Type
               </label>
               <select
                 value={formData.fuelType}
                 onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
-                className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="">Select fuel type...</option>
                 <option value="Petrol">Petrol</option>
@@ -272,7 +272,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
             Maintenance Team
           </label>
           <select
@@ -280,7 +280,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
             onChange={(e) =>
               setFormData({ ...formData, maintenanceTeamId: e.target.value })
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="input-dark"
           >
             <option value="">Select team...</option>
             {teams.map((team) => (
@@ -292,7 +292,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
             Default Technician
           </label>
           <select
@@ -300,7 +300,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
             onChange={(e) =>
               setFormData({ ...formData, defaultTechnicianId: e.target.value })
             }
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="input-dark"
           >
             <option value="">Select technician...</option>
             {members
@@ -316,14 +316,14 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
             Notes
           </label>
           <textarea
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="input-dark"
           />
         </div>
 

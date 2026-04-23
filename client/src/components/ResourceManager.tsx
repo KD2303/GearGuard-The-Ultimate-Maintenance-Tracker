@@ -35,11 +35,11 @@ const ResourceManager = () => {
       case 'under-maintenance':
         return <Wrench className="w-5 h-5 text-yellow-500" />;
       case 'inactive':
-        return <AlertCircle className="w-5 h-5 text-gray-500" />;
+        return <AlertCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
       case 'scrapped':
         return <AlertCircle className="w-5 h-5 text-red-500" />;
       default:
-        return <Package className="w-5 h-5 text-gray-500" />;
+        return <Package className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
     }
   };
 
@@ -60,7 +60,7 @@ const ResourceManager = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div className="animate-pulse">
           <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
           <div className="space-y-3">
@@ -74,15 +74,17 @@ const ResourceManager = () => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="border-b border-gray-200 px-6 py-4">
-        <h2 className="text-xl font-semibold text-gray-900">Resource Manager</h2>
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm transition-colors">
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Resource Manager</h2>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3">
         {/* Equipment List */}
-        <div className="border-r border-gray-200 p-4 max-h-[600px] overflow-y-auto">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">All Equipment</h3>
+        <div className="border-r border-gray-200 dark:border-gray-700 p-4 max-h-[600px] overflow-y-auto">
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
+            All Equipment
+          </h3>
           <div className="space-y-2">
             {equipment.map((item) => (
               <button
@@ -90,14 +92,14 @@ const ResourceManager = () => {
                 onClick={() => setSelectedEquipment(item)}
                 className={`w-full text-left p-3 rounded-lg border transition-colors ${
                   selectedEquipment?.id === item.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">{item.name}</div>
-                    <div className="text-xs text-gray-500 mt-1">{item.serialNumber}</div>
+                    <div className="font-medium text-gray-900 dark:text-white truncate">{item.name}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{item.serialNumber}</div>
                   </div>
                   <div className="ml-2">{getStatusIcon(item.status)}</div>
                 </div>
@@ -118,8 +120,8 @@ const ResourceManager = () => {
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900">{selectedEquipment.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">SN: {selectedEquipment.serialNumber}</p>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedEquipment.name}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">SN: {selectedEquipment.serialNumber}</p>
                 </div>
                 <Badge variant={getStatusColor(selectedEquipment.status) as any}>
                   {selectedEquipment.status.replace('-', ' ')}
@@ -128,48 +130,48 @@ const ResourceManager = () => {
 
               {/* Quick Info */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                   <Package className="w-5 h-5 text-gray-400" />
                   <div>
-                    <div className="text-xs text-gray-500">Category</div>
-                    <div className="font-medium text-gray-900">{selectedEquipment.category}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Category</div>
+                    <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.category}</div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3 p-3 bg-gray-50  dark:bg-gray-700/50 rounded-lg">
                   <MapPin className="w-5 h-5 text-gray-400" />
                   <div>
-                    <div className="text-xs text-gray-500">Location</div>
-                    <div className="font-medium text-gray-900">{selectedEquipment.location}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">Location</div>
+                    <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.location}</div>
                   </div>
                 </div>
               </div>
 
               {/* Specifications */}
               <div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-3">Specifications</h4>
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Specifications</h4>
                 <div className="grid grid-cols-2 gap-4">
                   {selectedEquipment.manufacturer && (
                     <div>
-                      <div className="text-sm text-gray-500">Manufacturer</div>
-                      <div className="font-medium text-gray-900">{selectedEquipment.manufacturer}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Manufacturer</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.manufacturer}</div>
                     </div>
                   )}
                   {selectedEquipment.model && (
                     <div>
-                      <div className="text-sm text-gray-500">Model</div>
-                      <div className="font-medium text-gray-900">{selectedEquipment.model}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Model</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.model}</div>
                     </div>
                   )}
                   {selectedEquipment.department && (
                     <div>
-                      <div className="text-sm text-gray-500">Department</div>
-                      <div className="font-medium text-gray-900">{selectedEquipment.department}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Department</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.department}</div>
                     </div>
                   )}
                   {selectedEquipment.assignedTo && (
                     <div>
-                      <div className="text-sm text-gray-500">Assigned To</div>
-                      <div className="font-medium text-gray-900">{selectedEquipment.assignedTo}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Assigned To</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.assignedTo}</div>
                     </div>
                   )}
                 </div>
@@ -177,14 +179,14 @@ const ResourceManager = () => {
 
               {/* Dates */}
               <div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-3">Important Dates</h4>
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Important Dates</h4>
                 <div className="space-y-3">
                   {selectedEquipment.purchaseDate && (
                     <div className="flex items-center space-x-3">
                       <Calendar className="w-5 h-5 text-gray-400" />
                       <div>
-                        <div className="text-sm text-gray-500">Purchase Date</div>
-                        <div className="font-medium text-gray-900">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Purchase Date</div>
+                        <div className="font-medium text-gray-900 dark:text-white">
                           {new Date(selectedEquipment.purchaseDate).toLocaleDateString()}
                         </div>
                       </div>
@@ -194,8 +196,8 @@ const ResourceManager = () => {
                     <div className="flex items-center space-x-3">
                       <Calendar className="w-5 h-5 text-gray-400" />
                       <div>
-                        <div className="text-sm text-gray-500">Warranty Expiry</div>
-                        <div className="font-medium text-gray-900">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Warranty Expiry</div>
+                        <div className="font-medium text-gray-900 dark:text-white">
                           {new Date(selectedEquipment.warrantyExpiry).toLocaleDateString()}
                         </div>
                       </div>
@@ -206,24 +208,24 @@ const ResourceManager = () => {
 
               {/* Maintenance Info */}
               <div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-3">Maintenance</h4>
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Maintenance</h4>
                 <div className="space-y-2">
                   {selectedEquipment.maintenanceTeam && (
                     <div>
-                      <div className="text-sm text-gray-500">Assigned Team</div>
-                      <div className="font-medium text-gray-900">{selectedEquipment.maintenanceTeam.name}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Assigned Team</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.maintenanceTeam.name}</div>
                     </div>
                   )}
                   {selectedEquipment.defaultTechnician && (
                     <div>
-                      <div className="text-sm text-gray-500">Default Technician</div>
-                      <div className="font-medium text-gray-900">{selectedEquipment.defaultTechnician.name}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Default Technician</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.defaultTechnician.name}</div>
                     </div>
                   )}
                   {selectedEquipment.openRequestsCount !== undefined && (
                     <div>
-                      <div className="text-sm text-gray-500">Open Requests</div>
-                      <div className="font-medium text-gray-900">{selectedEquipment.openRequestsCount}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Open Requests</div>
+                      <div className="font-medium text-gray-900 dark:text-white">{selectedEquipment.openRequestsCount}</div>
                     </div>
                   )}
                 </div>
@@ -232,13 +234,13 @@ const ResourceManager = () => {
               {/* Notes */}
               {selectedEquipment.notes && (
                 <div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3">Notes</h4>
-                  <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{selectedEquipment.notes}</p>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Notes</h4>
+                  <p className="text-gray-700 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">{selectedEquipment.notes}</p>
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex space-x-3 pt-4 border-t border-gray-200">
+              <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <Button variant="primary" size="sm">
                   <Wrench className="w-4 h-4 mr-2" />
                   Create Maintenance Request
@@ -249,7 +251,7 @@ const ResourceManager = () => {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-64 text-gray-500">
+            <div className="flex items-center justify-center h-64 text-gray-600 dark:text-gray-400">
               Select an equipment to view details
             </div>
           )}

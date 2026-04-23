@@ -122,19 +122,22 @@ const TaskActivityPanel = ({ requestId }: TaskActivityPanelProps) => {
   const getActivityBgColor = (type: Activity['type']) => {
     switch (type) {
       case 'request_created':
-        return 'bg-blue-50 border-blue-200';
+        return 'bg-blue-50 dark:bg-gray-800 border-blue-200 dark:border-gray-700';
       case 'request_updated':
-        return 'bg-yellow-50 border-yellow-200';
+        return 'bg-yellow-50 dark:bg-gray-800 border-yellow-200 dark:border-gray-700';
+
       case 'request_completed':
-        return 'bg-green-50 border-green-200';
+        return 'bg-green-50 dark:bg-gray-800 border-green-200 dark:border-gray-700';
+
       case 'equipment_updated':
-        return 'bg-purple-50 border-purple-200';
+        return 'bg-purple-50 dark:bg-gray-800 border-purple-200 dark:border-gray-700';
+
       case 'team_assigned':
-        return 'bg-indigo-50 border-indigo-200';
+        return 'bg-indigo-50 dark:bg-gray-800 border-indigo-200 dark:border-gray-700';
       case 'member_added':
-        return 'bg-teal-50 border-teal-200';
+        return 'bg-teal-50 dark:bg-gray-800 border-teal-200 dark:border-gray-700';
       default:
-        return 'bg-gray-50 border-gray-200';
+        return 'bg-gray-50 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -159,12 +162,14 @@ const TaskActivityPanel = ({ requestId }: TaskActivityPanelProps) => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white dark:bg-gray-800 transition-colors rounded-lg shadow p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-4 bg-gray-200 rounded w-1/4"></div>
           {[1, 2, 3].map(i => (
             <div key={i} className="space-y-3">
-              <div className="h-20 bg-gray-200 rounded"></div>
+              <div className="h-20 bg-gray-200 dark:bg-gray-700 
+                text-gray-800 dark:text-gray-200
+                hover:bg-gray-200 dark:hover:bg-gray-600 rounded"></div>
             </div>
           ))}
         </div>
@@ -173,23 +178,25 @@ const TaskActivityPanel = ({ requestId }: TaskActivityPanelProps) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="border-b border-gray-200 px-6 py-4">
-        <h2 className="text-xl font-semibold text-gray-900">Task Activity</h2>
-        <p className="text-sm text-gray-500 mt-1">Detailed activity log with descriptions</p>
+    <div className="bg-white dark:bg-gray-800 transition-colors rounded-lg shadow">
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Task Activity</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Detailed activity log with descriptions</p>
       </div>
 
       {/* Filter Buttons */}
-      <div className="px-6 py-3 border-b border-gray-200 flex flex-wrap gap-2">
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
         {filterButtons.map(btn => (
           <button
             key={btn.value}
             onClick={() => setFilter(btn.value)}
-            className={`px-3 py-1 text-sm rounded-full transition-colors ${
-              filter === btn.value
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className={`px-4 py-1.5 text-sm rounded-full transition-all duration-200
+              ${
+                filter === btn.value
+                  ? 'bg-blue-600 text-white dark:bg-blue-500'
+                  : 'bg-gray-100 dark:bg-gray-700 transition-colors duration-200 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }
+            `}
           >
             {btn.label}
           </button>
@@ -205,22 +212,22 @@ const TaskActivityPanel = ({ requestId }: TaskActivityPanelProps) => {
             >
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 mt-1">
-                  <div className="h-10 w-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 transition-colors shadow-sm dark:shadow-none flex items-center justify-center">
                     {getActivityIcon(activity.type)}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-gray-900">
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                         {activity.title}
                       </h4>
-                      <p className="mt-1 text-sm text-gray-700 leading-relaxed">
+                      <p className="mt-1 text-sm text-gray-800 dark:text-gray-100 leading-relaxed">
                         {activity.description}
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center space-x-4 text-xs text-gray-500">
+                  <div className="mt-3 flex items-center space-x-4 text-xs text-gray-600 dark:text-gray-400">
                     {activity.userName && (
                       <div className="flex items-center">
                         <Users className="w-3 h-3 mr-1" />
@@ -235,19 +242,19 @@ const TaskActivityPanel = ({ requestId }: TaskActivityPanelProps) => {
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           activity.metadata.priority === 'urgent'
-                            ? 'bg-red-100 text-red-700'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                             : activity.metadata.priority === 'high'
-                            ? 'bg-orange-100 text-orange-700'
+                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                             : activity.metadata.priority === 'medium'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-green-100 text-green-700'
+                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                         }`}
                       >
                         {activity.metadata.priority.toUpperCase()}
                       </span>
                     )}
                     {activity.metadata?.requestId && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 transition-colors duration-200 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">
                         {activity.metadata.requestId}
                       </span>
                     )}
@@ -260,9 +267,9 @@ const TaskActivityPanel = ({ requestId }: TaskActivityPanelProps) => {
 
         {activities.length === 0 && (
           <div className="text-center py-12">
-            <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No activities yet</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <MessageSquare className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No activities yet</h3>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
               Task activities will appear here as they happen.
             </p>
           </div>

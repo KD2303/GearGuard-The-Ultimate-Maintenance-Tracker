@@ -53,54 +53,54 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
         {/* Equipment Details */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-500">Status</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
             <Badge variant={statusColors[equipment.status]}>{equipment.status}</Badge>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Serial Number</p>
-            <p className="font-medium">{equipment.serialNumber}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Serial Number</p>
+            <p className="font-medium text-gray-900 dark:text-white">{equipment.serialNumber}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Category</p>
-            <p className="font-medium">{equipment.category}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Category</p>
+            <p className="font-medium text-gray-900 dark:text-white">{equipment.category}</p>
           </div>
           <div className="flex items-center">
-            <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+            <MapPin className="h-4 w-4 mr-2 text-gray-600 dark:text-gray-400" />
             <div>
-              <p className="text-sm text-gray-500">Location</p>
-              <p className="font-medium">{equipment.location}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Location</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.location}</p>
             </div>
           </div>
           {equipment.department && (
             <div>
-              <p className="text-sm text-gray-500">Department</p>
-              <p className="font-medium">{equipment.department}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Department</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.department}</p>
             </div>
           )}
           {equipment.assignedTo && (
             <div>
-              <p className="text-sm text-gray-500">Assigned To</p>
-              <p className="font-medium">{equipment.assignedTo}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Assigned To</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.assignedTo}</p>
             </div>
           )}
           {equipment.manufacturer && (
             <div>
-              <p className="text-sm text-gray-500">Manufacturer</p>
-              <p className="font-medium">{equipment.manufacturer}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Manufacturer</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.manufacturer}</p>
             </div>
           )}
           {equipment.model && (
             <div>
-              <p className="text-sm text-gray-500">Model</p>
-              <p className="font-medium">{equipment.model}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Model</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.model}</p>
             </div>
           )}
           {equipment.purchaseDate && (
             <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+              <Calendar className="h-4 w-4 mr-2 text-gray-600 dark:text-gray-400" />
               <div>
-                <p className="text-sm text-gray-500">Purchase Date</p>
-                <p className="font-medium">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Purchase Date</p>
+                <p className="font-medium text-gray-900 dark:text-white">
                   {new Date(equipment.purchaseDate).toLocaleDateString()}
                 </p>
               </div>
@@ -108,38 +108,38 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           )}
           {equipment.warrantyExpiry && (
             <div>
-              <p className="text-sm text-gray-500">Warranty Expiry</p>
-              <p className="font-medium">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Warranty Expiry</p>
+              <p className="font-medium text-gray-900 dark:text-white">
                 {new Date(equipment.warrantyExpiry).toLocaleDateString()}
               </p>
             </div>
           )}
           {equipment.licensePlate && (
             <div>
-              <p className="text-sm text-gray-500">License Plate</p>
-              <p className="font-medium">{equipment.licensePlate}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">License Plate</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.licensePlate}</p>
             </div>
           )}
           {equipment.currentMileage !== undefined && (
             <div>
-              <p className="text-sm text-gray-500">Current Mileage</p>
-              <p className="font-medium">{equipment.currentMileage.toLocaleString()} km</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Current Mileage</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.currentMileage.toLocaleString()} km</p>
             </div>
           )}
           {equipment.fuelType && (
             <div>
-              <p className="text-sm text-gray-500">Fuel Type</p>
-              <p className="font-medium">{equipment.fuelType}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Fuel Type</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.fuelType}</p>
             </div>
           )}
         </div>
 
         {equipment.maintenanceTeam && (
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm text-gray-500">Maintenance Team</p>
-            <p className="font-medium">{equipment.maintenanceTeam.name}</p>
+          <div className="p-4 bg-blue-50 dark:bg-gray-700 rounded-lg transition-colors">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Maintenance Team</p>
+            <p className="font-medium text-gray-900 dark:text-white">{equipment.maintenanceTeam.name}</p>
             {equipment.defaultTechnician && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Default Technician: {equipment.defaultTechnician.name}
               </p>
             )}
@@ -148,15 +148,15 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
         {equipment.notes && (
           <div>
-            <p className="text-sm text-gray-500 mb-1">Notes</p>
-            <p className="text-gray-700">{equipment.notes}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Notes</p>
+            <p className="text-gray-700 dark:text-gray-200">{equipment.notes}</p>
           </div>
         )}
 
         {/* Maintenance History - Smart Button */}
-        <div className="border-t pt-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-semibold flex items-center">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
               <Wrench className="h-5 w-5 mr-2" />
               Maintenance History
             </h4>
@@ -168,18 +168,18 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           </div>
 
           {loading ? (
-            <p className="text-gray-500">Loading...</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
           ) : maintenanceHistory.length > 0 ? (
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {maintenanceHistory.map((request) => (
                 <div
                   key={request.id}
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-200"
+                  className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="font-medium text-gray-900">{request.subject}</p>
-                      <p className="text-xs text-gray-500">{request.requestNumber}</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{request.subject}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{request.requestNumber}</p>
                     </div>
                     <Badge
                       variant={
@@ -197,12 +197,12 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
                     </Badge>
                   </div>
                   {request.assignedTo && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Assigned to: {request.assignedTo.name}
                     </p>
                   )}
                   {request.scheduledDate && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Scheduled: {new Date(request.scheduledDate).toLocaleDateString()}
                     </p>
                   )}
@@ -210,8 +210,8 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <AlertCircle className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+            <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+              <AlertCircle className="h-12 w-12 mx-auto mb-2 text-gray-400" />
               <p>No maintenance history yet</p>
             </div>
           )}

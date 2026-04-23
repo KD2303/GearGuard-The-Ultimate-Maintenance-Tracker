@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+
 import Dashboard from './pages/Dashboard';
 import KanbanBoard from './pages/KanbanBoard';
 import CalendarView from './pages/CalendarView';
@@ -9,12 +10,12 @@ import RequestsPage from './pages/RequestsPage';
 import ActivityPage from './pages/ActivityPage';
 import VehicleList from './pages/VehicleList';
 import SettingsPage from './pages/SettingsPage';
-import { NotificationProvider } from './contexts/NotificationContext';
+
 import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
-    <NotificationProvider>
+    <>
       <Router>
         <Layout>
           <Routes>
@@ -30,8 +31,9 @@ function App() {
           </Routes>
         </Layout>
       </Router>
+
       <Toaster />
-    </NotificationProvider>
+    </>
   );
 }
 

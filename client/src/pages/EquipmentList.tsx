@@ -37,15 +37,15 @@ const EquipmentList: React.FC = () => {
   } as const;
 
   if (loading) {
-    return <div className="text-center py-8">Loading equipment...</div>;
+    return <div className="text-center py-8 text-gray-700 dark:text-gray-300">Loading equipment...</div>;
   }
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Equipment Management</h2>
-          <p className="text-gray-600 mt-1">Manage and monitor all equipment resources</p>
+          <h2 className="text-2xl font-bold dark:text-white">Equipment Management</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage and monitor all equipment resources</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -58,22 +58,22 @@ const EquipmentList: React.FC = () => {
 
       {/* Equipment Grid - Card View */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">All Equipment</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">All Equipment</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {equipment.map((item) => (
           <div
             key={item.id}
-            className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6 cursor-pointer"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 p-6 cursor-pointer"
             onClick={() => setSelectedEquipment(item)}
           >
             <div className="flex justify-between items-start mb-4">
-              <h3 className="font-semibold text-lg text-gray-900">{item.name}</h3>
+              <h3 className="font-semibold text-lg dark:text-white">{item.name}</h3>
               <Badge variant={statusColors[item.status]}>
                 {item.status}
               </Badge>
             </div>
 
-            <div className="space-y-2 text-sm text-gray-600">
+            <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <div className="flex items-center">
                 <span className="font-medium mr-2">SN:</span>
                 {item.serialNumber}
@@ -92,13 +92,13 @@ const EquipmentList: React.FC = () => {
               )}
 
               {item.maintenanceTeam && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs   text-gray-500 dark:text-gray-400">
                   Team: {item.maintenanceTeam.name}
                 </div>
               )}
 
               {item.purchaseDate && (
-                <div className="flex items-center text-xs text-gray-500">
+                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                   <Calendar className="h-3 w-3 mr-1" />
                   Purchased: {new Date(item.purchaseDate).toLocaleDateString()}
                 </div>
@@ -106,7 +106,7 @@ const EquipmentList: React.FC = () => {
             </div>
 
             {/* Smart Button */}
-            <div className="mt-4 pt-4 border-t">
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
               <button className="flex items-center justify-between w-full text-sm text-primary-600 hover:text-primary-700 font-medium">
                 <span className="flex items-center">
                   <Wrench className="h-4 w-4 mr-2" />
@@ -125,8 +125,8 @@ const EquipmentList: React.FC = () => {
       </div>
 
       {equipment.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <p className="text-gray-500">No equipment found. Add your first equipment to get started.</p>
+        <div className="text-center py-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
+          <p className="text-gray-500 dark:text-gray-400">No equipment found. Add your first equipment to get started.</p>
         </div>
       )}
 
