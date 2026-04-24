@@ -3,7 +3,7 @@ import { Equipment } from '../types';
 import { equipmentService } from '../services/equipmentService';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
-import { Plus, Wrench, MapPin, Calendar, Car, Gauge, Fuel } from 'lucide-react';
+import { Plus, Wrench, MapPin, Car, Gauge, Fuel } from 'lucide-react';
 import EquipmentModal from '../components/EquipmentModal';
 import EquipmentDetailModal from '../components/EquipmentDetailModal';
 import Spinner from '../components/Spinner';

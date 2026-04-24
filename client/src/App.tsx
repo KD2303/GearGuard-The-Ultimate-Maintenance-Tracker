@@ -9,6 +9,7 @@ import RequestsPage from './pages/RequestsPage';
 import ActivityPage from './pages/ActivityPage';
 import VehicleList from './pages/VehicleList';
 import SettingsPage from './pages/SettingsPage';
+import AdminDashboard from './pages/AdminDashboard';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -19,6 +20,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/requests" element={<KanbanBoard />} />
             <Route path="/requests-all" element={<RequestsPage />} />
             <Route path="/activity" element={<ActivityPage />} />

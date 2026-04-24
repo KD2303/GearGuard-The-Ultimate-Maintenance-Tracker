@@ -59,8 +59,8 @@ exports.login = async (req, res) => {
     // Create token
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET || "secretkey",
-      { expiresIn: "1d" }
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
     res.json({
@@ -76,5 +76,19 @@ exports.login = async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ msg: error.message });
+  }
+};
+
+
+// GET CURRENT USER
+exports.getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };

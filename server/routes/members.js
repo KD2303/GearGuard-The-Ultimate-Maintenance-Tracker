@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const memberController = require('../controllers/memberController');
+const protect = require('../middleware/auth');
+
+router.use(protect);
 
 router.get('/', memberController.getAllMembers);
 router.get('/:id', memberController.getMemberById);
