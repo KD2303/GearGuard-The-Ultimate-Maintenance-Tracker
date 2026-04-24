@@ -55,6 +55,7 @@ app.use("/api/members", memberRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/activities", activitiesRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/search", require("./routes/search"));
 app.use("/api/admin", adminRoutes);
 
 // Health check
