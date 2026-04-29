@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Wrench, Box, Users, Calendar, LayoutDashboard, List, Activity, Bell, Menu, X, Car, Settings, Shield } from 'lucide-react';
+import { Wrench, Box, Users, Calendar, LayoutDashboard, List, Activity, Menu, X, Car, Settings, Shield } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 interface LayoutProps {
