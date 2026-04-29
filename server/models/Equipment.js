@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 const EquipmentSchema = new Schema({
   name: { type: String, required: true },
-  serialNumber: { type: String, required: true, unique: true },
+  serialNumber: { type: String, required: [true, 'Serial number is required'], unique: true, trim: true },
   category: { type: String, required: true },
   department: { type: String },
   assignedTo: { type: String },
