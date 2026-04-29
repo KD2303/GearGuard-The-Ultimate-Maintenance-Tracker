@@ -1,4 +1,5 @@
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const API_BASE_URL = '/api';
 
@@ -25,7 +26,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      'Something went wrong';
+
+    toast.error(message);
+
+    if (import.meta.env.DEV) {
+      console.error('API Error:', message);
+    }
+
     return Promise.reject(error);
   }
 );

@@ -3,6 +3,7 @@ import { Equipment } from '../types';
 import { equipmentService } from '../services/equipmentService';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
+// @ts-ignore
 import Papa from 'papaparse';
 import { Plus, Wrench, MapPin, Calendar } from 'lucide-react';
 import EquipmentModal from '../components/EquipmentModal';
