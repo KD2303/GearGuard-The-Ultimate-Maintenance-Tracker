@@ -1,13 +1,6 @@
 import React from 'react';
-import { AlertCircle, Clock, Users, ChevronRight } from 'lucide-react';
+import { AlertCircle, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
-
-interface AlertItem {
-  id: string | number;
-  equipment: string;
-  detail: string;
-  type: 'overdue' | 'dueSoon' | 'capacity';
-}
 
 interface AlertsPanelProps {
   overdue: any[];

@@ -25,6 +25,7 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^18.2.47",
     "@types/react-big-calendar": "^1.8.9",
     "@types/react-dom": "^18.2.18",
