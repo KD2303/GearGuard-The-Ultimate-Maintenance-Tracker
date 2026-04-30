@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { Wrench, Box, Users, Calendar, LayoutDashboard, List, Activity, Menu, X, Car, Settings, Shield } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Wrench, Box, Users, Calendar, LayoutDashboard, List, Activity, Bell, Menu, X, Car, Settings, Shield } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 interface LayoutProps {
@@ -9,6 +9,19 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard', gradient: 'from-blue-500 to-purple-600' },
@@ -20,7 +33,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/vehicles', icon: Car, label: 'Vehicles', gradient: 'from-orange-500 to-red-600' },
     { to: '/teams', icon: Users, label: 'Teams', gradient: 'from-yellow-500 to-orange-600' },
     { to: '/activity', icon: Activity, label: 'Activity', gradient: 'from-indigo-500 to-purple-600' },
-    { to: '/settings', icon: Settings, label: 'Settings', gradient: 'from-gray-500 to-slate-700' },
   ];
 
   return (
@@ -77,7 +89,44 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Actions */}
             <div className="flex items-center space-x-2 lg:space-x-3">
               <NotificationCenter />
-              
+
+              {/* Settings Icon with Dropdown */}
+              <div className="relative" ref={settingsRef}>
+                <button
+                  onClick={() => setSettingsOpen(!settingsOpen)}
+                  title="Settings"
+                  className={`rounded-xl border p-2 shadow-sm backdrop-blur-xl transition-all duration-200 ${
+                    settingsOpen
+                      ? 'border-purple-300 bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                      : 'border-white/50 bg-white/30 text-gray-600 hover:border-white/70 hover:text-purple-600'
+                  }`}
+                >
+                  <Settings className={`h-5 w-5 transition-transform duration-300 ${settingsOpen ? 'rotate-90' : ''}`} />
+                </button>
+
+                {settingsOpen && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-white/50 bg-white/90 shadow-xl backdrop-blur-xl z-50 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-gray-100">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Settings</p>
+                    </div>
+                    <button
+                      onClick={() => { navigate('/settings'); setSettingsOpen(false); }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                    >
+                      <Settings className="h-4 w-4" />
+                      App Settings
+                    </button>
+                    <button
+                      onClick={() => { navigate('/profile'); setSettingsOpen(false); }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                    >
+                      <Users className="h-4 w-4" />
+                      Profile
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* User Avatar */}
               <div className="hidden lg:flex items-center space-x-3">
                 <div className="w-9 h-9 rounded-xl border border-white/50 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg ring-1 ring-white/40">
