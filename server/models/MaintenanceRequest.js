@@ -50,4 +50,13 @@ MaintenanceRequestSchema.virtual('createdBy', {
 MaintenanceRequestSchema.set('toObject', { virtuals: true });
 MaintenanceRequestSchema.set('toJSON', { virtuals: true });
 
+// Indexes for optimized filtered queries
+MaintenanceRequestSchema.index({ stage: 1 });
+MaintenanceRequestSchema.index({ priority: 1 });
+MaintenanceRequestSchema.index({ type: 1 });
+MaintenanceRequestSchema.index({ assignedToId: 1 });
+MaintenanceRequestSchema.index({ teamId: 1 });
+MaintenanceRequestSchema.index({ scheduledDate: 1 });
+MaintenanceRequestSchema.index({ subject: 'text', requestNumber: 'text', description: 'text' });
+
 module.exports = mongoose.model('MaintenanceRequest', MaintenanceRequestSchema);

@@ -10,8 +10,8 @@ import {
   UserPlus,
   Clock,
   MessageSquare,
-  
 } from 'lucide-react';
+import Spinner from './Spinner';
 
 interface TaskActivityPanelProps {
   requestId?: string;
@@ -162,17 +162,8 @@ const TaskActivityPanel = ({ requestId }: TaskActivityPanelProps) => {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 transition-colors rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          {[1, 2, 3].map(i => (
-            <div key={i} className="space-y-3">
-              <div className="h-20 bg-gray-200 dark:bg-gray-700 
-                text-gray-800 dark:text-gray-200
-                hover:bg-gray-200 dark:hover:bg-gray-600 rounded"></div>
-            </div>
-          ))}
-        </div>
+      <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
+        <Spinner size="md" label="Loading activity..." />
       </div>
     );
   }

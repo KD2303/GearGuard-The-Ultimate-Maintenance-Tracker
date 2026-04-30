@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { Socket } from "socket.io-client";
 import toast from 'react-hot-toast';
 import { Notification } from '../types';
 import axios from 'axios';
@@ -20,6 +21,7 @@ const SOCKET_URL = 'http://localhost:5005';
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [, setSocket] = useState<Socket | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

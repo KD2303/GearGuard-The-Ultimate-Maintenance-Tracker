@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { globalSearch } from '../services/searchService';
+import { GlobalSearchResults } from '../types';
+import SearchDropdown from '../components/SearchDropdown';
 import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
@@ -7,8 +10,18 @@ import { Wrench, Box, Users, AlertCircle, Clock, Search } from 'lucide-react';
 import Badge from '../components/Badge';
 import TeamActivity from '../components/TeamActivity';
 import QuickActionCards from '../components/QuickActionCards';
+import Spinner from '../components/Spinner';
 
 const Dashboard: React.FC = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<GlobalSearchResults>({
+    equipment: [],
+    requests: [],
+  });
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
   const [stats, setStats] = useState({
     totalRequests: 0,
     newRequests: 0,
@@ -47,6 +60,50 @@ const Dashboard: React.FC = () => {
     };
 
     loadData();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults({ equipment: [], requests: [] });
+      setShowDropdown(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      setShowDropdown(true);
+      try {
+        const results = await globalSearch(searchQuery);
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Search failed:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDropdown(false);
+        setSearchQuery('');
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const statCards = [
@@ -101,23 +158,23 @@ const Dashboard: React.FC = () => {
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 font-medium">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+    return <Spinner size="lg" label="Loading dashboard..." centered />;
   }
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 line-through text-gray-500 dark:text-gray-400 md:h-5 md:w-5" />
+      <div className="space-y-8 animate-fade-in">
+        <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
+
+          <div ref={searchRef} className="relative w-full">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {
+              if (searchQuery.trim() !== '') setShowDropdown(true);
+            }}
             placeholder="Search equipment, requests..."
             className="w-full rounded-2xl border border-gray-200/70 dark:border-gray-700 
             bg-white dark:bg-gray-800 transition-colors
@@ -128,6 +185,29 @@ const Dashboard: React.FC = () => {
             outline-none transition-all duration-300 
             focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20"
           />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSearchResults({ equipment: [], requests: [] });
+                setShowDropdown(false);
+              }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+            >
+              ✕
+            </button>
+          )}
+          {showDropdown && (
+            <SearchDropdown
+              results={searchResults}
+              query={searchQuery}
+              isLoading={isSearching}
+              onClose={() => {
+                setShowDropdown(false);
+                setSearchQuery('');
+              }}
+            />
+          )}
         </div>
       </div>
 

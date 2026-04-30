@@ -2,10 +2,20 @@ import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
 import { 
-  Wrench, Box, Users, Calendar, LayoutDashboard, 
-  List, Activity, Menu, X, Car, Settings 
-} from 'lucide-react';
-
+  Wrench, 
+  Box, 
+  Users, 
+  Calendar, 
+  LayoutDashboard, 
+  List, 
+  Activity, 
+  Bell, 
+  Menu, 
+  X, 
+  Car, 
+  Settings, 
+  Shield 
+} from "lucide-react";
 import NotificationCenter from './NotificationCenter';
 
 interface LayoutProps {
@@ -18,6 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard', gradient: 'from-blue-500 to-purple-600' },
+    { to: '/admin', icon: Shield, label: 'Admin', gradient: 'from-rose-500 to-red-600' },
     { to: '/requests', icon: Wrench, label: 'Kanban', gradient: 'from-purple-500 to-pink-600' },
     { to: '/requests-all', icon: List, label: 'All Requests', gradient: 'from-pink-500 to-red-600' },
     { to: '/calendar', icon: Calendar, label: 'Calendar', gradient: 'from-cyan-500 to-blue-600' },

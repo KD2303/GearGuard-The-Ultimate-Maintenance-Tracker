@@ -23,10 +23,21 @@ const sanitizeBody = (body) => {
   return cleaned;
 };
 
-// Get all equipment
+// Get all equipment (with optional search filter)
 exports.getAllEquipment = async (req, res) => {
   try {
-    const equipment = await Equipment.find()
+    const query = {};
+
+    if (req.query.search) {
+      query.$or = [
+        { name: { $regex: req.query.search, $options: 'i' } },
+        { serialNumber: { $regex: req.query.search, $options: 'i' } },
+        { category: { $regex: req.query.search, $options: 'i' } },
+        { location: { $regex: req.query.search, $options: 'i' } },
+      ];
+    }
+
+    const equipment = await Equipment.find(query)
       .populate('maintenanceTeam')
       .populate('defaultTechnician')
       .sort({ createdAt: -1 });
@@ -40,6 +51,8 @@ exports.getAllEquipment = async (req, res) => {
 exports.getEquipmentById = async (req, res) => {
   try {
     const equipment = await Equipment.findById(req.params.id)
+      .populate('maintenanceTeamId', 'name specialization')
+      .populate('defaultTechnicianId', 'name email role')
       .populate('maintenanceTeam')
       .populate('defaultTechnician');
 

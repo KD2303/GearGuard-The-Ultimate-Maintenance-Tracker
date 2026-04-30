@@ -4,6 +4,7 @@ import { equipmentService } from '../services/equipmentService';
 import Badge from './Badge';
 import Button from './Button';
 import { Calendar, MapPin, Wrench, AlertCircle, CheckCircle, Package } from 'lucide-react';
+import Spinner from './Spinner';
 
 const ResourceManager = () => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -60,15 +61,8 @@ const ResourceManager = () => {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="space-y-3">
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-          </div>
-        </div>
+      <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[200px]">
+        <Spinner size="md" label="Loading equipment..." />
       </div>
     );
   }

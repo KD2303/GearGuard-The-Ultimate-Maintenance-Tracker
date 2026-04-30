@@ -7,3 +7,4 @@ client/dist/
 client/node_modules/
 *.log
 .vscode/
+coverage/
