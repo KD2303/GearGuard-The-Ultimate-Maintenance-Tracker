@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
-    "axios": "^1.6.5",
+    "axios": "^1.15.1",
     "clsx": "^2.1.0",
     "date-fns": "^3.0.6",
     "lucide-react": "^0.303.0",

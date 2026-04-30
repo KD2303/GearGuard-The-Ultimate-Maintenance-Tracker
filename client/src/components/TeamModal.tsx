@@ -36,7 +36,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, onSuccess }) => 
     <Modal isOpen={isOpen} onClose={onClose} title="Create Maintenance Team">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
             Team Name *
           </label>
           <input
@@ -50,7 +50,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, onSuccess }) => 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
             Specialization
           </label>
           <input
@@ -65,7 +65,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, onSuccess }) => 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
             Description
           </label>
           <textarea
@@ -89,7 +89,7 @@ const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, onSuccess }) => 
             }
             className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
           />
-          <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+          <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900 dark:text-white">
             Active
           </label>
         </div>

@@ -14,14 +14,25 @@ const Button: React.FC<ButtonProps> = ({
   children,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0 relative overflow-hidden';
+  const baseStyles = 'group inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0 relative overflow-hidden';
   
   const variants = {
     primary: 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 focus:ring-purple-500 shadow-lg hover:shadow-xl',
-    secondary: 'bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-400 shadow-md hover:shadow-lg border border-gray-200',
+
+    secondary: `
+      bg-gray-200 dark:bg-gray-700 
+      text-gray-800 dark:text-gray-200 
+      hover:bg-gray-300 dark:hover:bg-gray-600 
+      border border-gray-300 dark:border-gray-600 
+      focus:ring-gray-400 
+      shadow-sm hover:shadow-md
+    `,
+
     danger: 'bg-gradient-to-r from-red-500 to-pink-600 text-white hover:from-red-600 hover:to-pink-700 focus:ring-red-500 shadow-lg hover:shadow-xl',
     success: 'bg-gradient-to-r from-green-500 to-teal-600 text-white hover:from-green-600 hover:to-teal-700 focus:ring-green-500 shadow-lg hover:shadow-xl',
-    ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+
+    ghost: 'bg-transparent text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white',
+
     gradient: 'bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 text-white hover:from-purple-700 hover:via-pink-700 hover:to-blue-700 shadow-lg hover:shadow-2xl bg-[length:200%_auto] hover:bg-right-bottom',
   };
 

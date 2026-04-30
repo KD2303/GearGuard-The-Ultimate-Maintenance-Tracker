@@ -114,9 +114,9 @@ const TeamActivity = () => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="border-b border-gray-200 px-6 py-4">
-        <h2 className="text-xl font-semibold text-gray-900">Team Activity</h2>
+    <div className="bg-white dark:bg-gray-800 transition-colors rounded-lg shadow">
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Team Activity</h2>
         <p className="text-sm text-gray-500 mt-1">Recent actions and updates</p>
       </div>
 
@@ -128,7 +128,9 @@ const TeamActivity = () => {
                 <div className="relative pb-8">
                   {idx !== activities.length - 1 && (
                     <span
-                      className="absolute left-5 top-5 -ml-px h-full w-0.5 bg-gray-200"
+                      className="absolute left-5 top-5 -ml-px h-full w-0.5  dark:bg-gray-700 
+                      text-gray-800 dark:text-gray-200
+                      hover:bg-gray-200 dark:hover:bg-gray-600"
                       aria-hidden="true"
                     />
                   )}
@@ -141,7 +143,7 @@ const TeamActivity = () => {
                     <div className="min-w-0 flex-1">
                       <div>
                         <div className="text-sm">
-                          <span className="font-medium text-gray-900">{activity.title}</span>
+                          <span className="font-medium text-gray-900 dark:text-white">{activity.title}</span>
                         </div>
                         <p className="mt-0.5 text-sm text-gray-500">{activity.description}</p>
                       </div>
@@ -160,12 +162,12 @@ const TeamActivity = () => {
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                               activity.metadata.priority === 'urgent'
-                                ? 'bg-red-100 text-red-700'
+                                ? 'bg-red-100 dark:bg-red-900/30 text-red-700'
                                 : activity.metadata.priority === 'high'
-                                ? 'bg-orange-100 text-orange-700'
+                                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700'
                                 : activity.metadata.priority === 'medium'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-green-100 text-green-700'
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700'
+                                : 'bg-green-100 dark:bg-green-900/30 text-green-700'
                             }`}
                           >
                             {activity.metadata.priority}
@@ -182,8 +184,8 @@ const TeamActivity = () => {
 
         {activities.length === 0 && (
           <div className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No activities yet</h3>
+            <Users className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No activities yet</h3>
             <p className="mt-1 text-sm text-gray-500">
               Team activities will appear here as they happen.
             </p>

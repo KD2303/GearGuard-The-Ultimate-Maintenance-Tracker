@@ -163,9 +163,11 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="rounded-3xl border border-white/50 bg-white/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
-        <div ref={searchRef} className="relative w-full">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 md:h-5 md:w-5" />
+      <div className="space-y-8 animate-fade-in">
+        <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
+
+          <div ref={searchRef} className="relative w-full">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
           <input
             type="text"
             value={searchQuery}
@@ -174,7 +176,14 @@ const Dashboard: React.FC = () => {
               if (searchQuery.trim() !== '') setShowDropdown(true);
             }}
             placeholder="Search equipment, requests..."
-            className="w-full rounded-2xl border border-gray-200/70 bg-white px-10 py-3 text-sm text-gray-700 placeholder-gray-400 shadow-sm outline-none transition-all duration-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 md:py-3.5"
+            className="w-full rounded-2xl border border-gray-200/70 dark:border-gray-700 
+            bg-white dark:bg-gray-800 transition-colors
+            px-10 py-3 text-sm 
+            text-gray-800 dark:text-gray-200 
+            placeholder-gray-400 dark:placeholder-gray-500 
+            shadow-sm dark:shadow-none 
+            outline-none transition-all duration-300 
+            focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20"
           />
           {searchQuery && (
             <button
@@ -226,7 +235,7 @@ const Dashboard: React.FC = () => {
           <Link
             key={index}
             to={stat.link}
-            className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+            className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 transition-colors p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-300" 
@@ -238,21 +247,25 @@ const Dashboard: React.FC = () => {
                   <stat.icon className="h-6 w-6 text-white" />
                 </div>
                 <div className="text-right">
-                  <span className={`text-sm font-semibold ${stat.trend.startsWith('+') ? 'text-green-600' : stat.trend.startsWith('-') ? 'text-red-600' : 'text-gray-600'}`}>
+                  <span className={`text-sm font-semibold ${stat.trend.startsWith('+') 
+                    ? 'text-green-600 dark:text-green-400' 
+                    : stat.trend.startsWith('-') 
+                    ? 'text-red-600 dark:text-red-400' 
+                    : 'text-gray-600 dark:text-gray-400'}`}>
                     {stat.trend}
                   </span>
                 </div>
               </div>
               
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                <p className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{stat.title}</p>
+                <p className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
                   {stat.value}
                 </p>
               </div>
               
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <span className="text-xs font-medium text-gray-500 group-hover:text-purple-600 transition-colors">
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                   View Details →
                 </span>
               </div>
@@ -264,7 +277,7 @@ const Dashboard: React.FC = () => {
       {/* Two Column Layout for Activity and Recent Requests */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Team Activity Summary */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 transition-colors backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex items-center justify-between">
             <h3 className="text-xl font-bold text-white">Recent Activity</h3>
             <Link to="/activity" className="text-sm text-white/90 hover:text-white font-semibold transition-colors">
@@ -275,7 +288,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Recent Requests Summary */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 transition-colors backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-4 flex items-center justify-between">
             <h3 className="text-xl font-bold text-white">Recent Requests</h3>
             <Link to="/requests-all" className="text-sm text-white/90 hover:text-white font-semibold transition-colors">
@@ -288,13 +301,13 @@ const Dashboard: React.FC = () => {
                 {recentRequests.map((request, idx) => (
                   <div
                     key={request.id}
-                    className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-white p-4 border border-gray-200 hover:border-purple-300 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+                    className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-500 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h4 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">{request.subject}</h4>
+                          <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 transition-colors">{request.subject}</h4>
                           <Badge
                             variant={
                               request.stage === 'new'
@@ -318,19 +331,19 @@ const Dashboard: React.FC = () => {
                             {request.type}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600">{request.requestNumber}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{request.requestNumber}</p>
                         {request.equipment && (
-                          <p className="text-sm text-gray-500 mt-1">
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             Equipment: {request.equipment.name}
                           </p>
                         )}
                       </div>
                       {request.assignedTo && (
                         <div className="text-right ml-4">
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
                             {request.assignedTo.name}
                           </p>
-                          <p className="text-xs text-gray-500">{request.assignedTo.role}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400">{request.assignedTo.role}</p>
                         </div>
                       )}
                     </div>
@@ -339,9 +352,9 @@ const Dashboard: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-12">
-                <Wrench className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No recent requests</h3>
-                <p className="mt-1 text-sm text-gray-500">
+                <Wrench className="mx-auto h-12 w-12 line-through text-gray-500 dark:text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No recent requests</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400">
                   Get started by creating a new maintenance request.
                 </p>
               </div>
