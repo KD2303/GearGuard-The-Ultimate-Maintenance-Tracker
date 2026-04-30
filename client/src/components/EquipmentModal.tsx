@@ -34,7 +34,14 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
   
   const [teams, setTeams] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string>('');
+
+  const handleClose = () => {
+    setSubmitError('');
+    setIsSubmitting(false);
+    onClose();
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -50,20 +57,62 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitError('');
+
+    // Frontend validation before sending to server
+    if (!formData.name?.trim()) {
+      setSubmitError('Equipment name is required.');
+      return;
+    }
+    if (!formData.serialNumber?.trim()) {
+      setSubmitError('Serial number is required.');
+      return;
+    }
+    if (!formData.category) {
+      setSubmitError('Category is required.');
+      return;
+    }
+    if (!formData.location?.trim()) {
+      setSubmitError('Location is required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      await equipmentService.create(formData);
+      // Clean the payload — convert empty strings to undefined
+      const payload = {
+        ...formData,
+        name: formData.name.trim(),
+        serialNumber: formData.serialNumber.trim(),
+        location: formData.location.trim(),
+        department: formData.department?.trim() || undefined,
+        maintenanceTeamId: formData.maintenanceTeamId || undefined,
+        defaultTechnicianId: formData.defaultTechnicianId || undefined,
+        purchaseDate: formData.purchaseDate || undefined,
+        warrantyExpiry: formData.warrantyExpiry || undefined,
+        notes: formData.notes?.trim() || undefined,
+      };
+
+      await equipmentService.create(payload);
+
+      setSubmitError('');
       onSuccess();
-    } catch (error) {
-      console.error('Failed to create equipment:', error);
-      alert('Failed to create equipment');
+      handleClose();
+    } catch (error: any) {
+      // Show the server's error message if available
+      const message =
+        error?.response?.data?.error ||
+        error?.message ||
+        'Failed to create equipment. Please check all fields and try again.';
+      setSubmitError(message);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add Equipment" size="lg">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Add Equipment" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -327,12 +376,17 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
           />
         </div>
 
+        {submitError && (
+          <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600 font-medium">{submitError}</p>
+          </div>
+        )}
         <div className="flex justify-end gap-3 pt-4">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={handleClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Equipment'}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating...' : 'Create Equipment'}
           </Button>
         </div>
       </form>

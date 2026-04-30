@@ -24,8 +24,23 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const settingsRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+
   const { theme, toggleTheme } = useTheme();
     
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard', gradient: 'from-blue-500 to-purple-600' },
     { to: '/admin', icon: Shield, label: 'Admin', gradient: 'from-rose-500 to-red-600' },
@@ -36,7 +51,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/vehicles', icon: Car, label: 'Vehicles', gradient: 'from-orange-500 to-red-600' },
     { to: '/teams', icon: Users, label: 'Teams', gradient: 'from-yellow-500 to-orange-600' },
     { to: '/activity', icon: Activity, label: 'Activity', gradient: 'from-indigo-500 to-purple-600' },
-    { to: '/settings', icon: Settings, label: 'Settings', gradient: 'from-gray-500 to-slate-700' },
   ];
 
   return (
@@ -92,16 +106,49 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Actions */}
             <div className="flex items-center space-x-2 lg:space-x-3">
-              {/* <NotificationCenter /> */}
+             <div className="flex items-center space-x-2 lg:space-x-3">
+            {/* Notifications */}
+            <NotificationCenter />
 
-              {/* 🌙 Theme Toggle Button */}
+            {/* 🌙 Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="rounded-xl border border-white/50 bg-white dark:bg-gray-800 px-3 py-2 text-sm shadow backdrop-blur-xl hover:bg-white/50 transition"
+            >
+              {theme === "light" ? "🌙" : "☀️"}
+            </button>
+
+            {/* Settings Dropdown */}
+            <div className="relative" ref={settingsRef}>
               <button
-                onClick={toggleTheme}
-                className="rounded-xl border border-white/50 bg-white dark:bg-gray-800 px-3 py-2 text-sm shadow backdrop-blur-xl hover:bg-white/50 transition"
+                onClick={() => setSettingsOpen(!settingsOpen)}
+                className={`rounded-xl border p-2 shadow-sm backdrop-blur-xl transition-all ${
+                  settingsOpen
+                    ? 'border-purple-300 bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                    : 'border-white/50 bg-white/30 text-gray-600 hover:text-purple-600'
+                }`}
               >
-                {theme === "light" ? "🌙" : "☀️"}
+                <Settings className={`h-5 w-5 ${settingsOpen ? 'rotate-90' : ''}`} />
               </button>
-              
+
+              {settingsOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-2xl border bg-white/90 shadow-xl backdrop-blur-xl z-50">
+                  <button
+                    onClick={() => { navigate('/settings'); setSettingsOpen(false); }}
+                    className="block w-full px-4 py-2 text-left hover:bg-purple-50"
+                  >
+                    Settings
+                  </button>
+                  <button
+                    onClick={() => { navigate('/profile'); setSettingsOpen(false); }}
+                    className="block w-full px-4 py-2 text-left hover:bg-purple-50"
+                  >
+                    Profile
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
               {/* User Avatar */}
               <div className="hidden lg:flex items-center space-x-3">
                 <div className="w-9 h-9 rounded-xl border border-white/50 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg ring-1 ring-white/40">
