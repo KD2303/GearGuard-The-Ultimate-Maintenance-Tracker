@@ -1,5 +1,6 @@
 import { Activity, CreateActivityDto } from '../types/activity';
 import api from './api';
+import toast from 'react-hot-toast';
 
 export const activityService = {
   async getAll(): Promise<Activity[]> {
@@ -19,6 +20,9 @@ export const activityService = {
 
   async create(data: CreateActivityDto): Promise<Activity> {
     const response = await api.post('/activities', data);
+
+    toast.success('Activity created successfully');
+
     return response.data;
   },
 

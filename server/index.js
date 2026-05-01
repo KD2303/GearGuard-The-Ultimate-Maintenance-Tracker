@@ -1,3 +1,6 @@
+require("dotenv").config({ path: __dirname + "/.env" });
+
+const authRoutes = require("./routes/auth");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -5,7 +8,7 @@ const activitiesRoutes = require("./routes/activities");
 const cors = require("cors");
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
-require("dotenv").config();
+require("dotenv").config({ path: __dirname + "/.env" });
 
 const { syncDatabase } = require("./models");
 const equipmentRoutes = require("./routes/equipment");
@@ -13,6 +16,7 @@ const teamRoutes = require("./routes/teams");
 const memberRoutes = require("./routes/members");
 const requestRoutes = require("./routes/requests");
 const notificationRoutes = require("./routes/notifications");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 const server = http.createServer(app);
@@ -44,12 +48,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/equipment", equipmentRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/members", memberRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/activities", activitiesRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/search", require("./routes/search"));
+app.use("/api/admin", adminRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -63,10 +70,12 @@ app.get("/api/health", (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({
-    error: "Something went wrong!",
-    message: process.env.NODE_ENV === "development" ? err.message : undefined,
-  });
+  const status = err.statusCode || 500;
+  const message =
+    process.env.NODE_ENV === "production"
+      ? "Internal server error"
+      : err.message;
+  res.status(status).json({ error: message });
 });
 
 // 404 handler

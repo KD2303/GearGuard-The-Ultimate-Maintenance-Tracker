@@ -4,6 +4,18 @@
 
 @tailwind base;
 @tailwind components;
+@layer components {
+  .input-dark {
+    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 
+    bg-white dark:bg-gray-800 
+    text-gray-900 dark:text-white 
+    placeholder-gray-400 dark:placeholder-gray-500 
+    rounded-md 
+    focus:outline-none focus:ring-2 focus:ring-primary-500 
+    hover:border-gray-400 dark:hover:border-gray-500
+    transition-all duration-200;
+  }
+}
 @tailwind utilities;
 
 :root {
@@ -62,10 +74,13 @@
 }
 
 body {
-  margin: 0;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
-  color: #1f2937;
+margin: 0;
+min-height: 100vh;
+@apply bg-white text-black;
+}
+
+.dark body {
+  @apply bg-gray-900 text-white;
 }
 
 /* Smooth Scrollbar */
@@ -174,6 +189,9 @@ h1, h2, h3, h4, h5, h6 {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
+.dark .card-modern {
+  background: #1f2937; /* gray-800 */
+}
 
 .card-modern:hover {
   box-shadow: var(--shadow-xl);
@@ -269,6 +287,15 @@ h1, h2, h3, h4, h5, h6 {
   border-color: #3b82f6;
 }
 
+.dark .kanban-column {
+  background: #1f2937;
+}
+
+.dark .kanban-card {
+  background: #111827;
+  border-color: #374151;
+}
+
 /* Calendar customization */
 .rbc-calendar {
   font-family: inherit;
@@ -338,6 +365,19 @@ input:focus, textarea:focus, select:focus {
   outline: none;
 }
 
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af; /* gray-400 */
+}
+
 /* Badge Modern */
 .badge-modern {
   display: inline-flex;
@@ -376,4 +416,111 @@ input:focus, textarea:focus, select:focus {
 .backdrop-blur-lg {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+}
+
+/* smooth transition */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 🌙 Dark mode for react-big-calendar */
+
+.dark .rbc-calendar {
+  background-color: #1f2937; /* gray-800 */
+  color: #e5e7eb; /* gray-200 */
+}
+
+.dark .rbc-toolbar {
+  background-color: #111827; /* gray-900 */
+  border-bottom: 1px solid #374151;
+}
+
+.dark .rbc-toolbar button {
+  color: #d1d5db; /* gray-300 */
+  border: 1px solid #374151;
+  background-color: #1f2937; /* gray-800 */
+  transition: all 0.2s ease;
+}
+
+.dark .rbc-toolbar button:hover {
+  background-color: #374151;
+  color: #ffffff;
+}
+
+.dark .rbc-month-view {
+  border-color: #374151;
+}
+
+.dark .rbc-day-bg {
+  background-color: #1f2937;
+}
+
+.dark .rbc-off-range-bg {
+  background-color: #111827;
+}
+
+.dark .rbc-today {
+  background-color: #374151 !important;
+}
+
+.dark .rbc-header {
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+.dark .rbc-event {
+  background-color: #6366f1;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+}
+
+.dark .rbc-date-cell {
+  color: #d1d5db;
+}
+.dark .rbc-day-bg:hover {
+  background-color: #374151; /* gray-700 */
+  transition: background-color 0.2s;
+}
+.dark .rbc-selected {
+  background-color: #4b5563 !important; /* gray-600 */
+}
+.dark .rbc-active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+}
+.dark .rbc-toolbar .rbc-active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+}
+/* Dark scrollbar */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 6px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+/* Improve readability globally */
+.dark {
+  color: #e5e7eb; /* gray-200 */
+}
+
+/* Modal */
+.dark .modal {
+  background-color: #111827;
+  color: #e5e7eb;
+}
+/* text at dark */
+.dark p {
+  color: #d1d5db; /* gray-300 */
+}
+
+.dark span {
+  color: #e5e7eb;
 }

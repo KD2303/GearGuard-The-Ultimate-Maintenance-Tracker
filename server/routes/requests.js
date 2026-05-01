@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const requestController = require('../controllers/requestController');
+const protect = require('../middleware/auth');
+
+router.use(protect);
 
 router.get('/', requestController.getAllRequests);
 router.get('/calendar', requestController.getCalendarEvents);
