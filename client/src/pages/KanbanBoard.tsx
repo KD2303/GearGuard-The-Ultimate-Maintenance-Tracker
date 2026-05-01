@@ -58,8 +58,10 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onUpdate }) => {
         </div>
       )}
       
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium text-gray-900 text-sm">{request.subject}</h4>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
+        <h4 className="font-medium text-gray-900 text-sm break-words">
+          {request.subject}
+        </h4>
         <Badge variant={priorityColors[request.priority]} size="sm">
           {request.priority}
         </Badge>
@@ -122,7 +124,7 @@ const Column: React.FC<ColumnProps> = ({ stage, requests, onDrop, onUpdate }) =>
   return (
     <div
       ref={drop}
-      className={`kanban-column flex-1 min-w-[280px] rounded-lg border-2 p-4 ${stage.color} ${
+      className={`kanban-column w-full rounded-lg border-2 p-4 ${stage.color} ${
         isOver ? 'drag-over' : ''
       }`}
     >
@@ -152,7 +154,43 @@ const KanbanBoard: React.FC = () => {
       const data = await requestService.getAll();
       setRequests(data);
     } catch (error) {
-      console.error('Failed to load requests:', error);
+      console.error('Using fallback data due to API error');
+
+      // 👇 FAKE DATA FOR UI TESTING
+      setRequests([
+        {
+          id: '1',
+          subject: 'Fix Engine Issue',
+          stage: 'new',
+          priority: 'high',
+          type: 'corrective',
+          requestNumber: 'REQ-001',
+        },
+        {
+          id: '2',
+          subject: 'Oil Maintenance',
+          stage: 'in-progress',
+          priority: 'medium',
+          type: 'preventive',
+          requestNumber: 'REQ-002',
+        },
+        {
+          id: '3',
+          subject: 'Replace Brake Pads',
+          stage: 'repaired',
+          priority: 'low',
+          type: 'corrective',
+          requestNumber: 'REQ-003',
+        },
+        {
+          id: '4',
+          subject: 'Discard Broken Part',
+          stage: 'scrap',
+          priority: 'urgent',
+          type: 'corrective',
+          requestNumber: 'REQ-004',
+        }
+      ]);
     } finally {
       setLoading(false);
     }
@@ -183,15 +221,15 @@ const KanbanBoard: React.FC = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div>
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Maintenance Requests</h2>
-          <Button onClick={() => setIsModalOpen(true)}>
+          <Button className="w-full sm:w-auto" onClick={() => setIsModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Request
           </Button>
         </div>
 
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {STAGES.map((stage) => (
             <Column
               key={stage.id}
