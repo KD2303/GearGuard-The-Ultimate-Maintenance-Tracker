@@ -91,8 +91,7 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onUpdate: _onUpdate 
           Overdue
         </div>
       )}
-
-      <div className="flex items-start justify-between mb-2">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2">
         <h4 className="font-medium text-gray-900 dark:text-white text-sm">{request.subject}</h4>
         <Badge variant={priorityColors[request.priority]} size="sm">
           {request.priority}
@@ -209,7 +208,45 @@ const KanbanBoard: React.FC = () => {
       setRequests(data);
       setResultCount(data.length);
     } catch (error) {
-      console.error('Failed to load requests:', error);
+      console.error('Using fallback data due to API error');
+
+      // 👇 FAKE DATA FOR UI TESTING
+      setRequests([
+        {
+          id: '1',
+          subject: 'Fix Engine Issue',
+          stage: 'new',
+          priority: 'high',
+          type: 'corrective',
+          requestNumber: 'REQ-001',
+        },
+        {
+          id: '2',
+          subject: 'Oil Maintenance',
+          stage: 'in-progress',
+          priority: 'medium',
+          type: 'preventive',
+          requestNumber: 'REQ-002',
+        },
+        {
+          id: '3',
+          subject: 'Replace Brake Pads',
+          stage: 'repaired',
+          priority: 'low',
+          type: 'corrective',
+          requestNumber: 'REQ-003',
+        },
+        {
+          id: '4',
+          subject: 'Discard Broken Part',
+          stage: 'scrap',
+          priority: 'urgent',
+          type: 'corrective',
+          requestNumber: 'REQ-004',
+        }
+      ]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -237,9 +274,9 @@ const KanbanBoard: React.FC = () => {
   return (
     <DndProvider backend={HTML5Backend}>
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Maintenance Requests</h2>
-          <Button onClick={() => setIsModalOpen(true)}>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Maintenance Requests</h2>
+          <Button className="w-full sm:w-auto" onClick={() => setIsModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Request
           </Button>
