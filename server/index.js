@@ -1,22 +1,18 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 
-const authRoutes = require("./routes/auth");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const activitiesRoutes = require("./routes/activities");
 const cors = require("cors");
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
-require("dotenv").config({ path: __dirname + "/.env" });
 
-const { syncDatabase } = require("./models");
-const equipmentRoutes = require("./routes/equipment");
-const teamRoutes = require("./routes/teams");
-const memberRoutes = require("./routes/members");
-const requestRoutes = require("./routes/requests");
-const notificationRoutes = require("./routes/notifications");
-const adminRoutes = require("./routes/admin");
+// Import models
+const modelsExport = require("./models");
+const syncDatabase = modelsExport.syncDatabase;
+
+console.log("🔍 Models export keys:", Object.keys(modelsExport));
+console.log("🔍 syncDatabase type:", typeof syncDatabase);
 
 const app = express();
 const server = http.createServer(app);
@@ -47,18 +43,9 @@ app.use(morgan("dev"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/equipment", equipmentRoutes);
-app.use("/api/teams", teamRoutes);
-app.use("/api/members", memberRoutes);
-app.use("/api/requests", requestRoutes);
-app.use("/api/activities", activitiesRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/search", require("./routes/search"));
-app.use("/api/admin", adminRoutes);
+app.use("/uploads", express.static("uploads"));
 
-// Health check
+// Health check (before DB-dependent routes)
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
@@ -86,7 +73,36 @@ app.use((req, res) => {
 // Initialize database and start server
 const startServer = async () => {
   try {
+    console.log("🔄 Syncing database...");
     await syncDatabase();
+    console.log("✓ Database synced successfully");
+
+    // NOW load routes after database is synced
+    console.log("📂 Loading routes...");
+    const authRoutes = require("./routes/auth");
+    const activitiesRoutes = require("./routes/activities");
+    const equipmentRoutes = require("./routes/equipment");
+    const teamRoutes = require("./routes/teams");
+    const memberRoutes = require("./routes/members");
+    const requestRoutes = require("./routes/requests");
+    const notificationRoutes = require("./routes/notifications");
+    const adminRoutes = require("./routes/admin");
+    const uploadRoutes = require("./routes/uploadRoutes");
+    const searchRoutes = require("./routes/search");
+
+    // Routes
+    app.use("/api/auth", authRoutes);
+    app.use("/api/equipment", equipmentRoutes);
+    app.use("/api/teams", teamRoutes);
+    app.use("/api/members", memberRoutes);
+    app.use("/api/requests", requestRoutes);
+    app.use("/api/activities", activitiesRoutes);
+    app.use("/api/notifications", notificationRoutes);
+    app.use("/api/search", searchRoutes);
+    app.use("/api/admin", adminRoutes);
+    app.use("/api/upload", uploadRoutes);
+
+    console.log("✓ Routes loaded successfully");
 
     server.listen(PORT, () => {
       console.log(`\n🚀 GearGuard Server Running!`);
@@ -95,7 +111,7 @@ const startServer = async () => {
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}\n`);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 };
