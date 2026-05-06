@@ -1,7 +1,31 @@
 import api from './api';
-import { MaintenanceRequest, CreateMaintenanceRequestDto } from '../types';
-import toast from 'react-hot-toast';
 import { MaintenanceRequest, CreateMaintenanceRequestDto, RequestFilters } from '../types';
+import toast from 'react-hot-toast';
+
+export interface AnalyticsQuery {
+  range?: '30d' | '90d' | 'custom';
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface AnalyticsResponse {
+  range: {
+    type: string;
+    startDate: string;
+    endDate: string;
+  };
+  metrics: {
+    totalRequests: number;
+    completedRequests: number;
+    mttrHours: number;
+    overdueRate: number;
+  };
+  charts: {
+    stageBreakdown: Array<{ stage: string; value: number }>;
+    typeBreakdown: Array<{ type: string; value: number }>;
+    trend: Array<{ date: string; total: number; completed: number }>;
+  };
+}
 
 export const requestService = {
   getAll: async (filters?: { stage?: string; type?: string; teamId?: string }): Promise<MaintenanceRequest[]> => {
@@ -48,7 +72,10 @@ export const requestService = {
     const response = await api.get('/requests/calendar', { params: { start, end } });
     return response.data;
   },
-};
+  getAnalytics: async (query: AnalyticsQuery): Promise<AnalyticsResponse> => {
+    const response = await api.get('/analytics', { params: query });
+    return response.data;
+  },
 };
 
 export const getFiltered = async (filters: RequestFilters): Promise<MaintenanceRequest[]> => {

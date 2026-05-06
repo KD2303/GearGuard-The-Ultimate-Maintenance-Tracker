@@ -431,3 +431,139 @@ exports.getCalendarEvents = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Get analytics summary and chart data
+exports.getAnalytics = async (req, res) => {
+  try {
+    const { range = "30d", startDate, endDate } = req.query;
+
+    const now = new Date();
+    let start;
+    let end;
+
+    if (range === "custom") {
+      if (!startDate || !endDate) {
+        return res
+          .status(400)
+          .json({ error: "startDate and endDate are required for custom range" });
+      }
+      start = new Date(startDate);
+      end = new Date(endDate);
+    } else if (range === "90d") {
+      end = now;
+      start = new Date(now);
+      start.setDate(start.getDate() - 90);
+    } else {
+      end = now;
+      start = new Date(now);
+      start.setDate(start.getDate() - 30);
+    }
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ error: "Invalid date range" });
+    }
+
+    if (start > end) {
+      return res.status(400).json({ error: "startDate cannot be after endDate" });
+    }
+
+    const rangeMatch = { createdAt: { $gte: start, $lte: end } };
+    const openStages = ["new", "in-progress"];
+
+    const [
+      totalRequests,
+      completedRequests,
+      overdueRequests,
+      stageBreakdown,
+      typeBreakdown,
+      trendData,
+      mttrResult,
+    ] = await Promise.all([
+      MaintenanceRequest.countDocuments(rangeMatch),
+      MaintenanceRequest.countDocuments({
+        ...rangeMatch,
+        stage: { $in: ["repaired", "scrap"] },
+      }),
+      MaintenanceRequest.countDocuments({
+        ...rangeMatch,
+        scheduledDate: { $lt: now },
+        stage: { $in: openStages },
+      }),
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        { $group: { _id: "$stage", value: { $sum: 1 } } },
+        { $project: { _id: 0, stage: "$_id", value: 1 } },
+        { $sort: { stage: 1 } },
+      ]),
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        { $group: { _id: "$type", value: { $sum: 1 } } },
+        { $project: { _id: 0, type: "$_id", value: 1 } },
+        { $sort: { type: 1 } },
+      ]),
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+            total: { $sum: 1 },
+            completed: {
+              $sum: {
+                $cond: [{ $in: ["$stage", ["repaired", "scrap"]] }, 1, 0],
+              },
+            },
+          },
+        },
+        { $project: { _id: 0, date: "$_id", total: 1, completed: 1 } },
+        { $sort: { date: 1 } },
+      ]),
+      MaintenanceRequest.aggregate([
+        {
+          $match: {
+            ...rangeMatch,
+            completedDate: { $ne: null },
+            stage: { $in: ["repaired", "scrap"] },
+          },
+        },
+        {
+          $project: {
+            resolutionMs: { $subtract: ["$completedDate", "$createdAt"] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            avgResolutionMs: { $avg: "$resolutionMs" },
+          },
+        },
+      ]),
+    ]);
+
+    const avgResolutionMs = mttrResult[0]?.avgResolutionMs || 0;
+    const mttrHours = avgResolutionMs ? avgResolutionMs / (1000 * 60 * 60) : 0;
+    const overdueRate = totalRequests ? (overdueRequests / totalRequests) * 100 : 0;
+
+    res.json({
+      range: {
+        type: range,
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+      },
+      metrics: {
+        totalRequests,
+        completedRequests,
+        mttrHours: Number(mttrHours.toFixed(2)),
+        overdueRate: Number(overdueRate.toFixed(2)),
+      },
+      charts: {
+        stageBreakdown,
+        typeBreakdown,
+        trend: trendData,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

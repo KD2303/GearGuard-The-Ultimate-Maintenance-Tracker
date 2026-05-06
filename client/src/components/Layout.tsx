@@ -14,7 +14,8 @@ import {
   X, 
   Car, 
   Settings, 
-  Shield 
+  Shield,
+  BarChart3,
 } from "lucide-react";
 import NotificationCenter from './NotificationCenter';
 
@@ -51,6 +52,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/vehicles', icon: Car, label: 'Vehicles', gradient: 'from-orange-500 to-red-600' },
     { to: '/teams', icon: Users, label: 'Teams', gradient: 'from-yellow-500 to-orange-600' },
     { to: '/activity', icon: Activity, label: 'Activity', gradient: 'from-indigo-500 to-purple-600' },
+    { to: '/analytics', icon: BarChart3, label: 'Analytics', gradient: 'from-emerald-500 to-cyan-600' },
   ];
 
   return (
