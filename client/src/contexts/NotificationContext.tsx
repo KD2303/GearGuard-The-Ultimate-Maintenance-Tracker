@@ -16,7 +16,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 // In a real app, this URL would come from an environment variable
-const SOCKET_URL = 'http://localhost:5005';
+const SOCKET_URL = 'http://localhost:5000';
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);

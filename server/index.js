@@ -6,6 +6,9 @@ const cors = require("cors");
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
 require("dotenv").config();
+console.log("ENV CHECK");
+console.log("MONGO_URI:", process.env.MONGO_URI);
+console.log("SMTP_HOST:", process.env.SMTP_HOST);
 
 const { syncDatabase } = require("./models");
 const equipmentRoutes = require("./routes/equipment");
