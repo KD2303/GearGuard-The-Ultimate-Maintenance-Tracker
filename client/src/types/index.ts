@@ -107,6 +107,11 @@ export interface CreateMaintenanceRequestDto {
   teamId?: string;
   assignedToId?: string;
   createdById?: string;
+  attachments?: {
+  filename: string;
+  fileUrl: string;
+  fileType: string;
+}[];
 }
 
 export interface Notification {
