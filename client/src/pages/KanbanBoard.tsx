@@ -77,11 +77,10 @@ const RequestCard: React.FC<RequestCardProps> = ({ request, onUpdate: _onUpdate 
     <div
       ref={drag}
       style={{ opacity: isDragging ? 0.5 : 1 }}
-        className={`kanban-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-none border-2 mb-3 ${
-          isOverdue(request.scheduledDate, request.stage)
-            ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
-            : 'border-gray-200 dark:border-gray-700'
-        }`}
+      className={`kanban-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-none border-2 mb-3 ${
+        isOverdue(request.scheduledDate, request.stage)
+          ? 'border-red-400 bg-red-50 dark:bg-red-900/20'
+          : 'border-gray-200 dark:border-gray-700'
       }`}
     >
       {isOverdue(request.scheduledDate, request.stage) && (

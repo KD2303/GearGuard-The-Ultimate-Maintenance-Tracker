@@ -2,9 +2,9 @@ import { useState, useEffect, Fragment } from 'react';
 import { MaintenanceRequest } from '../types';
 import { requestService } from '../services/requestService';
 import Badge from './Badge';
+import toast from 'react-hot-toast';
 import Button from './Button';
-// @ts-ignore
-import Papa from 'papaparse';
+import { exportCSV, exportPDF, ExportColumn } from '../utils/exportUtils';
 import {
   Calendar,
   AlertCircle,
@@ -14,7 +14,8 @@ import {
   FileText,
   Settings,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileDown,
 } from 'lucide-react';
 import Spinner from './Spinner';
 
@@ -67,85 +68,79 @@ const DetailedRequestsTable = () => {
       : (bValue ?? 0) - (aValue ?? 0);
   });
 
-  const handleExport = () => {
-    if (!sortedRequests || sortedRequests.length === 0) return;
+  const requestColumns: ExportColumn<MaintenanceRequest>[] = [
+    { header: 'Request Date', value: (r) => (r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB') : '') },
+    { header: 'Request ID', value: (r) => r.requestNumber ?? '' },
+    { header: 'Subject', value: (r) => r.subject ?? '' },
+    { header: 'Priority', value: (r) => r.priority ?? '' },
+    { header: 'Stage', value: (r) => r.stage ?? '' },
+    { header: 'Equipment', value: (r) => r.equipment?.name ?? 'Unassigned' },
+    { header: 'Assigned To', value: (r) => r.assignedTo?.name ?? 'Unassigned' },
+    { header: 'Type', value: (r) => r.type ?? '' },
+    { header: 'Description', value: (r) => r.description ?? '' },
+    {
+      header: 'Scheduled Date',
+      value: (r) => (r.scheduledDate ? new Date(r.scheduledDate).toLocaleDateString('en-GB') : ''),
+    },
+    { header: 'Team', value: (r) => r.team?.name ?? 'Unassigned' },
+    { header: 'Duration', value: (r) => (r.duration ? `${r.duration} hrs` : '') },
+    { header: 'Cost', value: (r) => r.cost ?? '' },
+    {
+      header: 'Completed Date',
+      value: (r) => (r.completedDate ? new Date(r.completedDate).toLocaleDateString('en-GB') : ''),
+    },
+    { header: 'Notes', value: (r) => r.notes ?? '' },
+  ];
 
-    const exportData = sortedRequests.map((request) => ({
-      'Request Date': request.createdAt
-        ? new Date(request.createdAt).toLocaleDateString('en-GB')
-        : '',
-      'Request ID': request.requestNumber || '',
-      Subject: request.subject || '',
-      Priority: request.priority || '',
-      Stage: request.stage || '',
-      Equipment: request.equipment?.name || 'Unassigned',
-      'Assigned To': request.assignedTo?.name || 'Unassigned',
-      Type: request.type || '',
-      Description: request.description || '',
-      'Scheduled Date': request.scheduledDate
-        ? new Date(request.scheduledDate).toLocaleDateString('en-GB')
-        : '',
-      Team: request.team?.name || 'Unassigned',
-      Duration: request.duration ? `${request.duration} hrs` : '',
-      Cost: request.cost ?? '',
-      'Completed Date': request.completedDate
-        ? new Date(request.completedDate).toLocaleDateString('en-GB')
-        : '',
-      Notes: request.notes || '',
-    }));
-
-    const csv = Papa.unparse(exportData);
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'maintenance-requests.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
+  const runExport = async (format: 'csv' | 'pdf') => {
+    if (!sortedRequests.length) {
+      toast.error('No data to export');
+      return;
+    }
+    if (format === 'csv') {
+      exportCSV(sortedRequests, requestColumns);
+      return;
+    }
+    await exportPDF(sortedRequests, requestColumns, { title: 'Maintenance Requests' });
   };
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ format?: 'csv' | 'pdf' }>;
+      const format = ce.detail?.format;
+      if (format === 'csv' || format === 'pdf') void runExport(format);
+    };
+    window.addEventListener('gg:requests-export', handler as EventListener);
+    return () => window.removeEventListener('gg:requests-export', handler as EventListener);
+  }, [sortedRequests, sortDirection, sortField]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-700';
-      case 'high': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700';
-      case 'medium': return 'bg-yellow-100 text-yellow-700';
-      case 'low': return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-700';
       case 'urgent':
         return 'bg-red-100 text-red-700';
       case 'high':
-        return 'bg-orange-100 text-orange-700';
+        return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700';
       case 'medium':
         return 'bg-yellow-100 text-yellow-700';
       case 'low':
         return 'bg-green-100 text-green-700';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
     }
   };
 
   const getStageColor = (stage: string) => {
     switch (stage) {
-      case 'new': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700';
-      case 'in-progress': return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700';
-      case 'repaired': return 'bg-green-100 dark:bg-green-900/30 text-green-700';
-      case 'scrap': return 'bg-red-100 dark:bg-red-900/30 text-red-700';
-      default: return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200';
       case 'new':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700';
       case 'in-progress':
-        return 'bg-yellow-100 text-yellow-700';
+        return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700';
       case 'repaired':
-        return 'bg-green-100 text-green-700';
+        return 'bg-green-100 dark:bg-green-900/30 text-green-700';
       case 'scrap':
-        return 'bg-red-100 text-red-700';
+        return 'bg-red-100 dark:bg-red-900/30 text-red-700';
       default:
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200';
     }
   };
 
@@ -158,16 +153,7 @@ const DetailedRequestsTable = () => {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-12 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
-      <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
         <Spinner size="md" label="Loading requests..." />
       </div>
     );
@@ -176,22 +162,21 @@ const DetailedRequestsTable = () => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors">
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            All Maintenance Requests
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Detailed view of all requests with full information
-          </p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">All Maintenance Requests</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Detailed view of all requests with full information</p>
         </div>
 
-        <Button onClick={handleExport}>
-          Export CSV
-        </Button>
-
-      </div>
-    </div>    
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => void runExport('csv')} disabled={!sortedRequests.length}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => void runExport('pdf')} disabled={!sortedRequests.length}>
+            <FileText className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">

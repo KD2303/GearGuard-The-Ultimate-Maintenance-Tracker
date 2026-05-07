@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '..', '..', '.env') });
+// Support both `server/.env` and repo-root `.env` to make local setup easier.
+const dotenv = require('dotenv');
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
 
 const envUri = process.env.MONGO_URI || process.env.MONGO_URL;
 

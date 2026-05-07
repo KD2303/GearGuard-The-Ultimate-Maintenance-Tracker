@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { Socket } from "socket.io-client";
 import toast from 'react-hot-toast';
 import { Notification } from '../types';
-import axios from 'axios';
+import api from '../services/api';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -16,8 +16,10 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-// In a real app, this URL would come from an environment variable
-const SOCKET_URL = 'http://localhost:5005';
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:5000';
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -28,7 +30,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Fetch initial notifications from DB
   const fetchNotifications = useCallback(async () => {
     try {
-      const response = await axios.get('/api/notifications');
+      const token = localStorage.getItem('token');
+      if (!token) return; // not logged in, notifications are protected
+
+      const response = await api.get('/notifications');
       setNotifications(response.data);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -39,7 +44,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     fetchNotifications();
 
     // Initialize Socket.IO connection
-    const newSocket = io(SOCKET_URL);
+    const token = localStorage.getItem('token');
+    const newSocket = io(SOCKET_URL, token ? { auth: { token } } : undefined);
 
     // Listen for new notifications
     newSocket.on('notification:new', (notification: Notification) => {
@@ -89,7 +95,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const markAsRead = async (id: string) => {
     try {
-      await axios.patch(`/api/notifications/${id}/read`);
+      await api.patch(`/notifications/${id}/read`);
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
@@ -100,7 +106,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const markAllAsRead = async () => {
     try {
-      await axios.patch('/api/notifications/mark-all-read');
+      await api.patch('/notifications/mark-all-read');
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -109,7 +115,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const deleteNotification = async (id: string) => {
     try {
-      await axios.delete(`/api/notifications/${id}`);
+      await api.delete(`/notifications/${id}`);
       setNotifications((prev) => prev.filter((n) => n._id !== id));
     } catch (error) {
       console.error('Error deleting notification:', error);

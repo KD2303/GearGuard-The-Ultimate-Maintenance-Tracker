@@ -163,11 +163,10 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="space-y-8 animate-fade-in">
-        <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
+      <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
 
-          <div ref={searchRef} className="relative w-full">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
+        <div ref={searchRef} className="relative w-full">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
           <input
             type="text"
             value={searchQuery}

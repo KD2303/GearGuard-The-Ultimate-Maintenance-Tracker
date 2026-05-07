@@ -53,16 +53,7 @@ const AssignmentsPanel = () => {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
-      <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
         <Spinner size="md" label="Loading assignments..." />
       </div>
     );
@@ -211,12 +202,12 @@ const AssignmentsPanel = () => {
         </div>
 
         {/* Quick Stats */}
-        <div className="mt-6 grid grid-cols-2 gap-4">
+          <div className="mt-6 grid grid-cols-2 gap-4">
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
             <div className="text-xs text-blue-600 font-medium">Available Today</div>
             <div className="text-2xl font-bold text-blue-900 dark:text-blue-300 mt-1">{members.length}</div>
           </div>
-          <div className=" dark:bg-green-900/20 rounded-lg p-3">
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
             <div className="text-xs text-green-600 font-medium">On Assignment</div>
             <div className="text-2xl font-bold text-green-900 dark:text-green-300 mt-1">
               {Math.floor(members.length * 0.6)}

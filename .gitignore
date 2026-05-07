@@ -1,12 +1,30 @@
+# Node modules
 node_modules/
-.env
-.env.local
-.env.production
-.DS_Store
-client/dist/
 client/node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
 *.log
+
+# OS files
+.DS_Store
+
+# Build files
+dist/
+client/dist/
+
+# IDE
 .vscode/
+
+# Coverage
 coverage/
+
+# Local database
 mongodb_data/
+
+# Misc
 scratch/
