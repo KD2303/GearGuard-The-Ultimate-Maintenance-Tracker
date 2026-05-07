@@ -16,6 +16,7 @@ console.log("🔍 syncDatabase type:", typeof syncDatabase);
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -43,31 +44,16 @@ app.use(morgan("dev"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Static uploads folder
 app.use("/uploads", express.static("uploads"));
 
-// Health check (before DB-dependent routes)
+// Health check
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
     message: "GearGuard API is running",
     timestamp: new Date().toISOString(),
   });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  const status = err.statusCode || 500;
-  const message =
-    process.env.NODE_ENV === "production"
-      ? "Internal server error"
-      : err.message;
-  res.status(status).json({ error: message });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
 });
 
 // Initialize database and start server
@@ -77,8 +63,9 @@ const startServer = async () => {
     await syncDatabase();
     console.log("✓ Database synced successfully");
 
-    // NOW load routes after database is synced
+    // Load routes
     console.log("📂 Loading routes...");
+
     const authRoutes = require("./routes/auth");
     const activitiesRoutes = require("./routes/activities");
     const equipmentRoutes = require("./routes/equipment");
@@ -90,6 +77,18 @@ const startServer = async () => {
     const uploadRoutes = require("./routes/uploadRoutes");
     const searchRoutes = require("./routes/search");
 
+    // Debug route types
+    console.log("authRoutes:", typeof authRoutes);
+    console.log("activitiesRoutes:", typeof activitiesRoutes);
+    console.log("equipmentRoutes:", typeof equipmentRoutes);
+    console.log("teamRoutes:", typeof teamRoutes);
+    console.log("memberRoutes:", typeof memberRoutes);
+    console.log("requestRoutes:", typeof requestRoutes);
+    console.log("notificationRoutes:", typeof notificationRoutes);
+    console.log("adminRoutes:", typeof adminRoutes);
+    console.log("uploadRoutes:", typeof uploadRoutes);
+    console.log("searchRoutes:", typeof searchRoutes);
+
     // Routes
     app.use("/api/auth", authRoutes);
     app.use("/api/equipment", equipmentRoutes);
@@ -100,9 +99,34 @@ const startServer = async () => {
     app.use("/api/notifications", notificationRoutes);
     app.use("/api/search", searchRoutes);
     app.use("/api/admin", adminRoutes);
+
+    // Upload route
     app.use("/api/upload", uploadRoutes);
 
     console.log("✓ Routes loaded successfully");
+
+    // Error handling middleware
+    app.use((err, req, res, next) => {
+      console.error(err.stack);
+
+      const status = err.statusCode || 500;
+
+      const message =
+        process.env.NODE_ENV === "production"
+          ? "Internal server error"
+          : err.message;
+
+      res.status(status).json({
+        error: message,
+      });
+    });
+
+    // 404 handler
+    app.use((req, res) => {
+      res.status(404).json({
+        error: "Route not found",
+      });
+    });
 
     server.listen(PORT, () => {
       console.log(`\n🚀 GearGuard Server Running!`);

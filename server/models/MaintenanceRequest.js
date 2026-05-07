@@ -13,6 +13,13 @@ const MaintenanceRequestSchema = new Schema({
   duration: { type: Number },
   cost: { type: Number },
   notes: { type: String },
+  attachments: [
+  {
+    filename: { type: String },
+    fileUrl: { type: String },
+    fileType: { type: String },
+  },
+],
   equipmentId: { type: Schema.Types.ObjectId, ref: 'Equipment' },
   teamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   assignedToId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
