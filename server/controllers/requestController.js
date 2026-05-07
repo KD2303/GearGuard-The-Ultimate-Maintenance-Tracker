@@ -25,7 +25,9 @@ const sanitizeBody = (body) => {
     delete cleaned.scheduledDate;
   if (cleaned.completedDate === "" || cleaned.completedDate === null)
     delete cleaned.completedDate;
-
+  if (!Array.isArray(cleaned.attachments)) {
+  cleaned.attachments = [];
+}
   return cleaned;
 };
 
@@ -155,11 +157,12 @@ exports.createRequest = async (req, res) => {
       }
     }
 
-    const request = await MaintenanceRequest.create({
-      ...payload,
-      requestNumber,
-    });
-
+const request = await MaintenanceRequest.create({
+  ...payload,
+  requestNumber,
+  attachments:
+    req.body.attachments || [],
+});
     const requestWithRelations = await MaintenanceRequest.findById(request._id)
       .populate("equipment")
       .populate("team")
