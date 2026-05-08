@@ -54,14 +54,14 @@ const CalendarView: React.FC = () => {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Preventive Maintenance Calendar</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Preventive Maintenance Calendar</h2>
         <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Schedule Maintenance
         </Button>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors">
         <BigCalendar
           localizer={localizer}
           events={calendarEvents}

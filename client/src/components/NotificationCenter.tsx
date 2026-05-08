@@ -60,7 +60,7 @@ const NotificationCenter: React.FC = () => {
           "relative rounded-xl border p-2 backdrop-blur-xl transition-all duration-300",
           isOpen 
             ? "border-purple-300 bg-white/60 text-purple-600 shadow-inner" 
-            : "border-white/50 bg-white/30 text-gray-600 shadow-sm hover:border-white/70 hover:text-purple-600 hover:bg-white/60"
+            : "border-white/50 bg-white/30 text-gray-600 shadow-sm dark:shadow-none hover:border-white/70 hover:text-purple-600 hover:bg-white/60"
         )}
       >
         <Bell className={clsx("h-5 w-5 transition-transform", isOpen && "scale-110")} />
@@ -105,7 +105,7 @@ const NotificationCenter: React.FC = () => {
                     className={clsx(
                       "group relative p-4 transition-all duration-200 border-l-4",
                       !notification.read 
-                        ? "bg-purple-50/80 border-purple-500 hover:bg-purple-100/80 shadow-sm z-10" 
+                        ? "bg-purple-50/80 border-purple-500 hover:bg-purple-100/80 shadow-sm dark:shadow-none z-10" 
                         : "bg-transparent border-transparent hover:bg-gray-50/80"
                     )}
                   >

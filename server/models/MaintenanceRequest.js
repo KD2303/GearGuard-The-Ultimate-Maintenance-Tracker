@@ -13,6 +13,13 @@ const MaintenanceRequestSchema = new Schema({
   duration: { type: Number },
   cost: { type: Number },
   notes: { type: String },
+  attachments: [
+  {
+    filename: { type: String },
+    fileUrl: { type: String },
+    fileType: { type: String },
+  },
+],
   equipmentId: { type: Schema.Types.ObjectId, ref: 'Equipment' },
   teamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   assignedToId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
@@ -49,5 +56,14 @@ MaintenanceRequestSchema.virtual('createdBy', {
 
 MaintenanceRequestSchema.set('toObject', { virtuals: true });
 MaintenanceRequestSchema.set('toJSON', { virtuals: true });
+
+// Indexes for optimized filtered queries
+MaintenanceRequestSchema.index({ stage: 1 });
+MaintenanceRequestSchema.index({ priority: 1 });
+MaintenanceRequestSchema.index({ type: 1 });
+MaintenanceRequestSchema.index({ assignedToId: 1 });
+MaintenanceRequestSchema.index({ teamId: 1 });
+MaintenanceRequestSchema.index({ scheduledDate: 1 });
+MaintenanceRequestSchema.index({ subject: 'text', requestNumber: 'text', description: 'text' });
 
 module.exports = mongoose.model('MaintenanceRequest', MaintenanceRequestSchema);

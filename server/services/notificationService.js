@@ -38,6 +38,7 @@ class NotificationService {
     try {
       // 1. Persist to Database
       const notification = await Notification.create({
+        userId: data.userId,   // 🔥 ADD THIS
         type: data.type,
         message: data.message,
         requestId: data.requestId,
@@ -112,7 +113,11 @@ class NotificationService {
         message = `Updates on request ${requestNo}`;
     }
 
+    // 🔥 Decide who gets notification
+    const userId = request.assignedToId || request.createdById;
+
     return this.sendNotification(io, {
+      userId, // 🔥 ADD THIS
       type,
       message,
       requestId: request._id,
