@@ -1,20 +1,21 @@
 import React, { useState, useRef, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
-
-import {
-  Wrench,
-  Box,
-  Users,
-  Calendar,
-  LayoutDashboard,
-  List,
-  Activity,
-  Menu,
-  X,
-  Car,
-  Settings,
+import { 
+  Wrench, 
+  Box, 
+  Users, 
+  Calendar, 
+  LayoutDashboard, 
+  List, 
+  Activity, 
+  Bell, 
+  Menu, 
+  X, 
+  Car, 
+  Settings, 
   Shield,
+  BarChart3,
 } from "lucide-react";
 
 import NotificationCenter from "./NotificationCenter";
@@ -55,68 +56,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, []);
 
   const navItems = [
-    {
-      to: "/",
-      icon: LayoutDashboard,
-      label: "Dashboard",
-      gradient: "from-blue-500 to-purple-600",
-    },
-
-    {
-      to: "/admin",
-      icon: Shield,
-      label: "Admin",
-      gradient: "from-rose-500 to-red-600",
-    },
-
-    {
-      to: "/requests",
-      icon: Wrench,
-      label: "Kanban",
-      gradient: "from-purple-500 to-pink-600",
-    },
-
-    {
-      to: "/requests-all",
-      icon: List,
-      label: "All Requests",
-      gradient: "from-pink-500 to-red-600",
-    },
-
-    {
-      to: "/calendar",
-      icon: Calendar,
-      label: "Calendar",
-      gradient: "from-cyan-500 to-blue-600",
-    },
-
-    {
-      to: "/equipment",
-      icon: Box,
-      label: "Equipment",
-      gradient: "from-green-500 to-teal-600",
-    },
-
-    {
-      to: "/vehicles",
-      icon: Car,
-      label: "Vehicles",
-      gradient: "from-orange-500 to-red-600",
-    },
-
-    {
-      to: "/teams",
-      icon: Users,
-      label: "Teams",
-      gradient: "from-yellow-500 to-orange-600",
-    },
-
-    {
-      to: "/activity",
-      icon: Activity,
-      label: "Activity",
-      gradient: "from-indigo-500 to-purple-600",
-    },
+    { to: '/', icon: LayoutDashboard, label: 'Dashboard', gradient: 'from-blue-500 to-purple-600' },
+    { to: '/admin', icon: Shield, label: 'Admin', gradient: 'from-rose-500 to-red-600' },
+    { to: '/requests', icon: Wrench, label: 'Kanban', gradient: 'from-purple-500 to-pink-600' },
+    { to: '/requests-all', icon: List, label: 'All Requests', gradient: 'from-pink-500 to-red-600' },
+    { to: '/calendar', icon: Calendar, label: 'Calendar', gradient: 'from-cyan-500 to-blue-600' },
+    { to: '/equipment', icon: Box, label: 'Equipment', gradient: 'from-green-500 to-teal-600' },
+    { to: '/vehicles', icon: Car, label: 'Vehicles', gradient: 'from-orange-500 to-red-600' },
+    { to: '/teams', icon: Users, label: 'Teams', gradient: 'from-yellow-500 to-orange-600' },
+    { to: '/activity', icon: Activity, label: 'Activity', gradient: 'from-indigo-500 to-purple-600' },
+    { to: '/analytics', icon: BarChart3, label: 'Analytics', gradient: 'from-emerald-500 to-cyan-600' },
   ];
 
   return (

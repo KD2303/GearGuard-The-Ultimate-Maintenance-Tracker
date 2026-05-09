@@ -7,12 +7,14 @@ const cors = require("cors");
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
 
-// Import models
-const modelsExport = require("./models");
-const syncDatabase = modelsExport.syncDatabase;
-
-console.log("🔍 Models export keys:", Object.keys(modelsExport));
-console.log("🔍 syncDatabase type:", typeof syncDatabase);
+const { syncDatabase } = require("./models");
+const equipmentRoutes = require("./routes/equipment");
+const teamRoutes = require("./routes/teams");
+const memberRoutes = require("./routes/members");
+const requestRoutes = require("./routes/requests");
+const notificationRoutes = require("./routes/notifications");
+const adminRoutes = require("./routes/admin");
+const analyticsRoutes = require("./routes/analytics");
 
 const app = express();
 const server = http.createServer(app);
@@ -44,8 +46,17 @@ app.use(morgan("dev"));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Static uploads folder
-app.use("/uploads", express.static("uploads"));
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/equipment", equipmentRoutes);
+app.use("/api/teams", teamRoutes);
+app.use("/api/members", memberRoutes);
+app.use("/api/requests", requestRoutes);
+app.use("/api/activities", activitiesRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/search", require("./routes/search"));
+app.use("/api/admin", adminRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
