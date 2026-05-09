@@ -26,7 +26,7 @@ const QuickActionCards = ({ onNewTask }: QuickActionCardsProps) => {
       {/* New Task Card */}
       <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold">New Task/Item</h3>
+          <h3 className="text-xl font-semibold ">New Task/Item</h3>
           <Plus className="w-6 h-6" />
         </div>
         <p className="text-blue-100 mb-6">
@@ -35,45 +35,47 @@ const QuickActionCards = ({ onNewTask }: QuickActionCardsProps) => {
         <div className="space-y-3">
           <Button
             variant="secondary"
-            className="w-full bg-white text-blue-600 hover:bg-blue-50"
+            className="w-full mt-4 hover:shadow-md"
             onClick={onNewTask}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            New Maintenance Request
+            <Plus className="w-4 h-4 relative top-[1px]" />
+            <span className="leading-none tracking-tight">New Maintenance Request</span>
           </Button>
           <Button
             variant="secondary"
-            className="w-full bg-blue-400 text-white hover:bg-blue-300"
+            className="w-full mt-4 hover:shadow-md"
           >
-            <Calendar className="w-4 h-4 mr-2" />
-            Schedule Preventive Maintenance
+            <Calendar className="w-4 h-4 relative top-[1px]" />
+            <span className="leading-none tracking-tight">Schedule Preventive Maintenance</span>
           </Button>
         </div>
       </div>
 
       {/* My To-Dos Card */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-gray-900">My To-Dos</h3>
-          <CheckSquare className="w-6 h-6 text-gray-400" />
+          <h3 className="text-xl font-semibold text-white">My To-Dos</h3>
+          <CheckSquare className="w-6 h-6 text-white/80" />
         </div>
         <div className="space-y-3">
           {myTodos.map(todo => (
             <label
               key={todo.id}
-              className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+              className="flex items-center p-3 rounded-lg 
+              bg-white/20 hover:bg-white/30
+              transition-all duration-200 cursor-pointer"
             >
               <input
                 type="checkbox"
                 checked={todo.completed}
                 onChange={() => toggleTodo(todo.id)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="w-4 h-4 accent-white border-gray-300 dark:border-gray-600 rounded focus:ring-purple-500"
               />
               <span
                 className={`ml-3 text-sm ${
                   todo.completed
-                    ? 'text-gray-500 line-through'
-                    : 'text-gray-900'
+                    ? 'text-white/60 line-through'
+                    : 'text-white'
                 }`}
               >
                 {todo.text}
@@ -82,9 +84,9 @@ const QuickActionCards = ({ onNewTask }: QuickActionCardsProps) => {
           ))}
         </div>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
-          className="w-full mt-4 text-blue-600 hover:text-blue-700"
+          className="w-full mt-4 hover:shadow-md"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add New To-Do
