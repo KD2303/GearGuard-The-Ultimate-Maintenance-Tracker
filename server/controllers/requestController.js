@@ -103,8 +103,8 @@ exports.getAllRequests = async (req, res) => {
     const requests = await MaintenanceRequest.find(query)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy")
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email")
       .sort({ createdAt: -1 });
 
     res.json(requests);
@@ -119,8 +119,8 @@ exports.getRequestById = async (req, res) => {
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
     res.json(request);
@@ -166,8 +166,8 @@ const request = await MaintenanceRequest.create({
     const requestWithRelations = await MaintenanceRequest.findById(request._id)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     const userName = requestWithRelations?.createdBy?.name || "";
 
@@ -189,7 +189,17 @@ const request = await MaintenanceRequest.create({
     // Notify: request created
     const io = req.app.get("socketio");
     await NotificationService.notifyRequestChange(io, "request_created", requestWithRelations);
-
+    if (requestWithRelations.assignedTo?.email) {
+      try {
+        await NotificationService.sendEmail(
+          requestWithRelations.assignedTo.email,
+          NotificationService.EMAIL_SUBJECTS.ASSIGNED,
+          NotificationService.assignmentTemplate(requestWithRelations)
+        );
+      } catch (error) {
+        console.error("EMAIL ERROR:", error);
+      }
+    }
     // Activity: equipment status changed (if we changed it)
     if (
       equipmentDoc &&
@@ -220,7 +230,7 @@ exports.updateRequest = async (req, res) => {
 
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
-      .populate("createdBy");
+      .populate("createdBy", "name email");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
 
@@ -250,8 +260,8 @@ exports.updateRequest = async (req, res) => {
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     const userName = updatedRequest?.createdBy?.name || "";
     const newStage = updatedRequest.stage;
@@ -281,6 +291,17 @@ exports.updateRequest = async (req, res) => {
       updatedRequest, 
       completed ? "Completed" : `Stage changed to ${newStage}`
     );
+    if (completed && updatedRequest.createdBy?.email) {
+      try {
+      await NotificationService.sendEmail(
+        updatedRequest.createdBy.email,
+        NotificationService.EMAIL_SUBJECTS.COMPLETED,
+        NotificationService.completionTemplate(updatedRequest)
+      );
+    } catch (error) {
+      console.error("EMAIL ERROR:", error);
+    }
+  }
 
     // If equipment status changed due to stage update, log it too
     if (
@@ -312,7 +333,7 @@ exports.updateRequestStage = async (req, res) => {
     const { stage } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
-      .populate("createdBy");
+      .populate("createdBy", "name email");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
 
@@ -335,8 +356,8 @@ exports.updateRequestStage = async (req, res) => {
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     const userName = updatedRequest?.createdBy?.name || "";
     const completed = stage === "repaired" || stage === "scrap";
@@ -364,6 +385,17 @@ exports.updateRequestStage = async (req, res) => {
       updatedRequest, 
       completed ? "Completed via Kanban" : `Moved to ${stage}`
     );
+    if (completed && updatedRequest.createdBy?.email) {
+      try {
+        await NotificationService.sendEmail(
+          updatedRequest.createdBy.email,
+          NotificationService.EMAIL_SUBJECTS.COMPLETED,
+          NotificationService.completionTemplate(updatedRequest)
+        );
+      } catch (error) {
+        console.error("EMAIL ERROR:", error);
+      }
+    }
 
     if (updatedRequest.equipment && completed) {
       const toStatus = stage === "scrap" ? "scrapped" : "active";
@@ -389,7 +421,7 @@ exports.deleteRequest = async (req, res) => {
   try {
     const request = await MaintenanceRequest.findByIdAndDelete(req.params.id)
       .populate("equipment")
-      .populate("createdBy");
+      .populate("createdBy", "name email");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
 
@@ -427,7 +459,8 @@ exports.getCalendarEvents = async (req, res) => {
 
     const requests = await MaintenanceRequest.find(where)
       .populate("equipment")
-      .populate("assignedTo");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     res.json(requests);
   } catch (error) {
