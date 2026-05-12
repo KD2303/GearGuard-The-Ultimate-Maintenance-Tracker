@@ -18,7 +18,26 @@ const EquipmentSchema = new Schema({
   fuelType: { type: String, enum: ['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG'] },
   notes: { type: String },
   maintenanceTeamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
-  defaultTechnicianId: { type: Schema.Types.ObjectId, ref: 'TeamMember' }
+  defaultTechnicianId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
+  
+  healthScore: {
+  type: Number,
+  default: 100
+},
+
+riskLevel: {
+  type: String,
+  default: "Healthy"
+},
+
+failureCount: {
+  type: Number,
+  default: 0
+},
+
+lastFailureDate: {
+  type: Date
+}
 }, { timestamps: true });
 
 EquipmentSchema.virtual('maintenanceTeam', {
@@ -37,5 +56,7 @@ EquipmentSchema.virtual('defaultTechnician', {
 
 EquipmentSchema.set('toObject', { virtuals: true });
 EquipmentSchema.set('toJSON', { virtuals: true });
+
+
 
 module.exports = mongoose.model('Equipment', EquipmentSchema);

@@ -140,5 +140,4 @@ export const requestService = {
     );
 
     return response.data;
-  },
-};
+  };
