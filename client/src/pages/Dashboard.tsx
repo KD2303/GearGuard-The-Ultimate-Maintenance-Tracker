@@ -35,6 +35,10 @@ import QuickActionCards from "../components/QuickActionCards";
 
 import Spinner from "../components/Spinner";
 
+
+import { getHighRiskEquipment } 
+from '../services/predictiveService';
+
 const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] =
     useState("");
@@ -48,8 +52,9 @@ const Dashboard: React.FC = () => {
   const [isSearching, setIsSearching] =
     useState(false);
 
-  const [showDropdown, setShowDropdown] =
-    useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const [highRiskEquipment, setHighRiskEquipment] = useState([]);
 
   const searchRef =
     useRef<HTMLDivElement>(null);
@@ -208,6 +213,28 @@ const Dashboard: React.FC = () => {
         handleKeyDown
       );
   }, []);
+
+  useEffect(() => {
+
+  const fetchPredictiveData = async () => {
+
+    try {
+
+      const data = await getHighRiskEquipment();
+
+      setHighRiskEquipment(data.data);
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+    }
+  };
+
+  fetchPredictiveData();
+
+}, []);
 
   const statCards = [
     {
@@ -396,6 +423,74 @@ const Dashboard: React.FC = () => {
           )
         )}
       </div>
+
+      {/* High Risk Equipment */}
+
+<div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+
+  <div className="bg-gradient-to-r from-red-500 to-pink-600 px-6 py-4">
+
+    <h3 className="text-xl font-bold text-white">
+      High Risk Equipment
+    </h3>
+
+  </div>
+
+  <div className="p-6">
+
+    {
+      highRiskEquipment.length === 0 ? (
+
+        <p className="text-gray-500 dark:text-gray-400">
+          No high risk equipment found.
+        </p>
+
+      ) : (
+
+        <div className="space-y-4">
+
+          {highRiskEquipment.map((item: any) => (
+
+            <div
+              key={item.equipmentName}
+              className="border border-red-200 dark:border-red-800 rounded-xl p-4"
+            >
+
+              <div className="flex justify-between items-center">
+
+                <div>
+
+                  <h4 className="font-semibold text-gray-900 dark:text-white">
+                    {item.equipmentName}
+                  </h4>
+
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Health Score:
+                    {item.healthScore}
+                  </p>
+
+                </div>
+
+                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
+
+                  {item.riskLevel}
+
+                </span>
+
+              </div>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      )
+    }
+
+  </div>
+
+</div>
 
       {/* Activity + Requests */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

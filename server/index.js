@@ -19,6 +19,9 @@ const requestRoutes = require("./routes/requests");
 const notificationRoutes = require("./routes/notifications");
 const adminRoutes = require("./routes/admin");
 const analyticsRoutes = require("./routes/analytics");
+const predictiveRoutes = require('./routes/predictiveRoutes');
+const authRoutes = require('./routes/auth');
+const activitiesRoutes = require('./routes/activities');
 
 const app = express();
 const server = http.createServer(app);
@@ -61,6 +64,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/search", require("./routes/search"));
 app.use("/api/admin", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/predictive", predictiveRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
