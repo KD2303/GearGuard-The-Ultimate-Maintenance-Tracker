@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
-import { CreateEquipmentDto } from '../types';
+import { CreateEquipmentDto, MaintenanceTeam, TeamMember } from '../types';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { Car } from 'lucide-react';
@@ -32,6 +32,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
     fuelType: '',
   });
   
+  const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(false);
   const [teams, setTeams] = useState<any[]>([]);
   const [members, setMembers] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);

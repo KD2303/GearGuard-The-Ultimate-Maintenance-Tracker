@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useNotifications } from '../contexts/NotificationContext';
 import { formatDistanceToNow } from 'date-fns';
 import { clsx } from 'clsx';
+import { Notification } from '../types';
 
 const NotificationCenter: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,7 +29,7 @@ const NotificationCenter: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: Notification['type']) => {
     switch (type) {
       case 'request_created': return <Info className="h-4 w-4 text-blue-500" />;
       case 'request_completed': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
@@ -37,7 +38,7 @@ const NotificationCenter: React.FC = () => {
     }
   };
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
       markAsRead(notification._id);
     }

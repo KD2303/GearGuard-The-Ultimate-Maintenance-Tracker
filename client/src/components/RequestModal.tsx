@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
-import { CreateMaintenanceRequestDto } from '../types';
+import { CreateMaintenanceRequestDto, Equipment, MaintenanceTeam, TeamMember } from '../types';
 import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
@@ -75,9 +75,9 @@ const RequestModal: React.FC<RequestModalProps> = ({
     maintenanceTeamId: '',
   });
 
-  const [equipment, setEquipment] = useState<any[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Attachments state
@@ -260,6 +260,16 @@ await requestService.create({
     }
   };
 
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as CreateMaintenanceRequestDto['type'];
+    setFormData((prev) => ({ ...prev, type: value }));
+  };
+
+  const handlePriorityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as NonNullable<CreateMaintenanceRequestDto['priority']>;
+    setFormData((prev) => ({ ...prev, priority: value }));
+  };
+
   const handleClose = () => {
     setAttachments([]);
 
@@ -335,15 +345,8 @@ await requestService.create({
             <select
               required
               value={formData.type}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  type:
-                    e.target
-                      .value as any,
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              onChange={handleTypeChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="corrective">
                 Corrective
@@ -362,15 +365,8 @@ await requestService.create({
 
             <select
               value={formData.priority}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  priority:
-                    e.target
-                      .value as any,
-                })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              onChange={handlePriorityChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="low">
                 Low
@@ -406,19 +402,15 @@ await requestService.create({
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
           >
-            <option value="">
-              Select equipment...
-            </option>
-
-            {equipment.map((item) => (
-              <option
-                key={item._id}
-                value={item._id}
-              >
-                {item.name} -{' '}
-                {item.serialNumber}
-              </option>
-            ))}
+            <option value="">Select equipment...</option>
+            {equipment.map((item) => {
+              const equipmentId = item._id ?? item.id;
+              return (
+                <option key={equipmentId} value={equipmentId}>
+                  {item.name} - {item.serialNumber}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -472,18 +464,15 @@ await requestService.create({
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
           >
-            <option value="">
-              Select team...
-            </option>
-
-            {teams.map((team) => (
-              <option
-                key={team._id}
-                value={team._id}
-              >
-                {team.name}
-              </option>
-            ))}
+            <option value="">Select team...</option>
+            {teams.map((team) => {
+              const teamId = team._id ?? team.id;
+              return (
+                <option key={teamId} value={teamId}>
+                  {team.name}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -504,18 +493,15 @@ await requestService.create({
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
           >
-            <option value="">
-              Select technician...
-            </option>
-
-            {members.map((member) => (
-              <option
-                key={member._id}
-                value={member._id}
-              >
-                {member.name}
-              </option>
-            ))}
+            <option value="">Select technician...</option>
+            {members.map((member) => {
+              const memberId = member._id ?? member.id;
+              return (
+                <option key={memberId} value={String(memberId)}>
+                  {member.name} {member.role && `(${member.role})`}
+                </option>
+              );
+            })}
           </select>
         </div>
 

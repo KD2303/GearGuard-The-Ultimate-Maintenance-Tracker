@@ -1,3 +1,14 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { requestService } from '../services/requestService';
+import { equipmentService } from '../services/equipmentService';
+import { teamService } from '../services/teamService';
+import { Wrench, Box, Users, AlertCircle, Clock, Search } from 'lucide-react';
+import Badge from '../components/Badge';
+import { MaintenanceRequest } from '../types';
+import TeamActivity from '../components/TeamActivity';
+import QuickActionCards from '../components/QuickActionCards';
+import Spinner from '../components/Spinner';
 import React, {
   useState,
   useEffect,
@@ -62,6 +73,8 @@ const Dashboard: React.FC = () => {
     underMaintenance: 0,
     totalTeams: 0,
   });
+  const [recentRequests, setRecentRequests] = useState<MaintenanceRequest[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [recentRequests, setRecentRequests] =
     useState<any[]>([]);
