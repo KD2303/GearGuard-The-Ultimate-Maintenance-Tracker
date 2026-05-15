@@ -8,8 +8,10 @@
     "equipment": "Equipment",
     "vehicles": "Vehicles",
     "teams": "Teams",
-    "activity": "Activity"
+    "activity": "Activity",
+    "analytics": "Analytics" 
   },
+
   "layout": {
     "title": "GearGuard",
     "subtitle": "Maintenance Tracker",
