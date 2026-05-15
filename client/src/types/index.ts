@@ -28,6 +28,7 @@ export interface Equipment {
 }
 
 export interface MaintenanceTeam {
+  _id?: string;
   id: string;
   name: string;
   description?: string;
@@ -39,6 +40,7 @@ export interface MaintenanceTeam {
 }
 
 export interface TeamMember {
+  _id?: string;
   id: string;
   name: string;
   email: string;
@@ -53,6 +55,7 @@ export interface TeamMember {
 }
 
 export interface MaintenanceRequest {
+  _id?: string;
   id: string;
   requestNumber: string;
   subject: string;
@@ -107,6 +110,11 @@ export interface CreateMaintenanceRequestDto {
   teamId?: string;
   assignedToId?: string;
   createdById?: string;
+  attachments?: {
+  filename: string;
+  fileUrl: string;
+  fileType: string;
+}[];
 }
 
 export interface Notification {
@@ -141,5 +149,37 @@ export const defaultFilters: RequestFilters = {
   endDate: '',
   search: '',
 };
+
+export interface SearchEquipmentResult {
+  _id: string;
+  name: string;
+  serialNumber: string;
+  category: string;
+  location: string;
+  status: string;
+}
+
+export interface SearchRequestResult {
+  _id: string;
+  requestNumber: string;
+  subject: string;
+  stage: string;
+  priority: string;
+  type: string;
+  scheduledDate?: string;
+  equipmentId?: {
+    _id: string;
+    name: string;
+  };
+  assignedToId?: {
+    _id: string;
+    name: string;
+  };
+}
+
+export interface GlobalSearchResults {
+  equipment: SearchEquipmentResult[];
+  requests: SearchRequestResult[];
+}
 
 export * from './activity';

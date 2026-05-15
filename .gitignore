@@ -8,3 +8,6 @@ client/node_modules/
 *.log
 .vscode/
 coverage/
+mongodb_data/
+scratch/
+uploads/attachments/

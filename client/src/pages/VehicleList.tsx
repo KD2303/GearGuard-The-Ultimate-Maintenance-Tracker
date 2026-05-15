@@ -3,7 +3,7 @@ import { Equipment } from '../types';
 import { equipmentService } from '../services/equipmentService';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
-import { Plus, Wrench, MapPin, Calendar, Car, Gauge, Fuel } from 'lucide-react';
+import { Plus, Wrench, MapPin, Car, Gauge, Fuel } from 'lucide-react';
 import EquipmentModal from '../components/EquipmentModal';
 import EquipmentDetailModal from '../components/EquipmentDetailModal';
 import Spinner from '../components/Spinner';
@@ -46,8 +46,8 @@ const VehicleList: React.FC = () => {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Vehicle Fleet Management</h2>
-          <p className="text-gray-600 mt-1">Track and maintain company vehicles and transport assets</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Vehicle Fleet Management</h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Track and maintain company vehicles and transport assets</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -59,11 +59,11 @@ const VehicleList: React.FC = () => {
         {vehicles.map((item) => (
           <div
             key={item.id}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 p-6 cursor-pointer transform hover:-translate-y-1"
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-300 p-6 cursor-pointer transform hover:-translate-y-1"
             onClick={() => setSelectedVehicle(item)}
           >
             <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-orange-100 rounded-lg">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
                 <Car className="h-6 w-6 text-orange-600" />
               </div>
               <Badge variant={statusColors[item.status]}>
@@ -71,38 +71,38 @@ const VehicleList: React.FC = () => {
               </Badge>
             </div>
 
-            <h3 className="font-bold text-xl text-gray-900 mb-2">{item.name}</h3>
+            <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-2">{item.name}</h3>
             
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-50 p-3 rounded-xl">
-                <p className="text-xs text-gray-500 mb-1">License Plate</p>
-                <p className="text-sm font-bold text-gray-900">{item.licensePlate || 'N/A'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">License Plate</p>
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{item.licensePlate || 'N/A'}</p>
               </div>
-              <div className="bg-gray-50 p-3 rounded-xl">
-                <p className="text-xs text-gray-500 mb-1">Mileage</p>
+              <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-xl">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Mileage</p>
                 <div className="flex items-center">
-                  <Gauge className="h-3 w-3 mr-1 text-gray-400" />
-                  <p className="text-sm font-bold text-gray-900">{item.currentMileage?.toLocaleString() || 0} km</p>
+                  <Gauge className="h-3 w-3 mr-1 text-gray-400 dark:text-gray-500" />
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{item.currentMileage?.toLocaleString() || 0} km</p>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-3 text-sm text-gray-600 border-t pt-4">
+            <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400 border-t pt-4">
               <div className="flex items-center">
-                <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                <MapPin className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
                 {item.location}
               </div>
 
               {item.fuelType && (
                 <div className="flex items-center">
-                  <Fuel className="h-4 w-4 mr-2 text-gray-400" />
+                  <Fuel className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
                   <span className="font-medium mr-1">Fuel:</span> {item.fuelType}
                 </div>
               )}
 
               {item.maintenanceTeam && (
                 <div className="flex items-center">
-                  <Wrench className="h-4 w-4 mr-2 text-gray-400" />
+                  <Wrench className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
                   <span className="font-medium mr-1">Team:</span> {item.maintenanceTeam.name}
                 </div>
               )}
@@ -110,7 +110,7 @@ const VehicleList: React.FC = () => {
 
             {/* Smart Button */}
             <div className="mt-6">
-              <button className="flex items-center justify-center w-full py-2.5 rounded-xl bg-orange-50 text-orange-600 hover:bg-orange-100 transition-colors text-sm font-bold">
+              <button className="flex items-center justify-center w-full py-2.5 rounded-xl bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-800/40 transition-colors text-sm font-bold">
                 <Wrench className="h-4 w-4 mr-2" />
                 Maintenance History
                 {item.openRequestsCount !== undefined && item.openRequestsCount > 0 && (
@@ -125,10 +125,10 @@ const VehicleList: React.FC = () => {
       </div>
 
       {vehicles.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-dashed border-gray-200">
-          <Car className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-gray-900">No vehicles tracked</h3>
-          <p className="text-gray-500 mt-1">Start by adding your first company vehicle.</p>
+        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl shadow-sm dark:shadow-none border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+          <Car className="h-12 w-12 text-gray-300 dark:text-gray-500 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">No vehicles tracked</h3>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Start by adding your first company vehicle.</p>
           <Button onClick={() => setIsModalOpen(true)} className="mt-6" variant="secondary">
             Add New Vehicle
           </Button>

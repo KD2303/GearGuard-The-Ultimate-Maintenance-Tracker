@@ -74,9 +74,28 @@ exports.getEquipmentById = async (req, res) => {
 // Create equipment
 exports.createEquipment = async (req, res) => {
   try {
+    const { name, serialNumber, category, location } = req.body;
+
+    // Validate required fields explicitly
+    if (!name || !serialNumber || !category || !location) {
+      return res.status(400).json({
+        error: 'Name, serial number, category and location are required fields.',
+      });
+    }
+
     const payload = sanitizeBody(req.body);
+    
+    if (payload.name) payload.name = payload.name.trim();
+    if (payload.serialNumber) payload.serialNumber = payload.serialNumber.trim();
+    if (payload.location) payload.location = payload.location.trim();
+    if (payload.department) payload.department = payload.department.trim();
+    if (payload.notes) payload.notes = payload.notes.trim();
+
     const equipment = await Equipment.create(payload);
+    
     const equipmentWithRelations = await Equipment.findById(equipment._id)
+      .populate('maintenanceTeamId', 'name specialization')
+      .populate('defaultTechnicianId', 'name email role')
       .populate('maintenanceTeam')
       .populate('defaultTechnician');
 
@@ -93,7 +112,29 @@ exports.createEquipment = async (req, res) => {
 
     res.status(201).json(equipmentWithRelations);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    // Handle Mongoose validation errors with descriptive messages
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(400).json({ error: messages.join('. ') });
+    }
+
+    // Handle duplicate key errors (e.g. duplicate serialNumber)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({
+        error: `An equipment with this ${field} already exists.`,
+      });
+    }
+
+    // Handle invalid ObjectId cast errors
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        error: `Invalid value for field: ${error.path}`,
+      });
+    }
+
+    console.error('createEquipment error:', error);
+    res.status(500).json({ error: 'Server error. Please try again.' });
   }
 };
 

@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+
+
 import Dashboard from './pages/Dashboard';
 import KanbanBoard from './pages/KanbanBoard';
 import CalendarView from './pages/CalendarView';
@@ -10,6 +12,8 @@ import ActivityPage from './pages/ActivityPage';
 import VehicleList from './pages/VehicleList';
 import SettingsPage from './pages/SettingsPage';
 import AdminDashboard from './pages/AdminDashboard';
+import AnalyticsPage from './pages/AnalyticsPage';
+
 import { NotificationProvider } from './contexts/NotificationContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -28,11 +32,22 @@ function App() {
             <Route path="/equipment" element={<EquipmentList />} />
             <Route path="/vehicles" element={<VehicleList />} />
             <Route path="/teams" element={<TeamsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </Layout>
       </Router>
-      <Toaster />
+
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            fontSize: "14px",
+          },
+        }}
+      />
     </NotificationProvider>
   );
 }

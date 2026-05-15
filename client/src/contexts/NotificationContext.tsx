@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
+import { Socket } from "socket.io-client";
 import toast from 'react-hot-toast';
 import { Notification } from '../types';
 import axios from 'axios';
@@ -16,11 +17,11 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 // In a real app, this URL would come from an environment variable
-const SOCKET_URL = 'http://localhost:5005';
+const SOCKET_URL = 'http://localhost:5000';
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [, setSocket] = useState<Socket | null>(null);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -39,7 +40,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // Initialize Socket.IO connection
     const newSocket = io(SOCKET_URL);
-    setSocket(newSocket);
 
     // Listen for new notifications
     newSocket.on('notification:new', (notification: Notification) => {
