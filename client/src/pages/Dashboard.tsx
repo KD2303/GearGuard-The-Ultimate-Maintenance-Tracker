@@ -11,8 +11,10 @@ import Badge from '../components/Badge';
 import TeamActivity from '../components/TeamActivity';
 import QuickActionCards from '../components/QuickActionCards';
 import Spinner from '../components/Spinner';
+import { useTranslation } from 'react-i18next';
 
 const Dashboard: React.FC = () => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GlobalSearchResults>({
     equipment: [],
@@ -108,7 +110,7 @@ const Dashboard: React.FC = () => {
 
   const statCards = [
     {
-      title: 'Total Requests',
+      title: t('dashboard.totalRequests'),
       value: stats.totalRequests,
       icon: Wrench,
       gradient: 'from-blue-500 to-cyan-600',
@@ -116,7 +118,7 @@ const Dashboard: React.FC = () => {
       trend: '+12%',
     },
     {
-      title: 'New Requests',
+      title: t('dashboard.newRequests'),
       value: stats.newRequests,
       icon: AlertCircle,
       gradient: 'from-yellow-500 to-orange-600',
@@ -124,7 +126,7 @@ const Dashboard: React.FC = () => {
       trend: '+5%',
     },
     {
-      title: 'In Progress',
+      title: t('dashboard.inProgress'),
       value: stats.inProgressRequests,
       icon: Clock,
       gradient: 'from-purple-500 to-pink-600',
@@ -132,7 +134,7 @@ const Dashboard: React.FC = () => {
       trend: '+8%',
     },
     {
-      title: 'Total Equipment',
+      title: t('dashboard.totalEquipment'),
       value: stats.totalEquipment,
       icon: Box,
       gradient: 'from-green-500 to-teal-600',
@@ -140,7 +142,7 @@ const Dashboard: React.FC = () => {
       trend: '+3%',
     },
     {
-      title: 'Under Maintenance',
+      title: t('dashboard.underMaintenance'),
       value: stats.underMaintenance,
       icon: Wrench,
       gradient: 'from-red-500 to-pink-600',
@@ -148,7 +150,7 @@ const Dashboard: React.FC = () => {
       trend: '-2%',
     },
     {
-      title: 'Maintenance Teams',
+      title: t('dashboard.maintenanceTeams'),
       value: stats.totalTeams,
       icon: Users,
       gradient: 'from-indigo-500 to-purple-600',
@@ -168,14 +170,14 @@ const Dashboard: React.FC = () => {
 
           <div ref={searchRef} className="relative w-full">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
-          <input
+            <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => {
               if (searchQuery.trim() !== '') setShowDropdown(true);
             }}
-            placeholder="Search equipment, requests..."
+            placeholder={t('dashboard.searchPlaceholder')}
             className="w-full rounded-2xl border border-gray-200/70 dark:border-gray-700 
             bg-white dark:bg-gray-800 transition-colors
             px-10 py-3 text-sm 
@@ -216,10 +218,10 @@ const Dashboard: React.FC = () => {
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Welcome Back! 👋
+            {t('dashboard.welcomeTitle')}
           </h2>
           <p className="text-blue-100 text-lg max-w-2xl">
-            GearGuard: The Ultimate Maintenance Tracker - Monitor, manage, and maintain your equipment with ease
+            {t('dashboard.welcomeSubtitle')}
           </p>
         </div>
         <div className="absolute top-0 right-0 -mt-12 -mr-12 h-64 w-64 rounded-full bg-white/10 backdrop-blur-3xl"></div>
@@ -266,7 +268,7 @@ const Dashboard: React.FC = () => {
               
               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                  View Details →
+                  {t('dashboard.viewDetails')}
                 </span>
               </div>
             </div>
@@ -279,9 +281,9 @@ const Dashboard: React.FC = () => {
         {/* Team Activity Summary */}
         <div className="bg-white dark:bg-gray-800 transition-colors backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">Recent Activity</h3>
+            <h3 className="text-xl font-bold text-white">{t('dashboard.recentActivity')}</h3>
             <Link to="/activity" className="text-sm text-white/90 hover:text-white font-semibold transition-colors">
-              View All →
+              {t('dashboard.viewAll')}
             </Link>
           </div>
           <TeamActivity />
@@ -290,9 +292,9 @@ const Dashboard: React.FC = () => {
         {/* Recent Requests Summary */}
         <div className="bg-white dark:bg-gray-800 transition-colors backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-4 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">Recent Requests</h3>
+            <h3 className="text-xl font-bold text-white">{t('dashboard.recentRequests')}</h3>
             <Link to="/requests-all" className="text-sm text-white/90 hover:text-white font-semibold transition-colors">
-              View All →
+              {t('dashboard.viewAll')}
             </Link>
           </div>
           <div className="p-6">
@@ -334,7 +336,7 @@ const Dashboard: React.FC = () => {
                         <p className="text-sm text-gray-600 dark:text-gray-400">{request.requestNumber}</p>
                         {request.equipment && (
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Equipment: {request.equipment.name}
+                            {t('dashboard.equipmentLabel')} {request.equipment.name}
                           </p>
                         )}
                       </div>
@@ -353,9 +355,9 @@ const Dashboard: React.FC = () => {
             ) : (
               <div className="text-center py-12">
                 <Wrench className="mx-auto h-12 w-12 line-through text-gray-500 dark:text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No recent requests</h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">{t('dashboard.noRecentRequests')}</h3>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400">
-                  Get started by creating a new maintenance request.
+                  {t('dashboard.getStarted')}
                 </p>
               </div>
             )}

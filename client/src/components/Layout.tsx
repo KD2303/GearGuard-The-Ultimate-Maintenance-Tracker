@@ -17,6 +17,8 @@ import {
   Shield 
 } from "lucide-react";
 import NotificationCenter from './NotificationCenter';
+import LanguageSelector from './LanguageSelector';
+import { useTranslation } from 'react-i18next';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -31,6 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
 
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
     
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -42,15 +45,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   const navItems = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard', gradient: 'from-blue-500 to-purple-600' },
-    { to: '/admin', icon: Shield, label: 'Admin', gradient: 'from-rose-500 to-red-600' },
-    { to: '/requests', icon: Wrench, label: 'Kanban', gradient: 'from-purple-500 to-pink-600' },
-    { to: '/requests-all', icon: List, label: 'All Requests', gradient: 'from-pink-500 to-red-600' },
-    { to: '/calendar', icon: Calendar, label: 'Calendar', gradient: 'from-cyan-500 to-blue-600' },
-    { to: '/equipment', icon: Box, label: 'Equipment', gradient: 'from-green-500 to-teal-600' },
-    { to: '/vehicles', icon: Car, label: 'Vehicles', gradient: 'from-orange-500 to-red-600' },
-    { to: '/teams', icon: Users, label: 'Teams', gradient: 'from-yellow-500 to-orange-600' },
-    { to: '/activity', icon: Activity, label: 'Activity', gradient: 'from-indigo-500 to-purple-600' },
+    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard'), gradient: 'from-blue-500 to-purple-600' },
+    { to: '/admin', icon: Shield, label: t('nav.admin'), gradient: 'from-rose-500 to-red-600' },
+    { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600' },
+    { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-red-600' },
+    { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600' },
+    { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-teal-600' },
+    { to: '/vehicles', icon: Car, label: t('nav.vehicles'), gradient: 'from-orange-500 to-red-600' },
+    { to: '/teams', icon: Users, label: t('nav.teams'), gradient: 'from-yellow-500 to-orange-600' },
+    { to: '/activity', icon: Activity, label: t('nav.activity'), gradient: 'from-indigo-500 to-purple-600' },
   ];
 
   return (
@@ -69,9 +72,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
               <div>
                 <h1 className="text-lg lg:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-tight">
-                  GearGuard
+                  {t('layout.title')}
                 </h1>
-                <p className="hidden lg:block text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium">Maintenance Tracker</p>
+                <p className="hidden lg:block text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium">{t('layout.subtitle')}</p>
               </div>
             </div>
 
@@ -110,6 +113,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Notifications */}
             <NotificationCenter />
 
+            {/* 🌍 Language Selector */}
+            <LanguageSelector />
+
             {/* 🌙 Theme Toggle */}
             <button
               onClick={toggleTheme}
@@ -137,13 +143,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     onClick={() => { navigate('/settings'); setSettingsOpen(false); }}
                     className="block w-full px-4 py-2 text-left hover:bg-purple-50"
                   >
-                    Settings
+                    {t('layout.settings')}
                   </button>
                   <button
                     onClick={() => { navigate('/profile'); setSettingsOpen(false); }}
                     className="block w-full px-4 py-2 text-left hover:bg-purple-50"
                   >
-                    Profile
+                    {t('layout.profile')}
                   </button>
                 </div>
               )}
@@ -206,13 +212,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
               <Wrench className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               <span className="text-sm font-medium text-gray-800 dark:text-gray-300">
-                © 2025 GearGuard. All rights reserved.
+                {t('layout.rights')}
               </span>
             </div>
             <div className="flex space-x-6 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-              <a href="#" className="hover:text-purple-600 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-purple-600 transition-colors">Terms</a>
-              <a href="#" className="hover:text-purple-600 transition-colors">Support</a>
+              <a href="#" className="hover:text-purple-600 transition-colors">{t('layout.privacy')}</a>
+              <a href="#" className="hover:text-purple-600 transition-colors">{t('layout.terms')}</a>
+              <a href="#" className="hover:text-purple-600 transition-colors">{t('layout.support')}</a>
             </div>
           </div>
         </div>
