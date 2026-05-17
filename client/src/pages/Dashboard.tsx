@@ -13,22 +13,9 @@ import { useTranslation } from 'react-i18next';
 import { globalSearch } from '../services/searchService';
 import SearchDropdown from '../components/SearchDropdown';
 import { getHighRiskEquipment } from '../services/predictiveService';
-import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import { requestService } from "../services/requestService";
-import { equipmentService } from "../services/equipmentService";
-import { teamService } from "../services/teamService";
-import { Wrench, Box, Users, AlertCircle, Clock, Search } from "lucide-react";
-import Badge from "../components/Badge";
-import { MaintenanceRequest, GlobalSearchResults } from "../types";
-import TeamActivity from "../components/TeamActivity";
-import QuickActionCards from "../components/QuickActionCards";
-import Spinner from "../components/Spinner";
-import { globalSearch } from "../services/searchService";
-import SearchDropdown from "../components/SearchDropdown";
-import { getHighRiskEquipment } from "../services/predictiveService";
 
 const Dashboard: React.FC = () => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GlobalSearchResults>({
     equipment: [],
@@ -393,48 +380,6 @@ const Dashboard: React.FC = () => {
           <div className="p-6">
             {recentRequests.length > 0 ? (
               <div className="space-y-3">
-                {recentRequests.map(
-                  (
-                    request,
-                    idx
-                  ) => (
-                    <div
-                      key={request.id}
-                      className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4 border border-gray-200 dark:border-gray-700"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold text-gray-900 dark:text-white">
-                              {
-                                request.subject
-                              }
-                            </h4>
-
-                            <Badge
-                              variant="info"
-                              size="sm"
-                            >
-                              {
-                                request.stage
-                              }
-                            </Badge>
-                          </div>
-
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                            {request.requestNumber}
-                          </p>
-                          <Badge
-                            variant="default"
-                            size="sm"
-                          >
-                            {request.type}
-                          </Badge>
-                          {request.equipment && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                              {t('dashboard.equipmentLabel')} {request.equipment.name}
-                            </p>
-                          )}
                 {recentRequests.map((request, idx) => (
                   <div
                     key={request.id}
@@ -452,9 +397,20 @@ const Dashboard: React.FC = () => {
                           </Badge>
                         </div>
 
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
                           {request.requestNumber}
                         </p>
+
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <Badge variant="default" size="sm">
+                            {request.type}
+                          </Badge>
+                          {request.equipment && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {t('dashboard.equipmentLabel') || 'Equipment:'} {request.equipment.name}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
                       {request.assignedTo && (
