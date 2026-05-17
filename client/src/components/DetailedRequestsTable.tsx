@@ -22,15 +22,13 @@ import {
 } from "lucide-react";
 
 const DetailedRequestsTable = () => {
-  const [requests, setRequests] = useState<
-    MaintenanceRequest[]
-  >([]);
+  const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
 
   const [loading, setLoading] = useState(true);
-  type SortField = 'createdAt' | 'priority' | 'stage';
+  type SortField = "createdAt" | "priority" | "stage";
 
-  const [sortField, setSortField] = useState<SortField>('createdAt');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,15 +37,11 @@ const DetailedRequestsTable = () => {
 
   const loadRequests = async () => {
     try {
-      const data =
-        await requestService.getAll();
+      const data = await requestService.getAll();
 
       setRequests(data);
     } catch (error) {
-      console.error(
-        "Failed to load requests:",
-        error
-      );
+      console.error("Failed to load requests:", error);
     } finally {
       setLoading(false);
     }
@@ -55,11 +49,7 @@ const DetailedRequestsTable = () => {
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(
-        sortDirection === "asc"
-          ? "desc"
-          : "asc"
-      );
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
       setSortDirection("asc");
@@ -67,8 +57,10 @@ const DetailedRequestsTable = () => {
   };
 
   const getSortValue = (request: MaintenanceRequest, field: SortField) => {
-    if (field === 'createdAt') {
-      return request.createdAt ? new Date(request.createdAt).getTime() : undefined;
+    if (field === "createdAt") {
+      return request.createdAt
+        ? new Date(request.createdAt).getTime()
+        : undefined;
     }
     return request[field];
   };
@@ -84,6 +76,10 @@ const DetailedRequestsTable = () => {
       typeof aValue === "string" &&
       typeof bValue === "string"
     ) {
+
+    if (bValue === undefined) return -1;
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
       return sortDirection === "asc"
         ? aValue.localeCompare(bValue)
         : bValue.localeCompare(aValue);
@@ -95,76 +91,51 @@ const DetailedRequestsTable = () => {
     return sortDirection === "asc"
       ? aNum - bNum
       : bNum - aNum;
+    return sortDirection === "asc"
+      ? (aValue ?? 0) - (bValue ?? 0)
+      : (bValue ?? 0) - (aValue ?? 0);
   });
 
   const handleExport = () => {
-    if (
-      !sortedRequests ||
-      sortedRequests.length === 0
-    )
-      return;
+    if (!sortedRequests || sortedRequests.length === 0) return;
 
-    const exportData = sortedRequests.map(
-      (request) => ({
-        "Request Date": request.createdAt
-          ? new Date(
-              request.createdAt
-            ).toLocaleDateString("en-GB")
-          : "",
+    const exportData = sortedRequests.map((request) => ({
+      "Request Date": request.createdAt
+        ? new Date(request.createdAt).toLocaleDateString("en-GB")
+        : "",
 
-        "Request ID":
-          request.requestNumber || "",
+      "Request ID": request.requestNumber || "",
 
-        Subject: request.subject || "",
+      Subject: request.subject || "",
 
-        Priority: request.priority || "",
+      Priority: request.priority || "",
 
-        Stage: request.stage || "",
+      Stage: request.stage || "",
 
-        Equipment:
-          request.equipment?.name ||
-          "Unassigned",
+      Equipment: request.equipment?.name || "Unassigned",
 
-        "Assigned To":
-          request.assignedTo?.name ||
-          "Unassigned",
+      "Assigned To": request.assignedTo?.name || "Unassigned",
 
-        Type: request.type || "",
+      Type: request.type || "",
 
-        Description:
-          request.description || "",
+      Description: request.description || "",
 
-        "Scheduled Date":
-          request.scheduledDate
-            ? new Date(
-                request.scheduledDate
-              ).toLocaleDateString(
-                "en-GB"
-              )
-            : "",
+      "Scheduled Date": request.scheduledDate
+        ? new Date(request.scheduledDate).toLocaleDateString("en-GB")
+        : "",
 
-        Team:
-          request.team?.name ||
-          "Unassigned",
+      Team: request.team?.name || "Unassigned",
 
-        Duration: request.duration
-          ? `${request.duration} hrs`
-          : "",
+      Duration: request.duration ? `${request.duration} hrs` : "",
 
-        Cost: request.cost ?? "",
+      Cost: request.cost ?? "",
 
-        "Completed Date":
-          request.completedDate
-            ? new Date(
-                request.completedDate
-              ).toLocaleDateString(
-                "en-GB"
-              )
-            : "",
+      "Completed Date": request.completedDate
+        ? new Date(request.completedDate).toLocaleDateString("en-GB")
+        : "",
 
-        Notes: request.notes || "",
-      })
-    );
+      Notes: request.notes || "",
+    }));
 
     const csv = Papa.unparse(exportData);
 
@@ -172,18 +143,13 @@ const DetailedRequestsTable = () => {
       type: "text/csv;charset=utf-8;",
     });
 
-    const url =
-      URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
 
-    const link =
-      document.createElement("a");
+    const link = document.createElement("a");
 
     link.href = url;
 
-    link.setAttribute(
-      "download",
-      "maintenance-requests.csv"
-    );
+    link.setAttribute("download", "maintenance-requests.csv");
 
     document.body.appendChild(link);
 
@@ -194,9 +160,7 @@ const DetailedRequestsTable = () => {
     URL.revokeObjectURL(url);
   };
 
-  const getPriorityColor = (
-    priority: string
-  ) => {
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
         return "bg-red-100 text-red-700";
@@ -215,9 +179,7 @@ const DetailedRequestsTable = () => {
     }
   };
 
-  const getStageColor = (
-    stage: string
-  ) => {
+  const getStageColor = (stage: string) => {
     switch (stage) {
       case "new":
         return "bg-blue-100 dark:bg-blue-900/30 text-blue-700";
@@ -238,18 +200,17 @@ const DetailedRequestsTable = () => {
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <Clock className="w-4 h-4 text-gray-400" />;
-    return sortDirection === 'asc'
-      ? <ChevronUp className="w-4 h-4 text-blue-600" />
-      : <ChevronDown className="w-4 h-4 text-blue-600" />;
+    return sortDirection === "asc" ? (
+      <ChevronUp className="w-4 h-4 text-blue-600" />
+    ) : (
+      <ChevronDown className="w-4 h-4 text-blue-600" />
+    );
   };
 
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
-        <Spinner
-          size="md"
-          label="Loading requests..."
-        />
+        <Spinner size="md" label="Loading requests..." />
       </div>
     );
   }
@@ -263,14 +224,11 @@ const DetailedRequestsTable = () => {
           </h2>
 
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Detailed view of all requests
-            with full information
+            Detailed view of all requests with full information
           </p>
         </div>
 
-        <Button onClick={handleExport}>
-          Export CSV
-        </Button>
+        <Button onClick={handleExport}>Export CSV</Button>
       </div>
 
       <div className="overflow-x-auto">
@@ -279,9 +237,7 @@ const DetailedRequestsTable = () => {
             <tr>
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() =>
-                  handleSort("createdAt")
-                }
+                onClick={() => handleSort("createdAt")}
               >
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-4 h-4" />
@@ -302,9 +258,7 @@ const DetailedRequestsTable = () => {
 
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() =>
-                  handleSort("priority")
-                }
+                onClick={() => handleSort("priority")}
               >
                 <div className="flex items-center space-x-1">
                   <AlertCircle className="w-4 h-4" />
@@ -317,9 +271,7 @@ const DetailedRequestsTable = () => {
 
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                onClick={() =>
-                  handleSort("stage")
-                }
+                onClick={() => handleSort("stage")}
               >
                 <div className="flex items-center space-x-1">
                   <Settings className="w-4 h-4" />
@@ -355,17 +307,13 @@ const DetailedRequestsTable = () => {
                   className="hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors duration-200 cursor-pointer"
                   onClick={() =>
                     setExpandedRow(
-                      expandedRow === request.id
-                        ? null
-                        : request.id
+                      expandedRow === request.id ? null : request.id,
                     )
                   }
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {request.createdAt
-                      ? new Date(
-                          request.createdAt
-                        ).toLocaleDateString()
+                      ? new Date(request.createdAt).toLocaleDateString()
                       : "N/A"}
                   </td>
 
@@ -382,7 +330,7 @@ const DetailedRequestsTable = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(
-                        request.priority
+                        request.priority,
                       )}`}
                     >
                       {request.priority}
@@ -392,7 +340,7 @@ const DetailedRequestsTable = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${getStageColor(
-                        request.stage
+                        request.stage,
                       )}`}
                     >
                       {request.stage}
@@ -400,22 +348,17 @@ const DetailedRequestsTable = () => {
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {request.equipment?.name ||
-                      "Unassigned"}
+                    {request.equipment?.name || "Unassigned"}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {request.assignedTo?.name ||
-                      "Unassigned"}
+                    {request.assignedTo?.name || "Unassigned"}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Badge
                       variant={
-                        request.type ===
-                        "corrective"
-                          ? "warning"
-                          : "info"
+                        request.type === "corrective" ? "warning" : "info"
                       }
                       size="sm"
                     >
@@ -425,19 +368,14 @@ const DetailedRequestsTable = () => {
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button className="text-blue-600 hover:text-blue-900">
-                      {expandedRow === request.id
-                        ? "Collapse"
-                        : "Expand"}
+                      {expandedRow === request.id ? "Collapse" : "Expand"}
                     </button>
                   </td>
                 </tr>
 
                 {expandedRow === request.id && (
                   <tr className="bg-gray-50">
-                    <td
-                      colSpan={8}
-                      className="px-6 py-4"
-                    >
+                    <td colSpan={8} className="px-6 py-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                           <div className="text-xs font-medium text-gray-500">
@@ -445,8 +383,7 @@ const DetailedRequestsTable = () => {
                           </div>
 
                           <div className="text-sm text-gray-900 mt-1">
-                            {request.description ||
-                              "No description"}
+                            {request.description || "No description"}
                           </div>
                         </div>
 
@@ -458,7 +395,7 @@ const DetailedRequestsTable = () => {
                           <div className="text-sm text-gray-900 mt-1">
                             {request.scheduledDate
                               ? new Date(
-                                  request.scheduledDate
+                                  request.scheduledDate,
                                 ).toLocaleDateString()
                               : "Not scheduled"}
                           </div>
@@ -470,8 +407,7 @@ const DetailedRequestsTable = () => {
                           </div>
 
                           <div className="text-sm text-gray-900 mt-1">
-                            {request.team?.name ||
-                              "Unassigned"}
+                            {request.team?.name || "Unassigned"}
                           </div>
                         </div>
 
@@ -504,8 +440,7 @@ const DetailedRequestsTable = () => {
             </h3>
 
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Get started by creating a new
-              maintenance request.
+              Get started by creating a new maintenance request.
             </p>
           </div>
         )}

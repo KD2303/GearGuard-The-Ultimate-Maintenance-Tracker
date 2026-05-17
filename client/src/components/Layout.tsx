@@ -1,26 +1,25 @@
 import React, { useState, useRef, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
-import { 
-  Wrench, 
-  Box, 
-  Users, 
-  Calendar, 
-  LayoutDashboard, 
-  List, 
-  Activity, 
-  Bell, 
-  Menu, 
-  X, 
-  Car, 
-  Settings, 
+import {
+  Wrench,
+  Box,
+  Users,
+  Calendar,
+  LayoutDashboard,
+  List,
+  Activity,
+  Bell,
+  Menu,
+  X,
+  Car,
+  Settings,
   Shield,
   BarChart3,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
-import LanguageSelector from './LanguageSelector';
-import { useTranslation } from 'react-i18next';
-
+import LanguageSelector from "./LanguageSelector";
+import { useTranslation } from "react-i18next";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -37,7 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
-    
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -51,25 +50,71 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
   const navItems = [
-    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard'), gradient: 'from-blue-500 to-purple-600' },
-    { to: '/admin', icon: Shield, label: t('nav.admin'), gradient: 'from-rose-500 to-red-600' },
-    { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600' },
-    { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-red-600' },
-    { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600' },
-    { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-teal-600' },
-    { to: '/vehicles', icon: Car, label: t('nav.vehicles'), gradient: 'from-orange-500 to-red-600' },
-    { to: '/teams', icon: Users, label: t('nav.teams'), gradient: 'from-yellow-500 to-orange-600' },
-    { to: '/activity', icon: Activity, label: t('nav.activity'), gradient: 'from-indigo-500 to-purple-600' },
-    { to: '/analytics', icon: BarChart3, label: t('nav.analytics'), gradient: 'from-emerald-500 to-cyan-600' },
-
+    {
+      to: "/",
+      icon: LayoutDashboard,
+      label: t("nav.dashboard"),
+      gradient: "from-blue-500 to-purple-600",
+    },
+    {
+      to: "/admin",
+      icon: Shield,
+      label: t("nav.admin"),
+      gradient: "from-rose-500 to-red-600",
+    },
+    {
+      to: "/requests",
+      icon: Wrench,
+      label: t("nav.kanban"),
+      gradient: "from-purple-500 to-pink-600",
+    },
+    {
+      to: "/requests-all",
+      icon: List,
+      label: t("nav.allRequests"),
+      gradient: "from-pink-500 to-red-600",
+    },
+    {
+      to: "/calendar",
+      icon: Calendar,
+      label: t("nav.calendar"),
+      gradient: "from-cyan-500 to-blue-600",
+    },
+    {
+      to: "/equipment",
+      icon: Box,
+      label: t("nav.equipment"),
+      gradient: "from-green-500 to-teal-600",
+    },
+    {
+      to: "/vehicles",
+      icon: Car,
+      label: t("nav.vehicles"),
+      gradient: "from-orange-500 to-red-600",
+    },
+    {
+      to: "/teams",
+      icon: Users,
+      label: t("nav.teams"),
+      gradient: "from-yellow-500 to-orange-600",
+    },
+    {
+      to: "/activity",
+      icon: Activity,
+      label: t("nav.activity"),
+      gradient: "from-indigo-500 to-purple-600",
+    },
+    {
+      to: "/analytics",
+      icon: BarChart3,
+      label: t("nav.analytics"),
+      gradient: "from-emerald-500 to-cyan-600",
+    },
   ];
 
   return (
@@ -90,9 +135,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
               <div>
                 <h1 className="text-lg lg:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent leading-tight">
-                  {t('layout.title')}
+                  {t("layout.title")}
                 </h1>
-                <p className="hidden lg:block text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium">{t('layout.subtitle')}</p>
+                <p className="hidden lg:block text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium">
+                  {t("layout.subtitle")}
+                </p>
               </div>
             </div>
 
@@ -121,15 +168,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                         <item.icon
                           className={`relative h-4 w-4 lg:h-5 lg:w-5 mr-1.5 lg:mr-2 transition-transform duration-300 ${
-                            isActive
-                              ? ""
-                              : "group-hover:scale-110"
+                            isActive ? "" : "group-hover:scale-110"
                           }`}
                         />
 
-                        <span className="relative">
-                          {item.label}
-                        </span>
+                        <span className="relative">{item.label}</span>
                       </>
                     )}
                   </NavLink>
@@ -139,23 +182,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Right Actions */}
             <div className="flex items-center space-x-2 lg:space-x-3">
-             <div className="flex items-center space-x-2 lg:space-x-3">
-            {/* Notifications */}
-            <NotificationCenter />
+              {/* Notifications */}
+              <NotificationCenter />
 
-            {/* 🌍 Language Selector */}
-            <LanguageSelector />
+              {/* 🌍 Language Selector */}
+              <LanguageSelector />
 
-            {/* 🌙 Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="rounded-xl border border-white/50 bg-white dark:bg-gray-800 px-3 py-2 text-sm shadow backdrop-blur-xl hover:bg-white/50 transition"
-            >
-              {theme === "light" ? "🌙" : "☀️"}
-            </button>
-
-            {/* Settings Dropdown */}
-            <div className="relative" ref={settingsRef}>
+              {/* 🌙 Theme Toggle */}
               <button
                 onClick={toggleTheme}
                 className="rounded-xl border border-white/50 bg-white dark:bg-gray-800 px-3 py-2 text-sm shadow backdrop-blur-xl hover:bg-white/50 transition"
@@ -187,7 +220,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       }}
                       className="block w-full px-4 py-2 text-left hover:bg-purple-50"
                     >
-                      {t('layout.settings')}
+                      {t("layout.settings")}
                     </button>
 
                     <button
@@ -197,16 +230,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       }}
                       className="block w-full px-4 py-2 text-left hover:bg-purple-50"
                     >
-                      {t('layout.profile')}
+                      {t("layout.profile")}
                     </button>
                   </div>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* User Avatar */}
-
+              {/* User Avatar */}
               <div className="hidden lg:flex items-center space-x-3">
                 <div className="w-9 h-9 rounded-xl border border-white/50 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg ring-1 ring-white/40">
                   JD
@@ -215,9 +245,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
               {/* Mobile Menu Button */}
               <button
-                onClick={() =>
-                  setMobileMenuOpen(!mobileMenuOpen)
-                }
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="lg:hidden rounded-xl border border-white/50 bg-white dark:bg-gray-800 p-2 text-gray-800 dark:text-gray-300 shadow-sm backdrop-blur-xl hover:border-white/70 hover:text-purple-600"
               >
                 {mobileMenuOpen ? (
@@ -236,9 +264,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  onClick={() =>
-                    setMobileMenuOpen(false)
-                  }
+                  onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center rounded-xl border px-4 py-3 text-sm font-medium transition-all ${
                       isActive
@@ -271,13 +297,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Wrench className="h-5 w-5 text-purple-600 dark:text-purple-400" />
 
               <span className="text-sm font-medium text-gray-800 dark:text-gray-300">
-                {t('layout.rights')}
+                {t("layout.rights")}
               </span>
             </div>
             <div className="flex space-x-6 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-              <a href="#" className="hover:text-purple-600 transition-colors">{t('layout.privacy')}</a>
-              <a href="#" className="hover:text-purple-600 transition-colors">{t('layout.terms')}</a>
-              <a href="#" className="hover:text-purple-600 transition-colors">{t('layout.support')}</a>
+              <a href="#" className="hover:text-purple-600 transition-colors">
+                {t("layout.privacy")}
+              </a>
+              <a href="#" className="hover:text-purple-600 transition-colors">
+                {t("layout.terms")}
+              </a>
+              <a href="#" className="hover:text-purple-600 transition-colors">
+                {t("layout.support")}
+              </a>
             </div>
           </div>
         </div>
