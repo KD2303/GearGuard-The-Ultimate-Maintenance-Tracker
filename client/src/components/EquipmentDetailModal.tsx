@@ -6,6 +6,7 @@ import { equipmentService } from '../services/equipmentService';
 import Badge from './Badge';
 import { Calendar, MapPin, Wrench, AlertCircle } from 'lucide-react';
 import Spinner from './Spinner';
+import RequestModal from './RequestModal';
 
 interface EquipmentDetailModalProps {
   equipment: Equipment;
@@ -18,26 +19,29 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   equipment,
   isOpen,
   onClose,
+  onUpdate,
 }) => {
   const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+
+  const loadHistory = async () => {
+    try {
+      setLoading(true);
+      const history = await equipmentService.getMaintenanceHistory(equipment.id);
+      setMaintenanceHistory(history);
+    } catch (error) {
+      console.error('Failed to load maintenance history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const history = await equipmentService.getMaintenanceHistory(equipment.id);
-        setMaintenanceHistory(history);
-      } catch (error) {
-        console.error('Failed to load maintenance history:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (equipment.id) {
+    if (equipment.id && isOpen) {
       loadHistory();
     }
-  }, [equipment.id]);
+  }, [equipment.id, isOpen]);
 
   const statusColors = {
     active: 'success',
@@ -220,10 +224,33 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           )}
         </div>
 
-        <div className="flex justify-end pt-4">
-          <Button onClick={onClose}>Close</Button>
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <Button variant="primary" onClick={() => setIsRequestModalOpen(true)}>
+            <Wrench className="h-4 w-4 mr-2" />
+            Request Maintenance
+            {openRequests.length > 0 && (
+              <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-white text-blue-600 rounded-full">
+                {openRequests.length}
+              </span>
+            )}
+          </Button>
+          <Button variant="secondary" onClick={onClose}>Close</Button>
         </div>
       </div>
+      {isRequestModalOpen && (
+        <RequestModal
+          isOpen={isRequestModalOpen}
+          onClose={() => setIsRequestModalOpen(false)}
+          onSuccess={async () => {
+            setIsRequestModalOpen(false);
+            await loadHistory();
+            if (onUpdate) {
+              await onUpdate();
+            }
+          }}
+          initialEquipmentId={equipment.id}
+        />
+      )}
     </Modal>
   );
 };

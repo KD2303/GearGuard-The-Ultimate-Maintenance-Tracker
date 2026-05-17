@@ -33,15 +33,6 @@ const DetailedRequestsTable = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  const [sortField, setSortField] =
-    useState<string>("createdAt");
-
-  const [sortDirection, setSortDirection] =
-    useState<"asc" | "desc">("desc");
-
-  const [expandedRow, setExpandedRow] =
-    useState<string | null>(null);
-
   useEffect(() => {
     loadRequests();
   }, []);
@@ -86,29 +77,25 @@ const DetailedRequestsTable = () => {
     const aValue = getSortValue(a, sortField);
     const bValue = getSortValue(b, sortField);
 
-      const bValue: any =
-        b[
-          sortField as keyof MaintenanceRequest
-        ];
+    if (aValue === undefined) return 1;
+    if (bValue === undefined) return -1;
 
-      if (aValue === undefined) return 1;
-
-      if (bValue === undefined) return -1;
-
-      if (
-        typeof aValue === "string" &&
-        typeof bValue === "string"
-      ) {
-        return sortDirection === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-
+    if (
+      typeof aValue === "string" &&
+      typeof bValue === "string"
+    ) {
       return sortDirection === "asc"
-        ? (aValue ?? 0) - (bValue ?? 0)
-        : (bValue ?? 0) - (aValue ?? 0);
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
     }
-  );
+
+    const aNum = typeof aValue === 'number' ? aValue : 0;
+    const bNum = typeof bValue === 'number' ? bValue : 0;
+
+    return sortDirection === "asc"
+      ? aNum - bNum
+      : bNum - aNum;
+  });
 
   const handleExport = () => {
     if (

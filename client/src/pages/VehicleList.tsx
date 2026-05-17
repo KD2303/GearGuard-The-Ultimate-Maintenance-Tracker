@@ -7,12 +7,15 @@ import { Plus, Wrench, MapPin, Car, Gauge, Fuel } from 'lucide-react';
 import EquipmentModal from '../components/EquipmentModal';
 import EquipmentDetailModal from '../components/EquipmentDetailModal';
 import Spinner from '../components/Spinner';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const VehicleList: React.FC = () => {
   const [vehicles, setVehicles] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Equipment | null>(null);
+
+  const { notifications } = useNotifications();
 
   const loadVehicles = async () => {
     try {
@@ -30,6 +33,15 @@ const VehicleList: React.FC = () => {
   useEffect(() => {
     loadVehicles();
   }, []);
+
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latest = notifications[0];
+      if (latest.type && latest.type.startsWith('request_')) {
+        loadVehicles();
+      }
+    }
+  }, [notifications]);
 
   const statusColors = {
     active: 'success',
@@ -114,8 +126,14 @@ const VehicleList: React.FC = () => {
                 <Wrench className="h-4 w-4 mr-2" />
                 Maintenance History
                 {item.openRequestsCount !== undefined && item.openRequestsCount > 0 && (
-                  <span className="ml-2 px-2 py-0.5 bg-orange-600 text-white text-[10px] rounded-full">
-                    {item.openRequestsCount}
+                  <span className="ml-2">
+                    <Badge
+                      variant="danger"
+                      size="sm"
+                      pulse={true}
+                    >
+                      {item.openRequestsCount} Open
+                    </Badge>
                   </span>
                 )}
               </button>

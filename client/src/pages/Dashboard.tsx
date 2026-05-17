@@ -1,40 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { Wrench, Box, Users, AlertCircle, Clock, Search } from 'lucide-react';
 import Badge from '../components/Badge';
-import { MaintenanceRequest } from '../types';
+import { MaintenanceRequest, GlobalSearchResults } from '../types';
 import TeamActivity from '../components/TeamActivity';
 import QuickActionCards from '../components/QuickActionCards';
 import Spinner from '../components/Spinner';
-import React, {
-  useState,
-  useEffect,
-  useRef,
-} from "react";
-import { Link } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
-
-import { globalSearch } from "../services/searchService";
-import { GlobalSearchResults } from "../types";
-import SearchDropdown from "../components/SearchDropdown";
-import { requestService } from "../services/requestService";
-import { equipmentService } from "../services/equipmentService";
-import { teamService } from "../services/teamService";
-import {
-  Wrench,
-  Box,
-  Users,
-  AlertCircle,
-  Clock,
-  Search,
-} from "lucide-react";
-import Badge from "../components/Badge";
-import TeamActivity from "../components/TeamActivity";
-import QuickActionCards from "../components/QuickActionCards";
-import Spinner from "../components/Spinner";
+import { globalSearch } from '../services/searchService';
+import SearchDropdown from '../components/SearchDropdown';
 import { getHighRiskEquipment } from '../services/predictiveService';
 
 const Dashboard: React.FC = () => {
@@ -65,12 +42,6 @@ const Dashboard: React.FC = () => {
   });
   const [recentRequests, setRecentRequests] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [recentRequests, setRecentRequests] =
-    useState<any[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -310,15 +281,9 @@ const Dashboard: React.FC = () => {
     <div className="space-y-8 animate-fade-in">
       {/* Search */}
       <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
-        <div
-          ref={searchRef}
-          className="relative w-full"
-        >
+        <div ref={searchRef} className="relative w-full">
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
-
-          <div ref={searchRef} className="relative w-full">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
-            <input
+          <input
             type="text"
             value={searchQuery}
             onChange={(e) =>
@@ -538,20 +503,20 @@ const Dashboard: React.FC = () => {
                             </Badge>
                           </div>
 
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {
-                              request.requestNumber
-                            }
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                            {request.requestNumber}
+                          </p>
+                          <Badge
+                            variant="default"
                             size="sm"
                           >
                             {request.type}
                           </Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{request.requestNumber}</p>
-                        {request.equipment && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            {t('dashboard.equipmentLabel')} {request.equipment.name}
-                          </p>
+                          {request.equipment && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                              {t('dashboard.equipmentLabel')} {request.equipment.name}
+                            </p>
+                          )}
                         </div>
 
                         {request.assignedTo && (

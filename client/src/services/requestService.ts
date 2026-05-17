@@ -114,7 +114,6 @@ export const requestService = {
     const response = await api.get('/analytics', { params: query });
     return response.data;
   },
-};
 
   getFiltered: async (
     filters: RequestFilters
@@ -140,4 +139,5 @@ export const requestService = {
     );
 
     return response.data;
-  };
+  },
+};

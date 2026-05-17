@@ -35,8 +35,6 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
-  const [teams, setTeams] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitError, setSubmitError] = useState<string>('');
 

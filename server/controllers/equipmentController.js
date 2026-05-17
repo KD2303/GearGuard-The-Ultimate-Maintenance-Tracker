@@ -41,7 +41,26 @@ exports.getAllEquipment = async (req, res) => {
       .populate('maintenanceTeam')
       .populate('defaultTechnician')
       .sort({ createdAt: -1 });
-    res.json(equipment);
+
+    // Enterprise Aggregation to avoid N+1 query loop!
+    const openCounts = await MaintenanceRequest.aggregate([
+      { $match: { stage: { $nin: ['repaired', 'scrap'] } } },
+      { $group: { _id: '$equipmentId', count: { $sum: 1 } } }
+    ]);
+
+    const countsMap = new Map(
+      openCounts.map((c) => [c._id ? c._id.toString() : '', c.count])
+    );
+
+    const equipmentWithCounts = equipment.map((item) => {
+      const openRequestsCount = countsMap.get(item._id.toString()) || 0;
+      return {
+        ...item.toJSON(),
+        openRequestsCount
+      };
+    });
+
+    res.json(equipmentWithCounts);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -62,7 +81,7 @@ exports.getEquipmentById = async (req, res) => {
 
     const openRequestsCount = await MaintenanceRequest.countDocuments({
       equipmentId: req.params.id,
-      stage: { $ne: 'repaired' }
+      stage: { $nin: ['repaired', 'scrap'] }
     });
 
     res.json({ ...equipment.toJSON(), openRequestsCount });
@@ -150,7 +169,12 @@ exports.updateEquipment = async (req, res) => {
       return res.status(404).json({ error: 'Equipment not found' });
     }
 
-    res.json(updatedEquipment);
+    const openRequestsCount = await MaintenanceRequest.countDocuments({
+      equipmentId: req.params.id,
+      stage: { $nin: ['repaired', 'scrap'] }
+    });
+
+    res.json({ ...updatedEquipment.toJSON(), openRequestsCount });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

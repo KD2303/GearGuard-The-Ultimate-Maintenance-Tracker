@@ -12,6 +12,7 @@ interface RequestModalProps {
   onSuccess: () => void;
   initialDate?: Date | string;
   initialType?: 'corrective' | 'preventive';
+  initialEquipmentId?: string;
 }
 
 const RequestModal: React.FC<RequestModalProps> = ({
@@ -20,6 +21,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   onSuccess,
   initialDate,
   initialType = 'corrective',
+  initialEquipmentId,
 }) => {
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
@@ -104,15 +106,19 @@ const RequestModal: React.FC<RequestModalProps> = ({
     loadData();
   }, []);
 
-  // Update scheduled date when modal opens with new initialDate
+  // Update scheduled date and pre-selected equipment when modal opens
   useEffect(() => {
     if (isOpen) {
       setFormData(prev => ({
         ...prev,
-        scheduledDate: formatDateForInput(initialDate)
+        scheduledDate: formatDateForInput(initialDate),
+        equipmentId: initialEquipmentId || prev.equipmentId || '',
       }));
+      if (initialEquipmentId) {
+        handleEquipmentChange(initialEquipmentId);
+      }
     }
-  }, [isOpen, initialDate]);
+  }, [isOpen, initialDate, initialEquipmentId]);
 
   // Auto-fill category/team
   const handleEquipmentChange = async (

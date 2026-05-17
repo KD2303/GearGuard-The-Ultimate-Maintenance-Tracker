@@ -5,6 +5,8 @@ import Badge from './Badge';
 import Button from './Button';
 import { Calendar, MapPin, Wrench, AlertCircle, CheckCircle, Package } from 'lucide-react';
 import Spinner from './Spinner';
+import RequestModal from './RequestModal';
+import { useNotifications } from '../contexts/NotificationContext';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'gradient';
 
@@ -12,17 +14,35 @@ const ResourceManager = () => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+
+  const { notifications } = useNotifications();
 
   useEffect(() => {
     loadEquipment();
   }, []);
+
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latest = notifications[0];
+      if (latest.type && latest.type.startsWith('request_')) {
+        loadEquipment();
+      }
+    }
+  }, [notifications]);
 
   const loadEquipment = async () => {
     try {
       const data = await equipmentService.getAll();
       setEquipment(data);
       if (data.length > 0) {
-        setSelectedEquipment(data[0]);
+        setSelectedEquipment((prev) => {
+          if (prev) {
+            const found = data.find((item) => (item._id ?? item.id) === (prev._id ?? prev.id));
+            return found || data[0];
+          }
+          return data[0];
+        });
       }
     } catch (error) {
       console.error('Failed to load equipment:', error);
@@ -94,7 +114,14 @@ const ResourceManager = () => {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 dark:text-white truncate">{item.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-white truncate">{item.name}</span>
+                      {item.openRequestsCount !== undefined && item.openRequestsCount > 0 && (
+                        <Badge variant="danger" size="sm">
+                          {item.openRequestsCount}
+                        </Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">{item.serialNumber}</div>
                   </div>
                   <div className="ml-2">{getStatusIcon(item.status)}</div>
@@ -237,9 +264,14 @@ const ResourceManager = () => {
 
               {/* Actions */}
               <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <Button variant="primary" size="sm">
+                <Button variant="primary" size="sm" onClick={() => setIsRequestModalOpen(true)}>
                   <Wrench className="w-4 h-4 mr-2" />
                   Create Maintenance Request
+                  {selectedEquipment.openRequestsCount !== undefined && selectedEquipment.openRequestsCount > 0 && (
+                    <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-white text-blue-600 rounded-full">
+                      {selectedEquipment.openRequestsCount}
+                    </span>
+                  )}
                 </Button>
                 <Button variant="secondary" size="sm">
                   Edit Equipment
@@ -253,6 +285,17 @@ const ResourceManager = () => {
           )}
         </div>
       </div>
+      {selectedEquipment && (
+        <RequestModal
+          isOpen={isRequestModalOpen}
+          onClose={() => setIsRequestModalOpen(false)}
+          onSuccess={() => {
+            setIsRequestModalOpen(false);
+            loadEquipment();
+          }}
+          initialEquipmentId={selectedEquipment._id ?? selectedEquipment.id}
+        />
+      )}
     </div>
   );
 };
