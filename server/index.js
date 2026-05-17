@@ -7,6 +7,8 @@ const cors = require("cors");
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
 require("dotenv").config();
+const { errorMiddleware } = require("./middleware/errorHandler");
+
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI);
 console.log("SMTP_HOST:", process.env.SMTP_HOST);
@@ -19,9 +21,9 @@ const requestRoutes = require("./routes/requests");
 const notificationRoutes = require("./routes/notifications");
 const adminRoutes = require("./routes/admin");
 const analyticsRoutes = require("./routes/analytics");
-const predictiveRoutes = require('./routes/predictiveRoutes');
-const authRoutes = require('./routes/auth');
-const activitiesRoutes = require('./routes/activities');
+const predictiveRoutes = require("./routes/predictiveRoutes");
+const authRoutes = require("./routes/auth");
+const activitiesRoutes = require("./routes/activities");
 
 const app = express();
 const server = http.createServer(app);
@@ -124,26 +126,18 @@ const startServer = async () => {
 
     console.log("✓ Routes loaded successfully");
 
-    // Error handling middleware
-    app.use((err, req, res, next) => {
-      console.error(err.stack);
-
-      const status = err.statusCode || 500;
-
-      const message =
-        process.env.NODE_ENV === "production"
-          ? "Internal server error"
-          : err.message;
-
-      res.status(status).json({
-        error: message,
-      });
-    });
+    // Comprehensive error handling middleware (must be AFTER all routes)
+    app.use(errorMiddleware);
 
     // 404 handler
     app.use((req, res) => {
       res.status(404).json({
-        error: "Route not found",
+        success: false,
+        error: {
+          type: "NOT_FOUND_ERROR",
+          message: "The requested resource was not found.",
+          timestamp: new Date().toISOString(),
+        },
       });
     });
 

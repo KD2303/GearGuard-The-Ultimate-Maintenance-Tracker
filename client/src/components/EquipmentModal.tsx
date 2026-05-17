@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import Modal from './Modal';
-import Button from './Button';
-import { CreateEquipmentDto, MaintenanceTeam, TeamMember } from '../types';
-import { equipmentService } from '../services/equipmentService';
-import { teamService } from '../services/teamService';
-import { Car } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import Modal from "./Modal";
+import Button from "./Button";
+import { CreateEquipmentDto, MaintenanceTeam, TeamMember } from "../types";
+import { equipmentService } from "../services/equipmentService";
+import { teamService } from "../services/teamService";
+import { Car } from "lucide-react";
 
 interface EquipmentModalProps {
   isOpen: boolean;
@@ -12,36 +12,38 @@ interface EquipmentModalProps {
   onSuccess: () => void;
 }
 
-const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const EquipmentModal: React.FC<EquipmentModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+}) => {
   const [formData, setFormData] = useState<CreateEquipmentDto>({
-    name: '',
-    serialNumber: '',
-    category: '',
-    department: '',
-    assignedTo: '',
-    location: '',
-    purchaseDate: '',
-    warrantyExpiry: '',
-    manufacturer: '',
-    model: '',
-    notes: '',
-    maintenanceTeamId: '',
-    defaultTechnicianId: '',
-    licensePlate: '',
+    name: "",
+    serialNumber: "",
+    category: "",
+    department: "",
+    assignedTo: "",
+    location: "",
+    purchaseDate: "",
+    warrantyExpiry: "",
+    manufacturer: "",
+    model: "",
+    notes: "",
+    maintenanceTeamId: "",
+    defaultTechnicianId: "",
+    licensePlate: "",
     currentMileage: 0,
-    fuelType: '',
+    fuelType: "",
   });
-  
+
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
-  const [teams, setTeams] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submitError, setSubmitError] = useState<string>('');
+  const [submitError, setSubmitError] = useState<string>("");
 
   const handleClose = () => {
-    setSubmitError('');
+    setSubmitError("");
     setIsSubmitting(false);
     onClose();
   };
@@ -60,23 +62,23 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitError('');
+    setSubmitError("");
 
     // Frontend validation before sending to server
     if (!formData.name?.trim()) {
-      setSubmitError('Equipment name is required.');
+      setSubmitError("Equipment name is required.");
       return;
     }
     if (!formData.serialNumber?.trim()) {
-      setSubmitError('Serial number is required.');
+      setSubmitError("Serial number is required.");
       return;
     }
     if (!formData.category) {
-      setSubmitError('Category is required.');
+      setSubmitError("Category is required.");
       return;
     }
     if (!formData.location?.trim()) {
-      setSubmitError('Location is required.');
+      setSubmitError("Location is required.");
       return;
     }
 
@@ -99,7 +101,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
 
       await equipmentService.create(payload);
 
-      setSubmitError('');
+      setSubmitError("");
       onSuccess();
       handleClose();
     } catch (error: any) {
@@ -107,7 +109,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
       const message =
         error?.response?.data?.error ||
         error?.message ||
-        'Failed to create equipment. Please check all fields and try again.';
+        "Failed to create equipment. Please check all fields and try again.";
       setSubmitError(message);
     } finally {
       setIsSubmitting(false);
@@ -115,7 +117,12 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Add Equipment" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Add Equipment"
+      size="lg"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -126,7 +133,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               type="text"
               required
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="input-dark"
             />
           </div>
@@ -155,7 +164,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
             <select
               required
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value })
+              }
               className="input-dark"
             >
               <option value="">Select category...</option>
@@ -176,7 +187,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               type="text"
               required
               value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, location: e.target.value })
+              }
               className="input-dark"
             />
           </div>
@@ -236,7 +249,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
             <input
               type="text"
               value={formData.model}
-              onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, model: e.target.value })
+              }
               className="input-dark"
             />
           </div>
@@ -272,7 +287,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
           </div>
         </div>
 
-        {formData.category.toLowerCase() === 'vehicle' && (
+        {formData.category.toLowerCase() === "vehicle" && (
           <div className="bg-orange-50 dark:bg-gray-800 p-4 rounded-xl border border-orange-100 dark:border-gray-700 transition-colors">
             <h4 className="text-sm font-bold text-orange-800 flex items-center">
               <Car className="h-4 w-4 mr-2" />
@@ -286,7 +301,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
                 <input
                   type="text"
                   value={formData.licensePlate}
-                  onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, licensePlate: e.target.value })
+                  }
                   placeholder="e.g., ABC-1234"
                   className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500  bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
@@ -298,7 +315,12 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
                 <input
                   type="number"
                   value={formData.currentMileage}
-                  onChange={(e) => setFormData({ ...formData, currentMileage: Number(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      currentMileage: Number(e.target.value),
+                    })
+                  }
                   className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
               </div>
@@ -309,7 +331,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
               </label>
               <select
                 value={formData.fuelType}
-                onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, fuelType: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-orange-200 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="">Select fuel type...</option>
@@ -357,7 +381,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
             <option value="">Select technician...</option>
             {members
               .filter(
-                (m) => !formData.maintenanceTeamId || m.teamId === formData.maintenanceTeamId
+                (m) =>
+                  !formData.maintenanceTeamId ||
+                  m.teamId === formData.maintenanceTeamId,
               )
               .map((member) => (
                 <option key={member.id} value={member.id}>
@@ -373,7 +399,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
           </label>
           <textarea
             value={formData.notes}
-            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, notes: e.target.value })
+            }
             rows={3}
             className="input-dark"
           />
@@ -389,7 +417,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({ isOpen, onClose, onSucc
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Creating...' : 'Create Equipment'}
+            {isSubmitting ? "Creating..." : "Create Equipment"}
           </Button>
         </div>
       </form>
