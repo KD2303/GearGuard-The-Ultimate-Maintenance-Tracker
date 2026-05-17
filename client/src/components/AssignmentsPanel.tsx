@@ -18,7 +18,7 @@ const AssignmentsPanel = () => {
   const loadMembers = async () => {
     try {
       const data = await teamService.getAllMembers();
-      setMembers(data.filter(m => m.isActive));
+      setMembers(data.filter((m) => m.isActive));
     } catch (error) {
       console.error('Failed to load members:', error);
     } finally {
@@ -35,8 +35,18 @@ const AssignmentsPanel = () => {
   };
 
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   const daysInMonth = getDaysInMonth(selectedDate);
@@ -44,24 +54,19 @@ const AssignmentsPanel = () => {
   const today = new Date();
 
   const prevMonth = () => {
-    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1));
+    setSelectedDate(
+      new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1)
+    );
   };
 
   const nextMonth = () => {
-    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1));
+    setSelectedDate(
+      new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1)
+    );
   };
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-16 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
       <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
         <Spinner size="md" label="Loading assignments..." />
       </div>
@@ -71,14 +76,22 @@ const AssignmentsPanel = () => {
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow transition-colors">
       <div className="border-b border-gray-200 px-6 py-4">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Assignments</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Team member availability and scheduling</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Assignments
+        </h2>
+
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Team member availability and scheduling
+        </p>
       </div>
 
       <div className="p-6">
         {/* Team Members List */}
         <div className="mb-6">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Team Members</h3>
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            Team Members
+          </h3>
+
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {members.map((member) => (
               <button
@@ -104,16 +117,24 @@ const AssignmentsPanel = () => {
                       </div>
                     )}
                   </div>
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium dark:text-white truncate">
                         {member.name}
                       </p>
+
                       <UserCheck className="w-4 h-4 text-green-500 flex-shrink-0" />
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{member.role || 'Technician'}</p>
+
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {member.role || 'Technician'}
+                    </p>
+
                     {member.team && (
-                      <p className="text-xs text-gray-400">{member.team.name}</p>
+                      <p className="text-xs text-gray-400">
+                        {member.team.name}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -124,7 +145,10 @@ const AssignmentsPanel = () => {
 
         {/* Calendar Picker */}
         <div className="border-t pt-6">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Schedule Calendar</h3>
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            Schedule Calendar
+          </h3>
+
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
             {/* Calendar Header */}
             <div className="flex items-center justify-between mb-4">
@@ -134,9 +158,12 @@ const AssignmentsPanel = () => {
               >
                 ←
               </button>
+
               <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                {monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}
+                {monthNames[selectedDate.getMonth()]}{' '}
+                {selectedDate.getFullYear()}
               </h4>
+
               <button
                 onClick={nextMonth}
                 className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
@@ -147,21 +174,38 @@ const AssignmentsPanel = () => {
 
             {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-1">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center text-xs font-medium text-gray-400 dark:text-gray-500 py-2">
-                  {day}
-                </div>
-              ))}
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(
+                (day) => (
+                  <div
+                    key={day}
+                    className="text-center text-xs font-medium text-gray-400 dark:text-gray-500 py-2"
+                  >
+                    {day}
+                  </div>
+                )
+              )}
+
               {Array.from({ length: firstDay }).map((_, i) => (
-                <div key={`empty-${i}`} className="aspect-square"></div>
+                <div
+                  key={`empty-${i}`}
+                  className="aspect-square"
+                ></div>
               ))}
+
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1;
+
                 const isToday =
                   day === today.getDate() &&
                   selectedDate.getMonth() === today.getMonth() &&
                   selectedDate.getFullYear() === today.getFullYear();
-                const isPast = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day) < today;
+
+                const isPast =
+                  new Date(
+                    selectedDate.getFullYear(),
+                    selectedDate.getMonth(),
+                    day
+                  ) < today;
 
                 return (
                   <button
@@ -185,22 +229,36 @@ const AssignmentsPanel = () => {
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Selected Member:</span>
-                    <span className="text-xs font-semibold text-gray-900 dark:text-white">{selectedMember.name}</span>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Selected Member:
+                    </span>
+
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                      {selectedMember.name}
+                    </span>
                   </div>
+
                   {selectedMember.email && (
                     <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-300">
                       <Mail className="w-3 h-3" />
+
                       <span>{selectedMember.email}</span>
                     </div>
                   )}
+
                   {selectedMember.phone && (
                     <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-300">
                       <Phone className="w-3 h-3" />
+
                       <span>{selectedMember.phone}</span>
                     </div>
                   )}
-                  <Button variant="primary" size="sm" className="w-full mt-2">
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="w-full mt-2"
+                  >
                     <Calendar className="w-3 h-3 mr-2" />
                     Assign to Task
                   </Button>
@@ -213,11 +271,20 @@ const AssignmentsPanel = () => {
         {/* Quick Stats */}
         <div className="mt-6 grid grid-cols-2 gap-4">
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-            <div className="text-xs text-blue-600 font-medium">Available Today</div>
-            <div className="text-2xl font-bold text-blue-900 dark:text-blue-300 mt-1">{members.length}</div>
+            <div className="text-xs text-blue-600 font-medium">
+              Available Today
+            </div>
+
+            <div className="text-2xl font-bold text-blue-900 dark:text-blue-300 mt-1">
+              {members.length}
+            </div>
           </div>
-          <div className=" dark:bg-green-900/20 rounded-lg p-3">
-            <div className="text-xs text-green-600 font-medium">On Assignment</div>
+
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+            <div className="text-xs text-green-600 font-medium">
+              On Assignment
+            </div>
+
             <div className="text-2xl font-bold text-green-900 dark:text-green-300 mt-1">
               {Math.floor(members.length * 0.6)}
             </div>

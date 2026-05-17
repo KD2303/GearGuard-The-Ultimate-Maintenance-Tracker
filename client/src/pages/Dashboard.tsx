@@ -1,28 +1,59 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { globalSearch } from '../services/searchService';
-import { GlobalSearchResults } from '../types';
-import SearchDropdown from '../components/SearchDropdown';
 import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { Wrench, Box, Users, AlertCircle, Clock, Search } from 'lucide-react';
 import Badge from '../components/Badge';
+import { MaintenanceRequest } from '../types';
 import TeamActivity from '../components/TeamActivity';
 import QuickActionCards from '../components/QuickActionCards';
 import Spinner from '../components/Spinner';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+} from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
+
+import { globalSearch } from "../services/searchService";
+import { GlobalSearchResults } from "../types";
+import SearchDropdown from "../components/SearchDropdown";
+import { requestService } from "../services/requestService";
+import { equipmentService } from "../services/equipmentService";
+import { teamService } from "../services/teamService";
+import {
+  Wrench,
+  Box,
+  Users,
+  AlertCircle,
+  Clock,
+  Search,
+} from "lucide-react";
+import Badge from "../components/Badge";
+import TeamActivity from "../components/TeamActivity";
+import QuickActionCards from "../components/QuickActionCards";
+import Spinner from "../components/Spinner";
+import { getHighRiskEquipment } from '../services/predictiveService';
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
-  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [searchResults, setSearchResults] = useState<GlobalSearchResults>({
-    equipment: [],
-    requests: [],
+      equipment: [],
+      requests: [],
   });
+
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
+
+  const [highRiskEquipment, setHighRiskEquipment] = useState([]);
+
+  const searchRef =
+    useRef<HTMLDivElement>(null);
 
   const [stats, setStats] = useState({
     totalRequests: 0,
@@ -32,30 +63,58 @@ const Dashboard: React.FC = () => {
     underMaintenance: 0,
     totalTeams: 0,
   });
-  const [recentRequests, setRecentRequests] = useState<any[]>([]);
+  const [recentRequests, setRecentRequests] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [recentRequests, setRecentRequests] =
+    useState<any[]>([]);
+
+  const [loading, setLoading] =
+    useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [requests, equipment, teams] = await Promise.all([
-          requestService.getAll(),
-          equipmentService.getAll(),
-          teamService.getAllTeams(),
-        ]);
+        const [requests, equipment, teams] =
+          await Promise.all([
+            requestService.getAll(),
+            equipmentService.getAll(),
+            teamService.getAllTeams(),
+          ]);
 
         setStats({
           totalRequests: requests.length,
-          newRequests: requests.filter((r) => r.stage === 'new').length,
-          inProgressRequests: requests.filter((r) => r.stage === 'in-progress').length,
+
+          newRequests: requests.filter(
+            (r) => r.stage === "new"
+          ).length,
+
+          inProgressRequests:
+            requests.filter(
+              (r) =>
+                r.stage === "in-progress"
+            ).length,
+
           totalEquipment: equipment.length,
-          underMaintenance: equipment.filter((e) => e.status === 'under-maintenance').length,
+
+          underMaintenance:
+            equipment.filter(
+              (e) =>
+                e.status ===
+                "under-maintenance"
+            ).length,
+
           totalTeams: teams.length,
         });
 
-        setRecentRequests(requests.slice(0, 5));
+        setRecentRequests(
+          requests.slice(0, 5)
+        );
       } catch (error) {
-        console.error('Failed to load dashboard data:', error);
+        console.error(
+          "Failed to load dashboard data:",
+          error
+        );
       } finally {
         setLoading(false);
       }
@@ -65,117 +124,214 @@ const Dashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setSearchResults({ equipment: [], requests: [] });
+    if (searchQuery.trim() === "") {
+      setSearchResults({
+        equipment: [],
+        requests: [],
+      });
+
       setShowDropdown(false);
+
       return;
     }
 
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
-      setShowDropdown(true);
-      try {
-        const results = await globalSearch(searchQuery);
-        setSearchResults(results);
-      } catch (error) {
-        console.error('Search failed:', error);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
+    const timer = setTimeout(
+      async () => {
+        setIsSearching(true);
+
+        setShowDropdown(true);
+
+        try {
+          const results =
+            await globalSearch(
+              searchQuery
+            );
+
+          setSearchResults(results);
+        } catch (error) {
+          console.error(
+            "Search failed:",
+            error
+          );
+        } finally {
+          setIsSearching(false);
+        }
+      },
+      300
+    );
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (
+      e: MouseEvent
+    ) => {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(
+          e.target as Node
+        )
+      ) {
         setShowDropdown(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside
+    );
+
+    return () =>
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    const handleKeyDown = (
+      e: KeyboardEvent
+    ) => {
+      if (e.key === "Escape") {
         setShowDropdown(false);
-        setSearchQuery('');
+
+        setSearchQuery("");
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+
+    document.addEventListener(
+      "keydown",
+      handleKeyDown
+    );
+
+    return () =>
+      document.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
   }, []);
+
+  useEffect(() => {
+
+  const fetchPredictiveData = async () => {
+
+    try {
+
+      const data = await getHighRiskEquipment();
+
+      setHighRiskEquipment(data.data);
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+    }
+  };
+
+  fetchPredictiveData();
+
+}, []);
 
   const statCards = [
     {
       title: t('dashboard.totalRequests'),
       value: stats.totalRequests,
       icon: Wrench,
-      gradient: 'from-blue-500 to-cyan-600',
-      link: '/requests',
-      trend: '+12%',
+      gradient:
+        "from-blue-500 to-cyan-600",
+      link: "/requests",
+      trend: "+12%",
     },
+
     {
       title: t('dashboard.newRequests'),
       value: stats.newRequests,
       icon: AlertCircle,
-      gradient: 'from-yellow-500 to-orange-600',
-      link: '/requests',
-      trend: '+5%',
+      gradient:
+        "from-yellow-500 to-orange-600",
+      link: "/requests",
+      trend: "+5%",
     },
+
     {
       title: t('dashboard.inProgress'),
       value: stats.inProgressRequests,
       icon: Clock,
-      gradient: 'from-purple-500 to-pink-600',
-      link: '/requests',
-      trend: '+8%',
+      gradient:
+        "from-purple-500 to-pink-600",
+      link: "/requests",
+      trend: "+8%",
     },
+
     {
       title: t('dashboard.totalEquipment'),
       value: stats.totalEquipment,
       icon: Box,
-      gradient: 'from-green-500 to-teal-600',
-      link: '/equipment',
-      trend: '+3%',
+      gradient:
+        "from-green-500 to-teal-600",
+      link: "/equipment",
+      trend: "+3%",
     },
+
     {
       title: t('dashboard.underMaintenance'),
       value: stats.underMaintenance,
       icon: Wrench,
-      gradient: 'from-red-500 to-pink-600',
-      link: '/equipment',
-      trend: '-2%',
+      gradient:
+        "from-red-500 to-pink-600",
+      link: "/equipment",
+      trend: "-2%",
     },
+
     {
       title: t('dashboard.maintenanceTeams'),
       value: stats.totalTeams,
       icon: Users,
-      gradient: 'from-indigo-500 to-purple-600',
-      link: '/teams',
-      trend: '0%',
+      gradient:
+        "from-indigo-500 to-purple-600",
+      link: "/teams",
+      trend: "0%",
     },
   ];
 
   if (loading) {
-    return <Spinner size="lg" label="Loading dashboard..." centered />;
+    return (
+      <Spinner
+        size="lg"
+        label="Loading dashboard..."
+        centered
+      />
+    );
   }
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="space-y-8 animate-fade-in">
-        <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
+      {/* Search */}
+      <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
+        <div
+          ref={searchRef}
+          className="relative w-full"
+        >
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
 
           <div ref={searchRef} className="relative w-full">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
             <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) =>
+              setSearchQuery(
+                e.target.value
+              )
+            }
             onFocus={() => {
-              if (searchQuery.trim() !== '') setShowDropdown(true);
+              if (
+                searchQuery.trim() !== ""
+              ) {
+                setShowDropdown(true);
+              }
             }}
             placeholder={t('dashboard.searchPlaceholder')}
             className="w-full rounded-2xl border border-gray-200/70 dark:border-gray-700 
@@ -187,11 +343,17 @@ const Dashboard: React.FC = () => {
             outline-none transition-all duration-300 
             focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20"
           />
+
           {searchQuery && (
             <button
               onClick={() => {
-                setSearchQuery('');
-                setSearchResults({ equipment: [], requests: [] });
+                setSearchQuery("");
+
+                setSearchResults({
+                  equipment: [],
+                  requests: [],
+                });
+
                 setShowDropdown(false);
               }}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
@@ -199,6 +361,7 @@ const Dashboard: React.FC = () => {
               ✕
             </button>
           )}
+
           {showDropdown && (
             <SearchDropdown
               results={searchResults}
@@ -206,7 +369,8 @@ const Dashboard: React.FC = () => {
               isLoading={isSearching}
               onClose={() => {
                 setShowDropdown(false);
-                setSearchQuery('');
+
+                setSearchQuery("");
               }}
             />
           )}
@@ -216,117 +380,167 @@ const Dashboard: React.FC = () => {
       {/* Header */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-8 md:p-12 shadow-2xl">
         <div className="absolute inset-0 bg-black/10"></div>
+
         <div className="relative z-10">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             {t('dashboard.welcomeTitle')}
           </h2>
+
           <p className="text-blue-100 text-lg max-w-2xl">
             {t('dashboard.welcomeSubtitle')}
           </p>
         </div>
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 h-64 w-64 rounded-full bg-white/10 backdrop-blur-3xl"></div>
-        <div className="absolute bottom-0 left-1/2 -mb-8 -ml-8 h-48 w-48 rounded-full bg-white/10 backdrop-blur-3xl"></div>
       </div>
 
-      {/* Quick Action Cards */}
+      {/* Quick Actions */}
       <QuickActionCards />
 
-      {/* Stats Grid with Modern Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {statCards.map((stat, index) => (
-          <Link
-            key={index}
-            to={stat.link}
-            className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 transition-colors p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
-            style={{ animationDelay: `${index * 100}ms` }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-300" 
-                 style={{ backgroundImage: `linear-gradient(135deg, var(--tw-gradient-stops))` }}></div>
-            
-            <div className="relative">
+        {statCards.map(
+          (stat, index) => (
+            <Link
+              key={index}
+              to={stat.link}
+              className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+            >
               <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} shadow-lg`}>
+                <div
+                  className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient}`}
+                >
                   <stat.icon className="h-6 w-6 text-white" />
                 </div>
-                <div className="text-right">
-                  <span className={`text-sm font-semibold ${stat.trend.startsWith('+') 
-                    ? 'text-green-600 dark:text-green-400' 
-                    : stat.trend.startsWith('-') 
-                    ? 'text-red-600 dark:text-red-400' 
-                    : 'text-gray-600 dark:text-gray-400'}`}>
-                    {stat.trend}
-                  </span>
-                </div>
+
+                <span className="text-sm font-semibold text-green-600">
+                  {stat.trend}
+                </span>
               </div>
-              
+
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">{stat.title}</p>
-                <p className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  {stat.title}
+                </p>
+
+                <p className="text-4xl font-bold text-gray-900 dark:text-white">
                   {stat.value}
                 </p>
               </div>
-              
               <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                   {t('dashboard.viewDetails')}
                 </span>
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          )
+        )}
       </div>
 
-      {/* Two Column Layout for Activity and Recent Requests */}
+      {/* High Risk Equipment */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+        <div className="bg-gradient-to-r from-red-500 to-pink-600 px-6 py-4">
+          <h3 className="text-xl font-bold text-white">
+            {t('dashboard.highRiskEquipment', 'High Risk Equipment')}
+          </h3>
+        </div>
+        <div className="p-6">
+          {highRiskEquipment.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400">
+              {t('dashboard.noHighRiskEquipment', 'No high risk equipment found.')}
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {highRiskEquipment.map((item: any) => (
+                <div
+                  key={item.equipmentName}
+                  className="border border-red-200 dark:border-red-800 rounded-xl p-4"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                        {item.equipmentName}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {t('dashboard.healthScore', 'Health Score')}: {item.healthScore}
+                      </p>
+                    </div>
+                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
+                      {item.riskLevel}
+
+                </span>
+
+              </div>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      )
+    }
+
+  </div>
+
+</div>
+
+      {/* Activity + Requests */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Team Activity Summary */}
-        <div className="bg-white dark:bg-gray-800 transition-colors backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-gray-700 overflow-hidden">
+        {/* Activity */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex items-center justify-between">
             <h3 className="text-xl font-bold text-white">{t('dashboard.recentActivity')}</h3>
             <Link to="/activity" className="text-sm text-white/90 hover:text-white font-semibold transition-colors">
               {t('dashboard.viewAll')}
             </Link>
           </div>
+
           <TeamActivity />
         </div>
 
-        {/* Recent Requests Summary */}
-        <div className="bg-white dark:bg-gray-800 transition-colors backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 dark:border-gray-700 overflow-hidden">
+        {/* Requests */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-4 flex items-center justify-between">
             <h3 className="text-xl font-bold text-white">{t('dashboard.recentRequests')}</h3>
             <Link to="/requests-all" className="text-sm text-white/90 hover:text-white font-semibold transition-colors">
               {t('dashboard.viewAll')}
             </Link>
           </div>
+
           <div className="p-6">
-            {recentRequests.length > 0 ? (
+            {recentRequests.length >
+            0 ? (
               <div className="space-y-3">
-                {recentRequests.map((request, idx) => (
-                  <div
-                    key={request.id}
-                    className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-500 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
-                    style={{ animationDelay: `${idx * 50}ms` }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-purple-600 transition-colors">{request.subject}</h4>
-                          <Badge
-                            variant={
-                              request.stage === 'new'
-                                ? 'info'
-                                : request.stage === 'in-progress'
-                                ? 'warning'
-                                : request.stage === 'repaired'
-                                ? 'success'
-                                : 'danger'
-                            }
-                            size="sm"
-                          >
-                            {request.stage}
-                          </Badge>
-                          <Badge
-                            variant={
-                              request.type === 'corrective' ? 'warning' : 'info'
+                {recentRequests.map(
+                  (
+                    request,
+                    idx
+                  ) => (
+                    <div
+                      key={request.id}
+                      className="rounded-xl bg-gray-50 dark:bg-gray-900 p-4 border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-semibold text-gray-900 dark:text-white">
+                              {
+                                request.subject
+                              }
+                            </h4>
+
+                            <Badge
+                              variant="info"
+                              size="sm"
+                            >
+                              {
+                                request.stage
+                              }
+                            </Badge>
+                          </div>
+
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {
+                              request.requestNumber
                             }
                             size="sm"
                           >
@@ -338,19 +552,23 @@ const Dashboard: React.FC = () => {
                           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                             {t('dashboard.equipmentLabel')} {request.equipment.name}
                           </p>
+                        </div>
+
+                        {request.assignedTo && (
+                          <div className="text-right">
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                              {
+                                request
+                                  .assignedTo
+                                  .name
+                              }
+                            </p>
+                          </div>
                         )}
                       </div>
-                      {request.assignedTo && (
-                        <div className="text-right ml-4">
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {request.assignedTo.name}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400">{request.assignedTo.role}</p>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             ) : (
               <div className="text-center py-12">

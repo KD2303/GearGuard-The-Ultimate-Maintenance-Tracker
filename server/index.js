@@ -1,14 +1,15 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 
-const authRoutes = require("./routes/auth");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const activitiesRoutes = require("./routes/activities");
 const cors = require("cors");
 const morgan = require("morgan");
 const bodyParser = require("body-parser");
-require("dotenv").config({ path: __dirname + "/.env" });
+require("dotenv").config();
+console.log("ENV CHECK");
+console.log("MONGO_URI:", process.env.MONGO_URI);
+console.log("SMTP_HOST:", process.env.SMTP_HOST);
 
 const { syncDatabase } = require("./models");
 const equipmentRoutes = require("./routes/equipment");
@@ -17,9 +18,14 @@ const memberRoutes = require("./routes/members");
 const requestRoutes = require("./routes/requests");
 const notificationRoutes = require("./routes/notifications");
 const adminRoutes = require("./routes/admin");
+const analyticsRoutes = require("./routes/analytics");
+const predictiveRoutes = require('./routes/predictiveRoutes');
+const authRoutes = require('./routes/auth');
+const activitiesRoutes = require('./routes/activities');
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -57,6 +63,8 @@ app.use("/api/activities", activitiesRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/search", require("./routes/search"));
 app.use("/api/admin", adminRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/predictive", predictiveRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -67,26 +75,77 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  const status = err.statusCode || 500;
-  const message =
-    process.env.NODE_ENV === "production"
-      ? "Internal server error"
-      : err.message;
-  res.status(status).json({ error: message });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
-});
-
 // Initialize database and start server
 const startServer = async () => {
   try {
+    console.log("🔄 Syncing database...");
     await syncDatabase();
+    console.log("✓ Database synced successfully");
+
+    // Load routes
+    console.log("📂 Loading routes...");
+
+    const authRoutes = require("./routes/auth");
+    const activitiesRoutes = require("./routes/activities");
+    const equipmentRoutes = require("./routes/equipment");
+    const teamRoutes = require("./routes/teams");
+    const memberRoutes = require("./routes/members");
+    const requestRoutes = require("./routes/requests");
+    const notificationRoutes = require("./routes/notifications");
+    const adminRoutes = require("./routes/admin");
+    const uploadRoutes = require("./routes/uploadRoutes");
+    const searchRoutes = require("./routes/search");
+
+    // Debug route types
+    console.log("authRoutes:", typeof authRoutes);
+    console.log("activitiesRoutes:", typeof activitiesRoutes);
+    console.log("equipmentRoutes:", typeof equipmentRoutes);
+    console.log("teamRoutes:", typeof teamRoutes);
+    console.log("memberRoutes:", typeof memberRoutes);
+    console.log("requestRoutes:", typeof requestRoutes);
+    console.log("notificationRoutes:", typeof notificationRoutes);
+    console.log("adminRoutes:", typeof adminRoutes);
+    console.log("uploadRoutes:", typeof uploadRoutes);
+    console.log("searchRoutes:", typeof searchRoutes);
+
+    // Routes
+    app.use("/api/auth", authRoutes);
+    app.use("/api/equipment", equipmentRoutes);
+    app.use("/api/teams", teamRoutes);
+    app.use("/api/members", memberRoutes);
+    app.use("/api/requests", requestRoutes);
+    app.use("/api/activities", activitiesRoutes);
+    app.use("/api/notifications", notificationRoutes);
+    app.use("/api/search", searchRoutes);
+    app.use("/api/admin", adminRoutes);
+
+    // Upload route
+    app.use("/api/upload", uploadRoutes);
+
+    console.log("✓ Routes loaded successfully");
+
+    // Error handling middleware
+    app.use((err, req, res, next) => {
+      console.error(err.stack);
+
+      const status = err.statusCode || 500;
+
+      const message =
+        process.env.NODE_ENV === "production"
+          ? "Internal server error"
+          : err.message;
+
+      res.status(status).json({
+        error: message,
+      });
+    });
+
+    // 404 handler
+    app.use((req, res) => {
+      res.status(404).json({
+        error: "Route not found",
+      });
+    });
 
     server.listen(PORT, () => {
       console.log(`\n🚀 GearGuard Server Running!`);
@@ -95,7 +154,7 @@ const startServer = async () => {
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}\n`);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 };

@@ -6,6 +6,8 @@ import Button from './Button';
 import { Calendar, MapPin, Wrench, AlertCircle, CheckCircle, Package } from 'lucide-react';
 import Spinner from './Spinner';
 
+type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'gradient';
+
 const ResourceManager = () => {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
@@ -44,7 +46,7 @@ const ResourceManager = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): BadgeVariant => {
     switch (status) {
       case 'active':
         return 'success';
@@ -98,7 +100,7 @@ const ResourceManager = () => {
                   <div className="ml-2">{getStatusIcon(item.status)}</div>
                 </div>
                 <div className="mt-2">
-                  <Badge variant={getStatusColor(item.status) as any} size="sm">
+                  <Badge variant={getStatusColor(item.status)} size="sm">
                     {item.status.replace('-', ' ')}
                   </Badge>
                 </div>
@@ -117,7 +119,7 @@ const ResourceManager = () => {
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedEquipment.name}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">SN: {selectedEquipment.serialNumber}</p>
                 </div>
-                <Badge variant={getStatusColor(selectedEquipment.status) as any}>
+                <Badge variant={getStatusColor(selectedEquipment.status)}>
                   {selectedEquipment.status.replace('-', ' ')}
                 </Badge>
               </div>
