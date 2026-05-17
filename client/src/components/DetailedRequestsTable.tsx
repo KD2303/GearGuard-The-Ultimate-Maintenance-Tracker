@@ -72,13 +72,6 @@ const DetailedRequestsTable = () => {
     if (aValue === undefined) return 1;
     if (bValue === undefined) return -1;
 
-    if (
-      typeof aValue === "string" &&
-      typeof bValue === "string"
-    ) {
-
-    if (bValue === undefined) return -1;
-
     if (typeof aValue === "string" && typeof bValue === "string") {
       return sortDirection === "asc"
         ? aValue.localeCompare(bValue)
@@ -91,9 +84,6 @@ const DetailedRequestsTable = () => {
     return sortDirection === "asc"
       ? aNum - bNum
       : bNum - aNum;
-    return sortDirection === "asc"
-      ? (aValue ?? 0) - (bValue ?? 0)
-      : (bValue ?? 0) - (aValue ?? 0);
   });
 
   const handleExport = () => {
