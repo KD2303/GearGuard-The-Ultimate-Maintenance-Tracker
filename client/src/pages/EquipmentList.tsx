@@ -11,6 +11,8 @@ import Badge from "../components/Badge";
 
 import Button from "../components/Button";
 
+import { useNotifications } from "../contexts/NotificationContext";
+
 // @ts-ignore
 import Papa from "papaparse";
 
@@ -29,47 +31,37 @@ import ResourceManager from "../components/ResourceManager";
 
 import Spinner from "../components/Spinner";
 
-const EquipmentList: React.FC =
-  () => {
-    const [equipment, setEquipment] =
-      useState<Equipment[]>([]);
+const EquipmentList: React.FC = () => {
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
 
-    const [loading, setLoading] =
-      useState(true);
+  const { notifications } = useNotifications();
 
-    const [
-      isModalOpen,
-      setIsModalOpen,
-    ] = useState(false);
+  const loadEquipment = async () => {
+    try {
+      const data = await equipmentService.getAll();
+      setEquipment(data);
+    } catch (error) {
+      console.error("Failed to load equipment:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const [
-      selectedEquipment,
-      setSelectedEquipment,
-    ] =
-      useState<Equipment | null>(
-        null
-      );
+  useEffect(() => {
+    loadEquipment();
+  }, []);
 
-    const loadEquipment =
-      async () => {
-        try {
-          const data =
-            await equipmentService.getAll();
-
-          setEquipment(data);
-        } catch (error) {
-          console.error(
-            "Failed to load equipment:",
-            error
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
-
-    useEffect(() => {
-      loadEquipment();
-    }, []);
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const latest = notifications[0];
+      if (latest.type && latest.type.startsWith('request_')) {
+        loadEquipment();
+      }
+    }
+  }, [notifications]);
 
     const statusColors = {
       active: "success",
@@ -311,19 +303,15 @@ const EquipmentList: React.FC =
                         Maintenance
                       </span>
 
-                      {item.openRequestsCount !==
-                        undefined &&
-                        item.openRequestsCount >
-                          0 && (
-                          <Badge
-                            variant="warning"
-                            size="sm"
-                          >
-                            {
-                              item.openRequestsCount
-                            }
-                          </Badge>
-                        )}
+                      {item.openRequestsCount !== undefined && item.openRequestsCount > 0 && (
+                        <Badge
+                          variant="danger"
+                          size="sm"
+                          pulse={true}
+                        >
+                          {item.openRequestsCount} Open
+                        </Badge>
+                      )}
                     </button>
                   </div>
                 </div>
