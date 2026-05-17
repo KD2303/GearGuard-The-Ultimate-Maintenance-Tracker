@@ -14,21 +14,15 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-
 import { Link } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 
 import { globalSearch } from "../services/searchService";
-
 import { GlobalSearchResults } from "../types";
-
 import SearchDropdown from "../components/SearchDropdown";
-
 import { requestService } from "../services/requestService";
-
 import { equipmentService } from "../services/equipmentService";
-
 import { teamService } from "../services/teamService";
-
 import {
   Wrench,
   Box,
@@ -37,32 +31,23 @@ import {
   Clock,
   Search,
 } from "lucide-react";
-
 import Badge from "../components/Badge";
-
 import TeamActivity from "../components/TeamActivity";
-
 import QuickActionCards from "../components/QuickActionCards";
-
 import Spinner from "../components/Spinner";
-
-
-import { getHighRiskEquipment } 
-from '../services/predictiveService';
+import { getHighRiskEquipment } from '../services/predictiveService';
 
 const Dashboard: React.FC = () => {
-  const [searchQuery, setSearchQuery] =
-    useState("");
+  const { t } = useTranslation();
+  
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [searchResults, setSearchResults] =
-    useState<GlobalSearchResults>({
+  const [searchResults, setSearchResults] = useState<GlobalSearchResults>({
       equipment: [],
       requests: [],
-    });
+  });
 
-  const [isSearching, setIsSearching] =
-    useState(false);
-
+  const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [highRiskEquipment, setHighRiskEquipment] = useState([]);
@@ -251,7 +236,7 @@ const Dashboard: React.FC = () => {
 
   const statCards = [
     {
-      title: "Total Requests",
+      title: t('dashboard.totalRequests'),
       value: stats.totalRequests,
       icon: Wrench,
       gradient:
@@ -261,7 +246,7 @@ const Dashboard: React.FC = () => {
     },
 
     {
-      title: "New Requests",
+      title: t('dashboard.newRequests'),
       value: stats.newRequests,
       icon: AlertCircle,
       gradient:
@@ -271,7 +256,7 @@ const Dashboard: React.FC = () => {
     },
 
     {
-      title: "In Progress",
+      title: t('dashboard.inProgress'),
       value: stats.inProgressRequests,
       icon: Clock,
       gradient:
@@ -281,7 +266,7 @@ const Dashboard: React.FC = () => {
     },
 
     {
-      title: "Total Equipment",
+      title: t('dashboard.totalEquipment'),
       value: stats.totalEquipment,
       icon: Box,
       gradient:
@@ -291,7 +276,7 @@ const Dashboard: React.FC = () => {
     },
 
     {
-      title: "Under Maintenance",
+      title: t('dashboard.underMaintenance'),
       value: stats.underMaintenance,
       icon: Wrench,
       gradient:
@@ -301,7 +286,7 @@ const Dashboard: React.FC = () => {
     },
 
     {
-      title: "Maintenance Teams",
+      title: t('dashboard.maintenanceTeams'),
       value: stats.totalTeams,
       icon: Users,
       gradient:
@@ -331,7 +316,9 @@ const Dashboard: React.FC = () => {
         >
           <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
 
-          <input
+          <div ref={searchRef} className="relative w-full">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500 md:h-5 md:w-5" />
+            <input
             type="text"
             value={searchQuery}
             onChange={(e) =>
@@ -346,8 +333,15 @@ const Dashboard: React.FC = () => {
                 setShowDropdown(true);
               }
             }}
-            placeholder="Search equipment, requests..."
-            className="w-full rounded-2xl border border-gray-200/70 dark:border-gray-700 bg-white dark:bg-gray-800 px-10 py-3 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm outline-none transition-all duration-300 focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20"
+            placeholder={t('dashboard.searchPlaceholder')}
+            className="w-full rounded-2xl border border-gray-200/70 dark:border-gray-700 
+            bg-white dark:bg-gray-800 transition-colors
+            px-10 py-3 text-sm 
+            text-gray-800 dark:text-gray-200 
+            placeholder-gray-400 dark:placeholder-gray-500 
+            shadow-sm dark:shadow-none 
+            outline-none transition-all duration-300 
+            focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20"
           />
 
           {searchQuery && (
@@ -389,12 +383,11 @@ const Dashboard: React.FC = () => {
 
         <div className="relative z-10">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Welcome Back! 👋
+            {t('dashboard.welcomeTitle')}
           </h2>
 
           <p className="text-blue-100 text-lg max-w-2xl">
-            GearGuard: The Ultimate
-            Maintenance Tracker
+            {t('dashboard.welcomeSubtitle')}
           </p>
         </div>
       </div>
@@ -432,61 +425,46 @@ const Dashboard: React.FC = () => {
                   {stat.value}
                 </p>
               </div>
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                  {t('dashboard.viewDetails')}
+                </span>
+              </div>
             </Link>
           )
         )}
       </div>
 
       {/* High Risk Equipment */}
-
-<div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
-
-  <div className="bg-gradient-to-r from-red-500 to-pink-600 px-6 py-4">
-
-    <h3 className="text-xl font-bold text-white">
-      High Risk Equipment
-    </h3>
-
-  </div>
-
-  <div className="p-6">
-
-    {
-      highRiskEquipment.length === 0 ? (
-
-        <p className="text-gray-500 dark:text-gray-400">
-          No high risk equipment found.
-        </p>
-
-      ) : (
-
-        <div className="space-y-4">
-
-          {highRiskEquipment.map((item: any) => (
-
-            <div
-              key={item.equipmentName}
-              className="border border-red-200 dark:border-red-800 rounded-xl p-4"
-            >
-
-              <div className="flex justify-between items-center">
-
-                <div>
-
-                  <h4 className="font-semibold text-gray-900 dark:text-white">
-                    {item.equipmentName}
-                  </h4>
-
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Health Score:
-                    {item.healthScore}
-                  </p>
-
-                </div>
-
-                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
-
-                  {item.riskLevel}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+        <div className="bg-gradient-to-r from-red-500 to-pink-600 px-6 py-4">
+          <h3 className="text-xl font-bold text-white">
+            {t('dashboard.highRiskEquipment', 'High Risk Equipment')}
+          </h3>
+        </div>
+        <div className="p-6">
+          {highRiskEquipment.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400">
+              {t('dashboard.noHighRiskEquipment', 'No high risk equipment found.')}
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {highRiskEquipment.map((item: any) => (
+                <div
+                  key={item.equipmentName}
+                  className="border border-red-200 dark:border-red-800 rounded-xl p-4"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                        {item.equipmentName}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {t('dashboard.healthScore', 'Health Score')}: {item.healthScore}
+                      </p>
+                    </div>
+                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
+                      {item.riskLevel}
 
                 </span>
 
@@ -510,15 +488,9 @@ const Dashboard: React.FC = () => {
         {/* Activity */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">
-              Recent Activity
-            </h3>
-
-            <Link
-              to="/activity"
-              className="text-sm text-white"
-            >
-              View All →
+            <h3 className="text-xl font-bold text-white">{t('dashboard.recentActivity')}</h3>
+            <Link to="/activity" className="text-sm text-white/90 hover:text-white font-semibold transition-colors">
+              {t('dashboard.viewAll')}
             </Link>
           </div>
 
@@ -528,15 +500,9 @@ const Dashboard: React.FC = () => {
         {/* Requests */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
           <div className="bg-gradient-to-r from-blue-500 to-cyan-600 px-6 py-4 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white">
-              Recent Requests
-            </h3>
-
-            <Link
-              to="/requests-all"
-              className="text-sm text-white"
-            >
-              View All →
+            <h3 className="text-xl font-bold text-white">{t('dashboard.recentRequests')}</h3>
+            <Link to="/requests-all" className="text-sm text-white/90 hover:text-white font-semibold transition-colors">
+              {t('dashboard.viewAll')}
             </Link>
           </div>
 
@@ -576,6 +542,15 @@ const Dashboard: React.FC = () => {
                             {
                               request.requestNumber
                             }
+                            size="sm"
+                          >
+                            {request.type}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{request.requestNumber}</p>
+                        {request.equipment && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {t('dashboard.equipmentLabel')} {request.equipment.name}
                           </p>
                         </div>
 
@@ -597,15 +572,10 @@ const Dashboard: React.FC = () => {
               </div>
             ) : (
               <div className="text-center py-12">
-                <Wrench className="mx-auto h-12 w-12 text-gray-400" />
-
-                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-                  No recent requests
-                </h3>
-
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  Create a new
-                  maintenance request.
+                <Wrench className="mx-auto h-12 w-12 line-through text-gray-500 dark:text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">{t('dashboard.noRecentRequests')}</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 group-hover:text-purple-600 dark:group-hover:text-purple-400">
+                  {t('dashboard.getStarted')}
                 </p>
               </div>
             )}

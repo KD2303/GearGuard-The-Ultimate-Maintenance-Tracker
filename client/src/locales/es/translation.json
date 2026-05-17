@@ -1,0 +1,42 @@
+{
+  "nav": {
+    "dashboard": "Panel de Control",
+    "admin": "Administrador",
+    "kanban": "Kanban",
+    "allRequests": "Todas las Solicitudes",
+    "calendar": "Calendario",
+    "equipment": "Equipamiento",
+    "vehicles": "Vehículos",
+    "teams": "Equipos",
+    "activity": "Actividad",
+    "analytics": "Análisis"
+  },
+  "layout": {
+    "title": "GearGuard",
+    "subtitle": "Rastreador de Mantenimiento",
+    "settings": "Configuración",
+    "profile": "Perfil",
+    "rights": "© 2025 GearGuard. Todos los derechos reservados.",
+    "privacy": "Privacidad",
+    "terms": "Términos",
+    "support": "Soporte"
+  },
+  "dashboard": {
+    "searchPlaceholder": "Buscar equipos, solicitudes...",
+    "welcomeTitle": "¡Bienvenido de nuevo! 👋",
+    "welcomeSubtitle": "GearGuard: El Rastreador de Mantenimiento Definitivo - Monitorea, gestiona y mantén tus equipos con facilidad",
+    "totalRequests": "Solicitudes Totales",
+    "newRequests": "Nuevas Solicitudes",
+    "inProgress": "En Progreso",
+    "totalEquipment": "Equipamiento Total",
+    "underMaintenance": "En Mantenimiento",
+    "maintenanceTeams": "Equipos de Mantenimiento",
+    "viewDetails": "Ver Detalles →",
+    "recentActivity": "Actividad Reciente",
+    "viewAll": "Ver Todo →",
+    "recentRequests": "Solicitudes Recientes",
+    "noRecentRequests": "No hay solicitudes recientes",
+    "getStarted": "Comienza creando una nueva solicitud de mantenimiento.",
+    "equipmentLabel": "Equipo:"
+  }
+}

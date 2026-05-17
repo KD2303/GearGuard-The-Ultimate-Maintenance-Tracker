@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "admin": "Admin",
+    "kanban": "Kanban",
+    "allRequests": "All Requests",
+    "calendar": "Calendar",
+    "equipment": "Equipment",
+    "vehicles": "Vehicles",
+    "teams": "Teams",
+    "activity": "Activity",
+    "analytics": "Analytics" 
+  },
+
+  "layout": {
+    "title": "GearGuard",
+    "subtitle": "Maintenance Tracker",
+    "settings": "Settings",
+    "profile": "Profile",
+    "rights": "© 2025 GearGuard. All rights reserved.",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "support": "Support"
+  },
+  "dashboard": {
+    "searchPlaceholder": "Search equipment, requests...",
+    "welcomeTitle": "Welcome Back! 👋",
+    "welcomeSubtitle": "GearGuard: The Ultimate Maintenance Tracker - Monitor, manage, and maintain your equipment with ease",
+    "totalRequests": "Total Requests",
+    "newRequests": "New Requests",
+    "inProgress": "In Progress",
+    "totalEquipment": "Total Equipment",
+    "underMaintenance": "Under Maintenance",
+    "maintenanceTeams": "Maintenance Teams",
+    "viewDetails": "View Details →",
+    "recentActivity": "Recent Activity",
+    "viewAll": "View All →",
+    "recentRequests": "Recent Requests",
+    "noRecentRequests": "No recent requests",
+    "getStarted": "Get started by creating a new maintenance request.",
+    "equipmentLabel": "Equipment:"
+  }
+}
