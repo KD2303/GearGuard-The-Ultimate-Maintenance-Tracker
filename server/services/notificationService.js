@@ -1,5 +1,30 @@
 const { Notification } = require("../models");
-
+const nodemailer = require("nodemailer");
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
+if (
+  !process.env.SMTP_HOST ||
+  !process.env.SMTP_PORT ||
+  !process.env.SMTP_USER ||
+  !process.env.SMTP_PASS
+) {
+  console.warn("⚠️ SMTP environment variables are missing.");
+}
+const EMAIL_SUBJECTS = {
+  ASSIGNED: "New Maintenance Request Assigned",
+  COMPLETED: "Maintenance Request Completed",
+  OVERDUE: "Maintenance Request Overdue",
+};
 /**
  * Service to handle real-time notifications via Socket.IO
  */
@@ -30,6 +55,30 @@ class NotificationService {
       return notification;
     } catch (error) {
       console.error("Error sending notification:", error);
+    }
+  }
+  /**
+   * Send Email Notification
+   */
+  static async sendEmail(to, subject, html) {
+    try {
+      if (!to) {
+        console.error("Recipient email missing");
+        return;
+      }
+
+      const info = await transporter.sendMail({
+        from: process.env.EMAIL_FROM,
+        to,
+        subject,
+        html,
+      });
+
+      console.log("✅ Email sent:", info.messageId);
+
+      return info;
+    } catch (error) {
+      console.error("❌ Email sending failed:", error);
     }
   }
 
@@ -76,5 +125,48 @@ class NotificationService {
     });
   }
 }
+NotificationService.assignmentTemplate = (request) => {
+  return `
+    <div style="font-family: Arial; padding: 20px;">
+      <h2>📌 Request Assigned</h2>
+
+      <p>A maintenance request has been assigned.</p>
+
+      <hr />
+
+      <p><strong>Request No:</strong> ${request.requestNumber}</p>
+      <p><strong>Status:</strong> ${request.status}</p>
+    </div>
+  `;
+};
+
+NotificationService.completionTemplate = (request) => {
+  return `
+    <div style="font-family: Arial; padding: 20px;">
+      <h2>✅ Request Completed</h2>
+
+      <p>Your maintenance request has been completed successfully.</p>
+
+      <hr />
+
+      <p><strong>Request No:</strong> ${request.requestNumber}</p>
+    </div>
+  `;
+};
+
+NotificationService.overdueTemplate = (request) => {
+  return `
+    <div style="font-family: Arial; padding: 20px;">
+      <h2>⚠️ Request Overdue</h2>
+
+      <p>This maintenance request is overdue.</p>
+
+      <hr />
+
+      <p><strong>Request No:</strong> ${request.requestNumber}</p>
+    </div>
+  `;
+};
+NotificationService.EMAIL_SUBJECTS = EMAIL_SUBJECTS;
 
 module.exports = NotificationService;

@@ -10,3 +10,4 @@ client/node_modules/
 coverage/
 mongodb_data/
 scratch/
+uploads/attachments/

@@ -25,7 +25,9 @@ const sanitizeBody = (body) => {
     delete cleaned.scheduledDate;
   if (cleaned.completedDate === "" || cleaned.completedDate === null)
     delete cleaned.completedDate;
-
+  if (!Array.isArray(cleaned.attachments)) {
+  cleaned.attachments = [];
+}
   return cleaned;
 };
 
@@ -101,8 +103,8 @@ exports.getAllRequests = async (req, res) => {
     const requests = await MaintenanceRequest.find(query)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy")
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email")
       .sort({ createdAt: -1 });
 
     res.json(requests);
@@ -117,8 +119,8 @@ exports.getRequestById = async (req, res) => {
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
     res.json(request);
@@ -155,16 +157,17 @@ exports.createRequest = async (req, res) => {
       }
     }
 
-    const request = await MaintenanceRequest.create({
-      ...payload,
-      requestNumber,
-    });
-
+const request = await MaintenanceRequest.create({
+  ...payload,
+  requestNumber,
+  attachments:
+    req.body.attachments || [],
+});
     const requestWithRelations = await MaintenanceRequest.findById(request._id)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     const userName = requestWithRelations?.createdBy?.name || "";
 
@@ -186,7 +189,17 @@ exports.createRequest = async (req, res) => {
     // Notify: request created
     const io = req.app.get("socketio");
     await NotificationService.notifyRequestChange(io, "request_created", requestWithRelations);
-
+    if (requestWithRelations.assignedTo?.email) {
+      try {
+        await NotificationService.sendEmail(
+          requestWithRelations.assignedTo.email,
+          NotificationService.EMAIL_SUBJECTS.ASSIGNED,
+          NotificationService.assignmentTemplate(requestWithRelations)
+        );
+      } catch (error) {
+        console.error("EMAIL ERROR:", error);
+      }
+    }
     // Activity: equipment status changed (if we changed it)
     if (
       equipmentDoc &&
@@ -217,7 +230,7 @@ exports.updateRequest = async (req, res) => {
 
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
-      .populate("createdBy");
+      .populate("createdBy", "name email");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
 
@@ -247,8 +260,8 @@ exports.updateRequest = async (req, res) => {
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     const userName = updatedRequest?.createdBy?.name || "";
     const newStage = updatedRequest.stage;
@@ -278,6 +291,17 @@ exports.updateRequest = async (req, res) => {
       updatedRequest, 
       completed ? "Completed" : `Stage changed to ${newStage}`
     );
+    if (completed && updatedRequest.createdBy?.email) {
+      try {
+      await NotificationService.sendEmail(
+        updatedRequest.createdBy.email,
+        NotificationService.EMAIL_SUBJECTS.COMPLETED,
+        NotificationService.completionTemplate(updatedRequest)
+      );
+    } catch (error) {
+      console.error("EMAIL ERROR:", error);
+    }
+  }
 
     // If equipment status changed due to stage update, log it too
     if (
@@ -309,7 +333,7 @@ exports.updateRequestStage = async (req, res) => {
     const { stage } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
-      .populate("createdBy");
+      .populate("createdBy", "name email");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
 
@@ -332,8 +356,8 @@ exports.updateRequestStage = async (req, res) => {
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("team")
-      .populate("assignedTo")
-      .populate("createdBy");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     const userName = updatedRequest?.createdBy?.name || "";
     const completed = stage === "repaired" || stage === "scrap";
@@ -361,6 +385,17 @@ exports.updateRequestStage = async (req, res) => {
       updatedRequest, 
       completed ? "Completed via Kanban" : `Moved to ${stage}`
     );
+    if (completed && updatedRequest.createdBy?.email) {
+      try {
+        await NotificationService.sendEmail(
+          updatedRequest.createdBy.email,
+          NotificationService.EMAIL_SUBJECTS.COMPLETED,
+          NotificationService.completionTemplate(updatedRequest)
+        );
+      } catch (error) {
+        console.error("EMAIL ERROR:", error);
+      }
+    }
 
     if (updatedRequest.equipment && completed) {
       const toStatus = stage === "scrap" ? "scrapped" : "active";
@@ -386,7 +421,7 @@ exports.deleteRequest = async (req, res) => {
   try {
     const request = await MaintenanceRequest.findByIdAndDelete(req.params.id)
       .populate("equipment")
-      .populate("createdBy");
+      .populate("createdBy", "name email");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
 
@@ -424,9 +459,146 @@ exports.getCalendarEvents = async (req, res) => {
 
     const requests = await MaintenanceRequest.find(where)
       .populate("equipment")
-      .populate("assignedTo");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get analytics summary and chart data
+exports.getAnalytics = async (req, res) => {
+  try {
+    const { range = "30d", startDate, endDate } = req.query;
+
+    const now = new Date();
+    let start;
+    let end;
+
+    if (range === "custom") {
+      if (!startDate || !endDate) {
+        return res
+          .status(400)
+          .json({ error: "startDate and endDate are required for custom range" });
+      }
+      start = new Date(startDate);
+      end = new Date(endDate);
+    } else if (range === "90d") {
+      end = now;
+      start = new Date(now);
+      start.setDate(start.getDate() - 90);
+    } else {
+      end = now;
+      start = new Date(now);
+      start.setDate(start.getDate() - 30);
+    }
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ error: "Invalid date range" });
+    }
+
+    if (start > end) {
+      return res.status(400).json({ error: "startDate cannot be after endDate" });
+    }
+
+    const rangeMatch = { createdAt: { $gte: start, $lte: end } };
+    const openStages = ["new", "in-progress"];
+
+    const [
+      totalRequests,
+      completedRequests,
+      overdueRequests,
+      stageBreakdown,
+      typeBreakdown,
+      trendData,
+      mttrResult,
+    ] = await Promise.all([
+      MaintenanceRequest.countDocuments(rangeMatch),
+      MaintenanceRequest.countDocuments({
+        ...rangeMatch,
+        stage: { $in: ["repaired", "scrap"] },
+      }),
+      MaintenanceRequest.countDocuments({
+        ...rangeMatch,
+        scheduledDate: { $lt: now },
+        stage: { $in: openStages },
+      }),
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        { $group: { _id: "$stage", value: { $sum: 1 } } },
+        { $project: { _id: 0, stage: "$_id", value: 1 } },
+        { $sort: { stage: 1 } },
+      ]),
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        { $group: { _id: "$type", value: { $sum: 1 } } },
+        { $project: { _id: 0, type: "$_id", value: 1 } },
+        { $sort: { type: 1 } },
+      ]),
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+            total: { $sum: 1 },
+            completed: {
+              $sum: {
+                $cond: [{ $in: ["$stage", ["repaired", "scrap"]] }, 1, 0],
+              },
+            },
+          },
+        },
+        { $project: { _id: 0, date: "$_id", total: 1, completed: 1 } },
+        { $sort: { date: 1 } },
+      ]),
+      MaintenanceRequest.aggregate([
+        {
+          $match: {
+            ...rangeMatch,
+            completedDate: { $ne: null },
+            stage: { $in: ["repaired", "scrap"] },
+          },
+        },
+        {
+          $project: {
+            resolutionMs: { $subtract: ["$completedDate", "$createdAt"] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            avgResolutionMs: { $avg: "$resolutionMs" },
+          },
+        },
+      ]),
+    ]);
+
+    const avgResolutionMs = mttrResult[0]?.avgResolutionMs || 0;
+    const mttrHours = avgResolutionMs ? avgResolutionMs / (1000 * 60 * 60) : 0;
+    const overdueRate = totalRequests ? (overdueRequests / totalRequests) * 100 : 0;
+
+    res.json({
+      range: {
+        type: range,
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+      },
+      metrics: {
+        totalRequests,
+        completedRequests,
+        mttrHours: Number(mttrHours.toFixed(2)),
+        overdueRate: Number(overdueRate.toFixed(2)),
+      },
+      charts: {
+        stageBreakdown,
+        typeBreakdown,
+        trend: trendData,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

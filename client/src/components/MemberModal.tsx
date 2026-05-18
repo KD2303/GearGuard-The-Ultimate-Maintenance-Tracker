@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import { teamService } from '../services/teamService';
+import { MaintenanceTeam, TeamMember } from '../types';
 
 interface MemberModalProps {
   isOpen: boolean;
@@ -16,7 +17,11 @@ const MemberModal: React.FC<MemberModalProps> = ({
   onSuccess,
   defaultTeamId,
 }) => {
-  const [formData, setFormData] = useState({
+  type MemberForm = Pick<TeamMember, 'name' | 'email' | 'phone' | 'role' | 'isActive'> & {
+    teamId: string;
+  };
+
+  const [formData, setFormData] = useState<MemberForm>({
     name: '',
     email: '',
     phone: '',
@@ -24,7 +29,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
     teamId: defaultTeamId || '',
     isActive: true,
   });
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
