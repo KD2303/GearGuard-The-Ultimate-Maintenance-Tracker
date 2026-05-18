@@ -10,6 +10,7 @@
     "build": "cd client && npm run build",
     "start": "node server/index.js",
     "install-all": "npm install && cd client && npm install",
+    "seed": "node server/scripts/seedAdmin.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch"
   },

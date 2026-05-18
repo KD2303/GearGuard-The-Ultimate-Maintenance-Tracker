@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 import { 
   Wrench, 
   Box, 
@@ -9,12 +10,12 @@ import {
   LayoutDashboard, 
   List, 
   Activity, 
-  Bell, 
   Menu, 
   X, 
   Car, 
   Settings, 
-  Shield 
+  Shield,
+  LogOut
 } from "lucide-react";
 import NotificationCenter from './NotificationCenter';
 import LanguageSelector from './LanguageSelector';
@@ -26,14 +27,19 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const settingsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
     
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -44,17 +50,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  const navItems = [
-    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard'), gradient: 'from-blue-500 to-purple-600' },
-    { to: '/admin', icon: Shield, label: t('nav.admin'), gradient: 'from-rose-500 to-red-600' },
-    { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600' },
-    { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-red-600' },
-    { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600' },
-    { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-teal-600' },
-    { to: '/vehicles', icon: Car, label: t('nav.vehicles'), gradient: 'from-orange-500 to-red-600' },
-    { to: '/teams', icon: Users, label: t('nav.teams'), gradient: 'from-yellow-500 to-orange-600' },
-    { to: '/activity', icon: Activity, label: t('nav.activity'), gradient: 'from-indigo-500 to-purple-600' },
+
+  const allNavItems = [
+    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard'), gradient: 'from-blue-500 to-purple-600', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/admin', icon: Shield, label: t('nav.admin'), gradient: 'from-rose-500 to-red-600', roles: ['Admin', 'Manager'] },
+    { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-red-600', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-teal-600', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/vehicles', icon: Car, label: t('nav.vehicles'), gradient: 'from-orange-500 to-red-600', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/teams', icon: Users, label: t('nav.teams'), gradient: 'from-yellow-500 to-orange-600', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/activity', icon: Activity, label: t('nav.activity'), gradient: 'from-indigo-500 to-purple-600', roles: ['Admin', 'Manager', 'Technician'] },
   ];
+
+  const navItems = allNavItems.filter(item => user && item.roles.includes(user.role));
+
+  const userInitials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : '?';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors">
@@ -109,7 +122,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Actions */}
             <div className="flex items-center space-x-2 lg:space-x-3">
-             <div className="flex items-center space-x-2 lg:space-x-3">
             {/* Notifications */}
             <NotificationCenter />
 
@@ -141,25 +153,37 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="absolute right-0 mt-2 w-48 rounded-2xl border bg-white/90 shadow-xl backdrop-blur-xl z-50">
                   <button
                     onClick={() => { navigate('/settings'); setSettingsOpen(false); }}
-                    className="block w-full px-4 py-2 text-left hover:bg-purple-50"
+                    className="block w-full px-4 py-2 text-left hover:bg-purple-50 rounded-t-2xl"
                   >
                     {t('layout.settings')}
                   </button>
                   <button
-                    onClick={() => { navigate('/profile'); setSettingsOpen(false); }}
-                    className="block w-full px-4 py-2 text-left hover:bg-purple-50"
+                    onClick={() => { handleLogout(); setSettingsOpen(false); }}
+                    className="block w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 rounded-b-2xl"
                   >
-                    {t('layout.profile')}
+                    Logout
                   </button>
                 </div>
               )}
             </div>
-          </div>
               {/* User Avatar */}
               <div className="hidden lg:flex items-center space-x-3">
-                <div className="w-9 h-9 rounded-xl border border-white/50 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg ring-1 ring-white/40">
-                  JD
+                <div className="flex items-center space-x-2">
+                  <div className="w-9 h-9 rounded-xl border border-white/50 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg ring-1 ring-white/40">
+                    {userInitials}
+                  </div>
+                  <div className="hidden xl:block">
+                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 leading-tight">{user?.name}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{user?.role}</p>
+                  </div>
                 </div>
+                <button
+                  onClick={handleLogout}
+                  title="Logout"
+                  className="rounded-xl border border-white/50 bg-white/30 dark:bg-gray-800 p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 hover:border-red-300 transition-all"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
               </div>
 
               {/* Mobile Menu Button */}
