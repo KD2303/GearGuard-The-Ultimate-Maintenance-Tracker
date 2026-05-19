@@ -153,6 +153,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: t("nav.analytics"),
       gradient: "from-emerald-500 to-teal-600 shadow-emerald-500/20",
     },
+    {
+      to: "/predictive",
+      icon: Activity,
+      label: t("nav.predictive") || "Predictive Portal",
+      gradient: "from-rose-500 to-pink-600 shadow-rose-500/20",
+    },
   ];
 
   const activeItem = navItems.find((item) => item.to === location.pathname) || navItems[0];

@@ -21,23 +21,37 @@ const EquipmentSchema = new Schema({
   defaultTechnicianId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
   
   healthScore: {
-  type: Number,
-  default: 100
-},
-
-riskLevel: {
-  type: String,
-  default: "Healthy"
-},
-
-failureCount: {
-  type: Number,
-  default: 0
-},
-
-lastFailureDate: {
-  type: Date
-}
+    type: Number,
+    default: 100
+  },
+  riskLevel: {
+    type: String,
+    default: "Healthy"
+  },
+  failureCount: {
+    type: Number,
+    default: 0
+  },
+  lastFailureDate: {
+    type: Date
+  },
+  operatingHours: {
+    type: Number,
+    default: 0
+  },
+  temperatureCelsius: {
+    type: Number,
+    default: 25
+  },
+  vibrationAmplitude: {
+    type: Number,
+    default: 0.1
+  },
+  criticalThresholds: {
+    maxHours: { type: Number, default: 2000 },
+    maxTemp: { type: Number, default: 85 },
+    maxVibration: { type: Number, default: 4.5 }
+  }
 }, { timestamps: true });
 
 EquipmentSchema.virtual('maintenanceTeam', {

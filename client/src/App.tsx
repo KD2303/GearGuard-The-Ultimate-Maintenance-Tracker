@@ -17,6 +17,7 @@ import SettingsPage from './pages/SettingsPage';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import PredictiveDashboard from './pages/PredictiveDashboard';
 
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -68,6 +69,7 @@ function App() {
             <Route path="/vehicles" element={<VehicleList />} />
             <Route path="/teams" element={<TeamsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/predictive" element={<PredictiveDashboard />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </Layout>

@@ -9,7 +9,8 @@
     "vehicles": "Vehicles",
     "teams": "Teams",
     "activity": "Activity",
-    "analytics": "Analytics" 
+    "analytics": "Analytics",
+    "predictive": "Predictive Portal"
   },
 
   "layout": {
