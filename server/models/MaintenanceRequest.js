@@ -23,7 +23,11 @@ const MaintenanceRequestSchema = new Schema({
   equipmentId: { type: Schema.Types.ObjectId, ref: 'Equipment' },
   teamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   assignedToId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
-  createdById: { type: Schema.Types.ObjectId, ref: 'TeamMember' }
+  createdById: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
+  partsUsed: [{
+    partId: { type: Schema.Types.ObjectId, ref: 'SparePart' },
+    quantityUsed: { type: Number, required: true, default: 1 }
+  }]
 }, { timestamps: true });
 
 MaintenanceRequestSchema.virtual('equipment', {

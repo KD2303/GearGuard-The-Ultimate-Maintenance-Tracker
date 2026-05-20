@@ -1,3 +1,5 @@
+import { SparePart, PartUsedInput } from './inventory';
+
 export interface Equipment {
   _id?: string;
   id: string;
@@ -76,6 +78,7 @@ export interface MaintenanceRequest {
   assignedTo?: TeamMember;
   createdById?: string;
   createdBy?: TeamMember;
+  partsUsed?: { partId: string | SparePart; quantityUsed: number }[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -111,10 +114,11 @@ export interface CreateMaintenanceRequestDto {
   assignedToId?: string;
   createdById?: string;
   attachments?: {
-  filename: string;
-  fileUrl: string;
-  fileType: string;
-}[];
+    filename: string;
+    fileUrl: string;
+    fileType: string;
+  }[];
+  partsUsed?: PartUsedInput[];
 }
 
 export interface Notification {
@@ -183,3 +187,4 @@ export interface GlobalSearchResults {
 }
 
 export * from './activity';
+export * from './inventory';

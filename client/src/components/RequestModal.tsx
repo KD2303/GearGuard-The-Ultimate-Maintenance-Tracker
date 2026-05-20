@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
-import { CreateMaintenanceRequestDto, Equipment, MaintenanceTeam, TeamMember } from '../types';
+import { CreateMaintenanceRequestDto, Equipment, MaintenanceTeam, TeamMember, SparePart } from '../types';
 import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { uploadService } from '../services/uploadService';
+import { inventoryService } from '../services/inventoryService';
+import { Plus, Trash2 } from 'lucide-react';
 interface RequestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -80,6 +82,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [spareParts, setSpareParts] = useState<SparePart[]>([]);
+  const [selectedParts, setSelectedParts] = useState<{ partId: string; quantityUsed: number }[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Attachments state
@@ -88,16 +92,18 @@ const RequestModal: React.FC<RequestModalProps> = ({
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [equipmentData, teamsData, membersData] =
+        const [equipmentData, teamsData, membersData, partsData] =
           await Promise.all([
             equipmentService.getAll(),
             teamService.getAllTeams(),
             teamService.getAllMembers(),
+            inventoryService.getAll(),
           ]);
 
         setEquipment(equipmentData);
         setTeams(teamsData);
         setMembers(membersData);
+        setSpareParts(partsData);
       } catch (error) {
         console.error('Failed to load modal data:', error);
       }
@@ -251,6 +257,7 @@ if (attachments.length > 0) {
 await requestService.create({
   ...formData,
   attachments: uploadedAttachments,
+  partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
 });
 
       onSuccess();
@@ -278,6 +285,7 @@ await requestService.create({
 
   const handleClose = () => {
     setAttachments([]);
+    setSelectedParts([]);
 
     setAutoFilled({
       category: '',
@@ -509,6 +517,70 @@ await requestService.create({
               );
             })}
           </select>
+        </div>
+
+        {/* Spare Parts Used */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">
+            Spare Parts Used
+          </label>
+          <div className="space-y-3">
+            {selectedParts.map((item, index) => (
+              <div key={index} className="flex gap-3 items-center bg-gray-50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                {/* Part Dropdown */}
+                <select
+                  value={item.partId}
+                  onChange={(e) => {
+                    const newParts = [...selectedParts];
+                    newParts[index].partId = e.target.value;
+                    setSelectedParts(newParts);
+                  }}
+                  className="flex-1 px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-950 dark:text-white focus:outline-none"
+                >
+                  <option value="">Select a spare part...</option>
+                  {spareParts.map((part) => (
+                    <option key={part._id || part.id} value={part._id || part.id}>
+                      {part.name} (Stock: {part.quantityInStock})
+                    </option>
+                  ))}
+                </select>
+
+                {/* Quantity Input */}
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Qty"
+                  value={item.quantityUsed || ""}
+                  onChange={(e) => {
+                    const newParts = [...selectedParts];
+                    newParts[index].quantityUsed = parseInt(e.target.value) || 0;
+                    setSelectedParts(newParts);
+                  }}
+                  className="w-20 px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-950 dark:text-white focus:outline-none"
+                />
+
+                {/* Delete */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedParts(selectedParts.filter((_, i) => i !== index));
+                  }}
+                  className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setSelectedParts([...selectedParts, { partId: "", quantityUsed: 1 }])}
+              className="flex items-center text-xs font-bold text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 gap-1 mt-1"
+            >
+              <Plus className="h-4 w-4" />
+              Add Spare Part Used
+            </button>
+          </div>
         </div>
 
         {/* Attachments */}

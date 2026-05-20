@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/predictive';
+const API_URL = '/api/predictive';
 
 export const getHighRiskEquipment = async () => {
 

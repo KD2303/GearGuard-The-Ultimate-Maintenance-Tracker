@@ -3,9 +3,40 @@ const {
   Equipment,
   MaintenanceTeam,
   TeamMember,
+  SparePart,
 } = require("../models");
 const { logActivity } = require("../utils/logActivity");
 const NotificationService = require("../services/notificationService");
+
+const decrementInventory = async (io, partsUsed) => {
+  if (!partsUsed || !Array.isArray(partsUsed) || partsUsed.length === 0) return;
+  for (const item of partsUsed) {
+    const partId = item.partId?._id || item.partId;
+    if (!partId) continue;
+    try {
+      const currentPart = await SparePart.findById(partId);
+      if (currentPart) {
+        const newStock = currentPart.quantityInStock - item.quantityUsed;
+        const updates = { quantityInStock: newStock };
+        
+        if (newStock <= currentPart.minReorderThreshold) {
+          if (currentPart.reorderStatus === 'ok') {
+            updates.reorderStatus = 'low-stock';
+          }
+        } else {
+          updates.reorderStatus = 'ok';
+        }
+
+        const part = await SparePart.findByIdAndUpdate(partId, updates, { new: true });
+        if (part && part.quantityInStock <= part.minReorderThreshold) {
+          await NotificationService.notifyLowStock(io, part);
+        }
+      }
+    } catch (err) {
+      console.error(`Failed to decrement inventory for part ${partId}:`, err);
+    }
+  }
+};
 
 // Remove empty-string ObjectId/date fields so Mongoose validation doesn't fail
 const sanitizeBody = (body) => {
@@ -105,6 +136,7 @@ exports.getAllRequests = async (req, res) => {
       .populate("team")
       .populate("assignedTo", "name email")
       .populate("createdBy", "name email")
+      .populate("partsUsed.partId")
       .sort({ createdAt: -1 });
 
     res.json(requests);
@@ -120,7 +152,8 @@ exports.getRequestById = async (req, res) => {
       .populate("equipment")
       .populate("team")
       .populate("assignedTo", "name email")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .populate("partsUsed.partId");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
     res.json(request);
@@ -167,7 +200,8 @@ const request = await MaintenanceRequest.create({
       .populate("equipment")
       .populate("team")
       .populate("assignedTo", "name email")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .populate("partsUsed.partId");
 
     const userName = requestWithRelations?.createdBy?.name || "";
 
@@ -257,11 +291,19 @@ exports.updateRequest = async (req, res) => {
 
     await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload);
 
+    const isCompleted = prevStage === "repaired" || prevStage === "scrap";
+    const nowCompleted = payload.stage === "repaired" || payload.stage === "scrap";
+    if (payload.stage && nowCompleted && !isCompleted) {
+      const io = req.app.get("socketio");
+      await decrementInventory(io, request.partsUsed);
+    }
+
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("team")
       .populate("assignedTo", "name email")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .populate("partsUsed.partId");
 
     const userName = updatedRequest?.createdBy?.name || "";
     const newStage = updatedRequest.stage;
@@ -333,7 +375,8 @@ exports.updateRequestStage = async (req, res) => {
     const { stage } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .populate("partsUsed.partId");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
 
@@ -353,11 +396,19 @@ exports.updateRequestStage = async (req, res) => {
       }
     }
 
+    const isCompleted = prevStage === "repaired" || prevStage === "scrap";
+    const nowCompleted = stage === "repaired" || stage === "scrap";
+    if (nowCompleted && !isCompleted) {
+      const io = req.app.get("socketio");
+      await decrementInventory(io, request.partsUsed);
+    }
+
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("team")
       .populate("assignedTo", "name email")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .populate("partsUsed.partId");
 
     const userName = updatedRequest?.createdBy?.name || "";
     const completed = stage === "repaired" || stage === "scrap";

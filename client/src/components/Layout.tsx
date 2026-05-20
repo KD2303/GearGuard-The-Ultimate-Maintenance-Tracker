@@ -17,6 +17,7 @@ import {
   Shield,
   BarChart3,
   LogOut,
+  Package,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
 import LanguageSelector from "./LanguageSelector";
@@ -94,6 +95,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       icon: Box,
       label: t("nav.equipment"),
       gradient: "from-green-500 to-emerald-600 shadow-green-500/20",
+    },
+    {
+      to: "/inventory",
+      icon: Package,
+      label: t("nav.inventory") || "Inventory",
+      gradient: "from-teal-500 to-emerald-600 shadow-teal-500/20",
     },
     {
       to: "/vehicles",
