@@ -1,5 +1,7 @@
 import api from './api';
 
+const API_URL = '/api/predictive';
+
 export interface TelemetrySimulationDto {
   equipmentId: string;
   operatingHours?: number;

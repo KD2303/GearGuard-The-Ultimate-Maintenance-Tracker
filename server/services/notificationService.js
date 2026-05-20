@@ -24,6 +24,7 @@ const EMAIL_SUBJECTS = {
   ASSIGNED: "New Maintenance Request Assigned",
   COMPLETED: "Maintenance Request Completed",
   OVERDUE: "Maintenance Request Overdue",
+  REORDER: "Urgent: Spare Part Reorder Alert",
 };
 /**
  * Service to handle real-time notifications via Socket.IO
@@ -117,14 +118,141 @@ class NotificationService {
     const userId = request.assignedToId || request.createdById;
 
     return this.sendNotification(io, {
-      userId, // 🔥 ADD THIS
+      userId,
       type,
       message,
       requestId: request._id,
       priority,
     });
   }
+  static async notifyLowStock(io, part) {
+    const message = `⚠️ Low Stock Alert: "${part.name}" has dropped to ${part.quantityInStock} units (threshold: ${part.minReorderThreshold}).`;
+    
+    let adminUserId = null;
+    try {
+      const User = require("../models/user");
+      let adminUser = await User.findOne({ role: "Admin" });
+      if (!adminUser) {
+        adminUser = await User.findOne();
+      }
+      if (adminUser) {
+        adminUserId = adminUser._id;
+      }
+    } catch (dbErr) {
+      console.error("Failed to query Admin user for system notification:", dbErr);
+    }
+
+    if (adminUserId) {
+      await this.sendNotification(io, {
+        userId: adminUserId,
+        type: "system",
+        message,
+        requestId: null,
+        priority: "high",
+      });
+    }
+
+    if (part.supplierEmail) {
+      try {
+        await this.sendEmail(
+          part.supplierEmail,
+          `Urgent: Spare Part Reorder Alert - ${part.name}`,
+          this.reorderTemplate(part)
+        );
+      } catch (err) {
+        console.error("Failed to send reorder email:", err);
+      }
+    }
+  }
+
+  static async sendOnDemandReorderEmail(part, quantity) {
+    if (part.supplierEmail) {
+      try {
+        await this.sendEmail(
+          part.supplierEmail,
+          `[PROCUREMENT ORDER] Reorder Request - ${part.name}`,
+          this.onDemandReorderTemplate(part, quantity)
+        );
+      } catch (err) {
+        console.error("Failed to send on-demand reorder email:", err);
+      }
+    }
+  }
 }
+NotificationService.reorderTemplate = (part) => {
+  return `
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+      <h2 style="color: #d9534f;">⚠️ Low Stock Alert: Procurement Required</h2>
+      <p>The stock level for the following spare part has fallen below its safety threshold:</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold; width: 150px;">Part Name:</td>
+          <td style="padding: 8px 0;">${part.name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">SKU:</td>
+          <td style="padding: 8px 0;"><code>${part.sku}</code></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Current Stock:</td>
+          <td style="padding: 8px 0; color: #d9534f; font-weight: bold;">${part.quantityInStock}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Safety Threshold:</td>
+          <td style="padding: 8px 0;">${part.minReorderThreshold}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Unit Cost:</td>
+          <td style="padding: 8px 0;">₹${part.unitCost}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Storage Location:</td>
+          <td style="padding: 8px 0;">${part.location || "N/A"}</td>
+        </tr>
+      </table>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="font-size: 0.9em; color: #777;">Please contact the supplier at <strong>${part.supplierEmail || 'N/A'}</strong> to reorder units immediately.</p>
+    </div>
+  `;
+};
+NotificationService.onDemandReorderTemplate = (part, quantity) => {
+  return `
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+      <h2 style="color: #0d9488;">📦 Procurement Order: Spare Part Reorder</h2>
+      <p>Please prepare and dispatch a shipment of the following spare part immediately:</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold; width: 150px;">Part Name:</td>
+          <td style="padding: 8px 0;">${part.name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">SKU:</td>
+          <td style="padding: 8px 0;"><code>${part.sku}</code></td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Requested Order Qty:</td>
+          <td style="padding: 8px 0; font-weight: bold; color: #0d9488;">${quantity} units</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Unit Cost:</td>
+          <td style="padding: 8px 0;">₹${part.unitCost.toFixed(2)}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Total Cost Estimate:</td>
+          <td style="padding: 8px 0; font-weight: bold;">₹${(part.unitCost * quantity).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; font-weight: bold;">Storage Location:</td>
+          <td style="padding: 8px 0;">${part.location || "N/A"}</td>
+        </tr>
+      </table>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="font-size: 0.9em; color: #777;">This is a system-generated procurement request from GearGuard. Please send the invoice quote to our accounting department.</p>
+    </div>
+  `;
+};
 NotificationService.assignmentTemplate = (request) => {
   return `
     <div style="font-family: Arial; padding: 20px;">

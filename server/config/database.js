@@ -6,10 +6,26 @@ const envUri = process.env.MONGO_URI || process.env.MONGO_URL;
 
 const seedMockData = async () => {
   try {
-    const { Equipment, MaintenanceTeam, TeamMember, MaintenanceRequest } = require('../models');
+    const { Equipment, MaintenanceTeam, TeamMember, MaintenanceRequest, SparePart } = require('../models');
     const User = require('../models/user');
     const bcrypt = require('bcryptjs');
     
+    // Seed Spare Parts
+    const partCount = await SparePart.countDocuments();
+    let seededParts = [];
+    if (partCount === 0) {
+      console.log('🌱 Seeding premium spare parts into database...');
+      seededParts = await SparePart.create([
+        { name: 'Hydraulic Seal 45mm', sku: 'HYD-SEAL-45', quantityInStock: 12, unitCost: 15.5, minReorderThreshold: 5, supplierEmail: 'procurement@gearguard.com', location: 'Shelf A-3' },
+        { name: 'HVAC Air Filter 24x24x2', sku: 'HVAC-FILT-24', quantityInStock: 25, unitCost: 8.99, minReorderThreshold: 10, supplierEmail: 'procurement@gearguard.com', location: 'Shelf C-12' },
+        { name: 'CNC Lathe Spindle Belt', sku: 'CNC-BELT-LB3000', quantityInStock: 3, unitCost: 45.0, minReorderThreshold: 2, supplierEmail: 'procurement@gearguard.com', location: 'Shelf B-2' },
+        { name: 'Synthetic Gear Oil ISO 320 (1L)', sku: 'OIL-GEAR-ISO320', quantityInStock: 15, unitCost: 22.4, minReorderThreshold: 6, supplierEmail: 'procurement@gearguard.com', location: 'Lube Locker 1' }
+      ]);
+      console.log('✓ Spare parts successfully seeded.');
+    } else {
+      seededParts = await SparePart.find();
+    }
+
     // Check if equipment already exists
     const count = await Equipment.countDocuments();
     if (count > 0) return; // already seeded!
@@ -113,7 +129,11 @@ const seedMockData = async () => {
       teamId: team1._id,
       assignedToId: tech1._id,
       requestNumber: 'REQ-0001',
-      scheduledDate: new Date()
+      scheduledDate: new Date(),
+      partsUsed: [
+        { partId: seededParts[0]?._id, quantityUsed: 2 },
+        { partId: seededParts[2]?._id, quantityUsed: 1 }
+      ]
     });
 
     await MaintenanceRequest.create({
@@ -126,7 +146,10 @@ const seedMockData = async () => {
       teamId: team1._id,
       assignedToId: tech3._id,
       requestNumber: 'REQ-0002',
-      scheduledDate: new Date()
+      scheduledDate: new Date(),
+      partsUsed: [
+        { partId: seededParts[3]?._id, quantityUsed: 1 }
+      ]
     });
 
     await MaintenanceRequest.create({
@@ -139,7 +162,10 @@ const seedMockData = async () => {
       teamId: team2._id,
       assignedToId: tech2._id,
       requestNumber: 'REQ-0003',
-      scheduledDate: new Date()
+      scheduledDate: new Date(),
+      partsUsed: [
+        { partId: seededParts[1]?._id, quantityUsed: 4 }
+      ]
     });
 
     console.log('✓ Mock data successfully seeded.');

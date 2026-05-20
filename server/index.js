@@ -24,6 +24,7 @@ const analyticsRoutes = require("./routes/analytics");
 const predictiveRoutes = require("./routes/predictiveRoutes");
 const authRoutes = require("./routes/auth");
 const activitiesRoutes = require("./routes/activities");
+const inventoryRoutes = require("./routes/inventory");
 
 const app = express();
 const server = http.createServer(app);
@@ -67,6 +68,7 @@ app.use("/api/search", require("./routes/search"));
 app.use("/api/admin", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/predictive", predictiveRoutes);
+app.use("/api/inventory", inventoryRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -97,6 +99,7 @@ const startServer = async () => {
     const adminRoutes = require("./routes/admin");
     const uploadRoutes = require("./routes/uploadRoutes");
     const searchRoutes = require("./routes/search");
+    const inventoryRoutesLocal = require("./routes/inventory");
 
     // Debug route types
     console.log("authRoutes:", typeof authRoutes);
@@ -120,6 +123,7 @@ const startServer = async () => {
     app.use("/api/notifications", notificationRoutes);
     app.use("/api/search", searchRoutes);
     app.use("/api/admin", adminRoutes);
+    app.use("/api/inventory", inventoryRoutesLocal);
 
     // Upload route
     app.use("/api/upload", uploadRoutes);

@@ -1,23 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
-import { useTheme } from "../contexts/ThemeContext";
-import { useAuth } from "../contexts/AuthContext";
-import { 
-  Wrench, 
-  Box, 
-  Users, 
-  Calendar, 
-  LayoutDashboard, 
-  List, 
-  Activity, 
-  Menu, 
-  X, 
-  Car, 
-  Settings, 
-  Shield,
-  LogOut
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 import {
   Wrench,
   Box,
@@ -34,6 +18,7 @@ import {
   Shield,
   BarChart3,
   LogOut,
+  Package,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
 import LanguageSelector from "./LanguageSelector";
@@ -53,7 +38,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
 
-  const currentUser = authService.getCurrentUser() || { name: "Guest User", role: "Technician" };
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -71,108 +56,38 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, []);
 
   const allNavItems = [
-    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard'), gradient: 'from-blue-500 to-purple-600', roles: ['Admin', 'Manager', 'Technician'] },
-    { to: '/admin', icon: Shield, label: t('nav.admin'), gradient: 'from-rose-500 to-red-600', roles: ['Admin', 'Manager'] },
-    { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600', roles: ['Admin', 'Manager', 'Technician'] },
-    { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-red-600', roles: ['Admin', 'Manager', 'Technician'] },
-    { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600', roles: ['Admin', 'Manager', 'Technician'] },
-    { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-teal-600', roles: ['Admin', 'Manager', 'Technician'] },
-    { to: '/vehicles', icon: Car, label: t('nav.vehicles'), gradient: 'from-orange-500 to-red-600', roles: ['Admin', 'Manager', 'Technician'] },
-    { to: '/teams', icon: Users, label: t('nav.teams'), gradient: 'from-yellow-500 to-orange-600', roles: ['Admin', 'Manager', 'Technician'] },
-    { to: '/activity', icon: Activity, label: t('nav.activity'), gradient: 'from-indigo-500 to-purple-600', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/', icon: LayoutDashboard, label: t('nav.dashboard'), gradient: 'from-blue-500 to-indigo-600 shadow-blue-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/admin', icon: Shield, label: t('nav.admin'), gradient: 'from-rose-500 to-red-600 shadow-rose-500/20', roles: ['Admin', 'Manager'] },
+    { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600 shadow-purple-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-rose-600 shadow-pink-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600 shadow-cyan-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-emerald-600 shadow-green-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/inventory', icon: Package, label: t('nav.inventory') || 'Inventory', gradient: 'from-teal-500 to-emerald-600 shadow-teal-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/vehicles', icon: Car, label: t('nav.vehicles'), gradient: 'from-orange-500 to-amber-600 shadow-orange-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/teams', icon: Users, label: t('nav.teams'), gradient: 'from-yellow-500 to-orange-600 shadow-yellow-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/activity', icon: Activity, label: t('nav.activity'), gradient: 'from-indigo-500 to-purple-600 shadow-indigo-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/analytics', icon: BarChart3, label: t('nav.analytics'), gradient: 'from-emerald-500 to-teal-600 shadow-emerald-500/20', roles: ['Admin', 'Manager'] },
+    { to: '/predictive', icon: Activity, label: t('nav.predictive') || 'Predictive Portal', gradient: 'from-rose-500 to-pink-600 shadow-rose-500/20', roles: ['Admin', 'Manager'] },
   ];
 
   const navItems = allNavItems.filter(item => user && item.roles.includes(user.role));
 
-  const userInitials = user?.name
-    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : '?';
-  const handleLogout = () => {
-    authService.logout();
-    window.location.href = "/";
-  };
-
-  const navItems = [
-    {
-      to: "/",
-      icon: LayoutDashboard,
-      label: t("nav.dashboard"),
-      gradient: "from-blue-500 to-indigo-600 shadow-blue-500/20",
-    },
-    {
-      to: "/admin",
-      icon: Shield,
-      label: t("nav.admin"),
-      gradient: "from-rose-500 to-red-600 shadow-rose-500/20",
-    },
-    {
-      to: "/requests",
-      icon: Wrench,
-      label: t("nav.kanban"),
-      gradient: "from-purple-500 to-pink-600 shadow-purple-500/20",
-    },
-    {
-      to: "/requests-all",
-      icon: List,
-      label: t("nav.allRequests"),
-      gradient: "from-pink-500 to-rose-600 shadow-pink-500/20",
-    },
-    {
-      to: "/calendar",
-      icon: Calendar,
-      label: t("nav.calendar"),
-      gradient: "from-cyan-500 to-blue-600 shadow-cyan-500/20",
-    },
-    {
-      to: "/equipment",
-      icon: Box,
-      label: t("nav.equipment"),
-      gradient: "from-green-500 to-emerald-600 shadow-green-500/20",
-    },
-    {
-      to: "/vehicles",
-      icon: Car,
-      label: t("nav.vehicles"),
-      gradient: "from-orange-500 to-amber-600 shadow-orange-500/20",
-    },
-    {
-      to: "/teams",
-      icon: Users,
-      label: t("nav.teams"),
-      gradient: "from-yellow-500 to-orange-600 shadow-yellow-500/20",
-    },
-    {
-      to: "/activity",
-      icon: Activity,
-      label: t("nav.activity"),
-      gradient: "from-indigo-500 to-purple-600 shadow-indigo-500/20",
-    },
-    {
-      to: "/analytics",
-      icon: BarChart3,
-      label: t("nav.analytics"),
-      gradient: "from-emerald-500 to-teal-600 shadow-emerald-500/20",
-    },
-    {
-      to: "/predictive",
-      icon: Activity,
-      label: t("nav.predictive") || "Predictive Portal",
-      gradient: "from-rose-500 to-pink-600 shadow-rose-500/20",
-    },
-  ];
-
   const activeItem = navItems.find((item) => item.to === location.pathname) || navItems[0];
   const pageTitle = activeItem ? activeItem.label : t("nav.dashboard");
 
-  // Get initials for profile badge
-  const userInitials = currentUser.name
-    ? currentUser.name
+  const userInitials = user?.name
+    ? user.name
         .split(" ")
         .map((n: string) => n[0])
         .join("")
         .toUpperCase()
         .slice(0, 2)
     : "GU";
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
@@ -247,10 +162,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                {currentUser.name}
+                {user?.name}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider truncate">
-                {currentUser.role}
+                {user?.role}
               </p>
             </div>
           </div>
@@ -368,13 +283,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
-
-            {/* Desktop Quick User initials badge */}
-            <div className="hidden sm:flex items-center space-x-2 border-l border-slate-200 dark:border-slate-700 pl-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-xs font-extrabold shadow shadow-blue-500/10">
-                {userInitials}
               </div>
-            </div>
 
           </div>
         </header>
@@ -493,10 +402,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-none">
-                      {currentUser.name}
+                      {user?.name}
                     </p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-1">
-                      {currentUser.role}
+                      {user?.role}
                     </p>
                   </div>
                 </div>

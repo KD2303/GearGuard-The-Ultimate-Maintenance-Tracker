@@ -16,20 +16,7 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await authService.login({ email, password });
-      
-      // ✅ CRITICAL FIX: Save token to localStorage
-      if (response.data?.token) {
-        localStorage.setItem('token', response.data.token);
-        console.log('✅ Token saved to localStorage:', response.data.token);
-      }
-      
-      // ✅ Optional: Save user data
-      if (response.data?.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        console.log('✅ User saved to localStorage:', response.data.user);
-      }
-      
+      await login({ email, password });
       toast.success('Logged in successfully!');
       navigate('/');
     } catch (error: any) {
