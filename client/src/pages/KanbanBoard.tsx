@@ -21,6 +21,8 @@ import {
   requestService,
 } from "../services/requestService";
 
+import { getRelativeDateLabel } from "../utils/dateUtils";
+
 import Badge from "../components/Badge";
 
 import {
@@ -221,6 +223,11 @@ const RequestCard: React.FC<
           {new Date(
             request.scheduledDate
           ).toLocaleDateString()}
+          {request.stage !== "repaired" && request.stage !== "scrap" && (
+            <span className={`ml-1 font-medium ${getRelativeDateLabel(request.scheduledDate).colorClass}`}>
+              {getRelativeDateLabel(request.scheduledDate).label}
+            </span>
+          )}
         </div>
       )}
 

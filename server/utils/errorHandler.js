@@ -70,8 +70,7 @@ function formatError(error, isDevelopment = false) {
   // Add detailed information in development mode
   if (isDevelopment) {
     response.error.details = {
-      stack: error.stack,
-      originalError: error.originalError || null,
+      // Intentionally omitting stack trace and originalError to prevent leaking internal paths
       code: error.code || null,
     };
 

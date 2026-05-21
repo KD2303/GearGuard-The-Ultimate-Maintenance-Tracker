@@ -5,43 +5,77 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const morgan = require("morgan");
-const bodyParser = require("body-parser");
+const helmet = require("helmet");
+const crypto = require("crypto");
+const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
+const swaggerUi = require("swagger-ui-express");
+
 const { globalLimiter } = require("./middleware/rateLimiter");
-require("dotenv").config();
 const { errorMiddleware } = require("./middleware/errorHandler");
-
-console.log("ENV CHECK");
-console.log("MONGO_URI:", process.env.MONGO_URI);
-console.log("SMTP_HOST:", process.env.SMTP_HOST);
-
 const { syncDatabase } = require("./models");
+const swaggerSpec = require("./config/swagger");
+
+// Route imports
+const authRoutes = require("./routes/auth");
+const activitiesRoutes = require("./routes/activities");
 const equipmentRoutes = require("./routes/equipment");
 const teamRoutes = require("./routes/teams");
 const memberRoutes = require("./routes/members");
 const requestRoutes = require("./routes/requests");
 const notificationRoutes = require("./routes/notifications");
 const adminRoutes = require("./routes/admin");
+const uploadRoutes = require("./routes/uploadRoutes");
+const searchRoutes = require("./routes/search");
+const inventoryRoutes = require("./routes/inventory");
 const analyticsRoutes = require("./routes/analytics");
 const predictiveRoutes = require("./routes/predictiveRoutes");
-const authRoutes = require("./routes/auth");
-const activitiesRoutes = require("./routes/activities");
-const inventoryRoutes = require("./routes/inventory");
+
+console.log("ENV CHECK");
+console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
+console.log("SMTP_HOST:", process.env.SMTP_HOST);
 
 const app = express();
 const server = http.createServer(app);
 
+// Environment validation
+if (!process.env.MONGO_URI || !process.env.JWT_SECRET) {
+  console.error("❌ Fatal Error: Missing critical environment variables (MONGO_URI or JWT_SECRET).");
+  process.exit(1);
+}
+
+// Security Headers
+app.use(helmet());
+
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: process.env.CLIENT_URL || "http://localhost:3000",
     methods: ["GET", "POST"],
   },
 });
 
-const PORT = process.env.PORT || 5000;
+// Socket.IO Authentication Middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) {
+    return next(new Error("Authentication error: No token provided"));
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.user = decoded;
+    next();
+  } catch (err) {
+    next(new Error("Authentication error: Invalid token"));
+  }
+});
 
 // Socket.IO connection
 io.on("connection", (socket) => {
-  console.log(`🔌 User connected: ${socket.id}`);
+  console.log(`🔌 User connected: ${socket.id} (User ID: ${socket.user?.id})`);
+  
+  if (socket.user?.id) {
+    socket.join(socket.user.id);
+  }
 
   socket.on("disconnect", () => {
     console.log(`❌ User disconnected: ${socket.id}`);
@@ -51,110 +85,103 @@ io.on("connection", (socket) => {
 // Make io accessible to routes/controllers
 app.set("socketio", io);
 
+// Request ID middleware
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID();
+  res.setHeader("X-Request-Id", req.id);
+  next();
+});
+
 // Middleware
-app.use(cors());
-app.use(morgan("dev"));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:3000" }));
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // Apply global rate limiter to all routes
 app.use(globalLimiter);
 
+// Swagger Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/equipment", equipmentRoutes);
-app.use("/api/teams", teamRoutes);
-app.use("/api/members", memberRoutes);
-app.use("/api/requests", requestRoutes);
-app.use("/api/activities", activitiesRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/search", require("./routes/search"));
-app.use("/api/admin", adminRoutes);
-app.use("/api/analytics", analyticsRoutes);
-app.use("/api/predictive", predictiveRoutes);
-app.use("/api/inventory", inventoryRoutes);
-app.use("/api/export", require("./routes/export"));
+// We define both /api/v1 and /api for backward compatibility during transition
+const defineRoutes = (router) => {
+  router.use("/auth", authRoutes);
+  router.use("/equipment", equipmentRoutes);
+  router.use("/teams", teamRoutes);
+  router.use("/members", memberRoutes);
+  router.use("/requests", requestRoutes);
+  router.use("/activities", activitiesRoutes);
+  router.use("/notifications", notificationRoutes);
+  router.use("/search", searchRoutes);
+  router.use("/admin", adminRoutes);
+  router.use("/analytics", analyticsRoutes);
+  router.use("/predictive", predictiveRoutes);
+  router.use("/inventory", inventoryRoutes);
+  router.use("/upload", uploadRoutes);
+  router.use("/export", require("./routes/export"));
+};
+
+const v1Router = express.Router();
+defineRoutes(v1Router);
+app.use("/api/v1", v1Router);
+app.use("/api", v1Router); // Backward compatibility
 
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({
-    status: "OK",
-    message: "GearGuard API is running",
+  const dbConnected = mongoose.connection.readyState === 1;
+  const statusCode = dbConnected ? 200 : 503;
+  
+  res.status(statusCode).json({
+    status: dbConnected ? "OK" : "ERROR",
+    message: "GearGuard API health status",
+    database: dbConnected ? "Connected" : "Disconnected",
     timestamp: new Date().toISOString(),
   });
 });
+
+// Comprehensive error handling middleware (must be AFTER all routes)
+app.use(errorMiddleware);
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      type: "NOT_FOUND_ERROR",
+      message: "The requested resource was not found.",
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+const PORT = process.env.PORT || 5000;
 
 // Initialize database and start server
 const startServer = async () => {
   try {
     console.log("🔄 Syncing database...");
-    await syncDatabase();
-    console.log("✓ Database synced successfully");
-
-    // Load routes
-    console.log("📂 Loading routes...");
-
-    const authRoutes = require("./routes/auth");
-    const activitiesRoutes = require("./routes/activities");
-    const equipmentRoutes = require("./routes/equipment");
-    const teamRoutes = require("./routes/teams");
-    const memberRoutes = require("./routes/members");
-    const requestRoutes = require("./routes/requests");
-    const notificationRoutes = require("./routes/notifications");
-    const adminRoutes = require("./routes/admin");
-    const uploadRoutes = require("./routes/uploadRoutes");
-    const searchRoutes = require("./routes/search");
-    const inventoryRoutesLocal = require("./routes/inventory");
-
-    // Debug route types
-    console.log("authRoutes:", typeof authRoutes);
-    console.log("activitiesRoutes:", typeof activitiesRoutes);
-    console.log("equipmentRoutes:", typeof equipmentRoutes);
-    console.log("teamRoutes:", typeof teamRoutes);
-    console.log("memberRoutes:", typeof memberRoutes);
-    console.log("requestRoutes:", typeof requestRoutes);
-    console.log("notificationRoutes:", typeof notificationRoutes);
-    console.log("adminRoutes:", typeof adminRoutes);
-    console.log("uploadRoutes:", typeof uploadRoutes);
-    console.log("searchRoutes:", typeof searchRoutes);
-
-    // Routes
-    app.use("/api/auth", authRoutes);
-    app.use("/api/equipment", equipmentRoutes);
-    app.use("/api/teams", teamRoutes);
-    app.use("/api/members", memberRoutes);
-    app.use("/api/requests", requestRoutes);
-    app.use("/api/activities", activitiesRoutes);
-    app.use("/api/notifications", notificationRoutes);
-    app.use("/api/search", searchRoutes);
-    app.use("/api/admin", adminRoutes);
-    app.use("/api/inventory", inventoryRoutesLocal);
-    app.use("/api/export", require("./routes/export"));
-
-    // Upload route
-    app.use("/api/upload", uploadRoutes);
-
-    console.log("✓ Routes loaded successfully");
-
-    // Comprehensive error handling middleware (must be AFTER all routes)
-    app.use(errorMiddleware);
-
-    // 404 handler
-    app.use((req, res) => {
-      res.status(404).json({
-        success: false,
-        error: {
-          type: "NOT_FOUND_ERROR",
-          message: "The requested resource was not found.",
-          timestamp: new Date().toISOString(),
-        },
-      });
-    });
+    // Retry mechanism for database connection
+    let retries = 5;
+    while (retries > 0) {
+      try {
+        await syncDatabase();
+        console.log("✓ Database synced successfully");
+        break;
+      } catch (err) {
+        retries -= 1;
+        console.log(`Database connection failed. Retries left: ${retries}`);
+        if (retries === 0) throw err;
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
 
     server.listen(PORT, () => {
       console.log(`\n🚀 GearGuard Server Running!`);
-      console.log(`📡 API: http://localhost:${PORT}/api`);
+      console.log(`📡 API: http://localhost:${PORT}/api/v1`);
       console.log(`💚 Health: http://localhost:${PORT}/api/health`);
+      console.log(`📄 Docs: http://localhost:${PORT}/api-docs`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}\n`);
     });
   } catch (error) {
@@ -163,6 +190,28 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Graceful shutdown
+const shutdown = () => {
+  console.log("Gracefully shutting down server...");
+  server.close(() => {
+    console.log("HTTP server closed.");
+    mongoose.connection.close(false).then(() => {
+      console.log("MongoDB connection closed.");
+      process.exit(0);
+    });
+  });
+  
+  setTimeout(() => {
+    console.error("Could not close connections in time, forcefully shutting down");
+    process.exit(1);
+  }, 10000);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;
