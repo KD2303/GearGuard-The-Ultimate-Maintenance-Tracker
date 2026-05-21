@@ -13,6 +13,10 @@ const MaintenanceRequestSchema = new Schema({
   duration: { type: Number },
   cost: { type: Number },
   notes: { type: String },
+  overdueNotified: {
+    type: Boolean,
+    default: false,
+  },
   attachments: [
   {
     filename: { type: String },
