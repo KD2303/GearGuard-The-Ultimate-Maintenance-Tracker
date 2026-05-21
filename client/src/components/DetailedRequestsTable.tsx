@@ -1,6 +1,7 @@
 import { useState, useEffect, Fragment } from "react";
 import { MaintenanceRequest } from "../types";
 import { requestService } from "../services/requestService";
+import { getRelativeDateLabel } from "../utils/dateUtils";
 
 import Badge from "./Badge";
 import Button from "./Button";
@@ -382,12 +383,17 @@ const DetailedRequestsTable = () => {
                             Scheduled Date
                           </div>
 
-                          <div className="text-sm text-gray-900 mt-1">
+                          <div className="text-sm text-gray-900 mt-1 flex items-center">
                             {request.scheduledDate
                               ? new Date(
                                   request.scheduledDate,
                                 ).toLocaleDateString()
                               : "Not scheduled"}
+                            {request.scheduledDate && request.stage !== "repaired" && request.stage !== "scrap" && (
+                              <span className={`ml-2 font-medium ${getRelativeDateLabel(request.scheduledDate).colorClass}`}>
+                                {getRelativeDateLabel(request.scheduledDate).label}
+                              </span>
+                            )}
                           </div>
                         </div>
 

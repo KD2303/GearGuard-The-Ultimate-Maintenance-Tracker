@@ -3,6 +3,7 @@ import Modal from './Modal';
 import Button from './Button';
 import { Equipment, MaintenanceRequest } from '../types';
 import { equipmentService } from '../services/equipmentService';
+import { getRelativeDateLabel } from '../utils/dateUtils';
 import Badge from './Badge';
 import { Calendar, MapPin, Wrench, AlertCircle } from 'lucide-react';
 import Spinner from './Spinner';
@@ -209,8 +210,13 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
                     </p>
                   )}
                   {request.scheduledDate && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Scheduled: {new Date(request.scheduledDate).toLocaleDateString()}
+                    <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                      <span>Scheduled: {new Date(request.scheduledDate).toLocaleDateString()}</span>
+                      {request.stage !== "repaired" && request.stage !== "scrap" && (
+                        <span className={`ml-2 font-medium ${getRelativeDateLabel(request.scheduledDate).colorClass}`}>
+                          {getRelativeDateLabel(request.scheduledDate).label}
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>
