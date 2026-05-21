@@ -28,6 +28,25 @@ const UserSchema = new Schema({
     default: true,
   },
 
-}, { timestamps: true });
+  failedLoginAttempts: {
+    type: Number,
+    default: 0,
+    select: false,
+  },
+  lockUntil: {
+    type: Date,
+    select: false,
+  },
+
+}, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
+
+UserSchema.virtual('isLocked').get(function () {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+});
+
+UserSchema.methods.comparePassword = async function (candidatePassword) {
+  const bcrypt = require("bcryptjs");
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model("User", UserSchema);

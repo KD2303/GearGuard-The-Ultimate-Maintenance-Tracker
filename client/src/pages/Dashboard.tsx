@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
+import { adminService } from '../services/adminService';
 import { Wrench, Box, Users, AlertCircle, Clock, Search } from 'lucide-react';
 import Badge from '../components/Badge';
 import { MaintenanceRequest, GlobalSearchResults } from '../types';
@@ -37,15 +38,21 @@ const Dashboard: React.FC = () => {
     [],
   );
   const [loading, setLoading] = useState(true);
+  const [lowStockCount, setLowStockCount] = useState(0);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [requests, equipment, teams] = await Promise.all([
+        const [requests, equipment, teams, metrics] = await Promise.all([
           requestService.getAll(),
           equipmentService.getAll(),
           teamService.getAllTeams(),
+          adminService.getMetrics(),
         ]);
+
+        if (metrics && metrics.lowStockCount) {
+          setLowStockCount(metrics.lowStockCount);
+        }
 
         setStats({
           totalRequests: requests.length,
@@ -208,6 +215,31 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Low Stock Banner */}
+      {lowStockCount > 0 && (
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-500 to-rose-500 p-1 shadow-lg backdrop-blur-md animate-fade-in transition-all duration-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between rounded-[22px] bg-white/20 dark:bg-black/20 p-4 backdrop-blur-xl">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/30 dark:bg-black/30 shadow-inner">
+                <AlertCircle className="h-6 w-6 text-white animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Low Stock Alert</h3>
+                <p className="text-sm font-medium text-amber-50 dark:text-amber-100">
+                  {lowStockCount} spare part{lowStockCount > 1 ? 's are' : ' is'} currently running low on stock.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/inventory"
+              className="mt-4 sm:mt-0 px-6 py-2 rounded-xl bg-white/90 dark:bg-gray-900/90 text-amber-600 dark:text-amber-500 font-bold text-sm shadow-[0_0_15px_rgba(255,255,255,0.3)] hover:shadow-[0_0_25px_rgba(255,255,255,0.5)] hover:scale-105 transition-all duration-300 backdrop-blur-md"
+            >
+              Resolve Now
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Search */}
       <div className="rounded-3xl border border-white/50 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-4 shadow-lg backdrop-blur-sm md:p-5">
         <div ref={searchRef} className="relative w-full">

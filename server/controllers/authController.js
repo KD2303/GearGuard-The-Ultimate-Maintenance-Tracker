@@ -3,10 +3,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const {
   ErrorHandler,
-  categorizeError,
   ERROR_TYPES,
 } = require("../utils/errorHandler");
 const { asyncHandler } = require("../middleware/errorHandler");
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+};
 
 /// REGISTER
 exports.register = asyncHandler(async (req, res, next) => {
@@ -75,23 +78,58 @@ exports.login = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Check user
-  const user = await User.findOne({ email });
+  // Fetch user including hidden fields for lockout check
+  const user = await User.findOne({ email: email.toLowerCase().trim() })
+    .select('+password +failedLoginAttempts +lockUntil');
+
   if (!user) {
+    // SECURITY: Use generic error message
     throw new ErrorHandler(
       "Invalid email or password.",
       ERROR_TYPES.AUTHENTICATION_ERROR,
     );
   }
 
-  // Compare password
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    throw new ErrorHandler(
-      "Invalid email or password.",
-      ERROR_TYPES.AUTHENTICATION_ERROR,
-    );
+  // Check if account is currently locked
+  if (user.lockUntil && user.lockUntil > Date.now()) {
+    const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
+    // Send 423 directly to bypass production message overriding
+    return res.status(423).json({
+      success: false,
+      error: `Account temporarily locked due to too many failed attempts. Try again in ${minutesLeft} minute(s).`,
+      lockUntil: user.lockUntil,
+    });
   }
+
+  // Compare password
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) {
+    // Increment failed attempts
+    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+
+    // Lock account after 5 failed attempts
+    if (user.failedLoginAttempts >= 5) {
+      user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min lock
+      await user.save();
+      return res.status(423).json({
+        success: false,
+        error: 'Account locked for 15 minutes due to too many failed login attempts.',
+        lockUntil: user.lockUntil,
+      });
+    }
+
+    await user.save();
+    const attemptsLeft = 5 - user.failedLoginAttempts;
+    return res.status(401).json({
+      success: false,
+      error: `Invalid email or password. ${attemptsLeft} attempt(s) remaining before account lockout.`,
+    });
+  }
+
+  // Successful login — reset lockout fields
+  user.failedLoginAttempts = 0;
+  user.lockUntil = undefined;
+  await user.save();
 
   // Create token
   const token = jwt.sign(
@@ -160,5 +198,24 @@ exports.updateUserRole = asyncHandler(async (req, res, next) => {
     success: true,
     message: `User role updated to '${role}' successfully.`,
     user,
+  });
+});
+
+// UNLOCK USER (Admin only)
+exports.unlockUser = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.params.id)
+    .select('+failedLoginAttempts +lockUntil');
+
+  if (!user) {
+    throw new ErrorHandler("User not found.", ERROR_TYPES.NOT_FOUND_ERROR);
+  }
+
+  user.failedLoginAttempts = 0;
+  user.lockUntil = undefined;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: `Account for ${user.email} has been unlocked.`,
   });
 });

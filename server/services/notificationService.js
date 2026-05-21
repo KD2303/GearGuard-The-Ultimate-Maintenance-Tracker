@@ -82,10 +82,13 @@ class NotificationService {
       });
 
       // 2. Emit to Socket.IO
-      // We emit to all connected clients for now. 
-      // In a multi-tenant app, we would emit to specific rooms (user or team rooms).
+      // Emit to the specific user's room if userId is available
       if (io) {
-        io.emit("notification:new", notification);
+        if (data.userId) {
+          io.to(data.userId.toString()).emit("notification:new", notification);
+        } else {
+          io.emit("notification:new", notification);
+        }
       }
 
       return notification;
