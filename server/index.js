@@ -8,6 +8,8 @@ const morgan = require("morgan");
 const bodyParser = require("body-parser");
 require("dotenv").config();
 const { errorMiddleware } = require("./middleware/errorHandler");
+const NotificationService = require("./services/notificationService");
+const { startOverdueChecker } = require("./jobs/overdueChecker");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI);
@@ -42,6 +44,13 @@ const PORT = process.env.PORT || 5000;
 io.on("connection", (socket) => {
   console.log(`🔌 User connected: ${socket.id}`);
 
+  // Client sends their userId to join their personal room
+  socket.on('join', (userId) => {
+    if (userId) {
+      socket.join(`user:${userId}`);
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log(`❌ User disconnected: ${socket.id}`);
   });
@@ -49,6 +58,9 @@ io.on("connection", (socket) => {
 
 // Make io accessible to routes/controllers
 app.set("socketio", io);
+
+// Pass io to notification service
+NotificationService.setSocketIO(io);
 
 // Middleware
 app.use(cors());
@@ -85,6 +97,9 @@ const startServer = async () => {
     console.log("🔄 Syncing database...");
     await syncDatabase();
     console.log("✓ Database synced successfully");
+
+    // Start overdue checker cron job
+    startOverdueChecker();
 
     // Load routes
     console.log("📂 Loading routes...");
