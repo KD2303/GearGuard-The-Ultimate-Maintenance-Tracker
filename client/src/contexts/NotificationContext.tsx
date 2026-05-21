@@ -9,7 +9,7 @@ interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
   markAsRead: (id: string) => Promise<void>;
-  markAllAsRead: () => Promise<void>;
+  readAll: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
   clearAll: () => void;
 }
@@ -17,7 +17,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 // In a real app, this URL would come from an environment variable
-const SOCKET_URL = 'http://localhost:5001';
+const SOCKET_URL = 'http://localhost:5000';
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -98,9 +98,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const markAllAsRead = async () => {
+  const readAll = async () => {
     try {
-      await axios.patch('/api/notifications/mark-all-read');
+      await axios.put('/api/notifications/read-all');
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -126,7 +126,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         notifications,
         unreadCount,
         markAsRead,
-        markAllAsRead,
+        readAll,
         deleteNotification,
         clearAll,
       }}

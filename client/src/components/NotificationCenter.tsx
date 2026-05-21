@@ -14,7 +14,7 @@ const NotificationCenter: React.FC = () => {
     notifications, 
     unreadCount, 
     markAsRead, 
-    markAllAsRead, 
+    readAll, 
     deleteNotification 
   } = useNotifications();
 
@@ -80,8 +80,8 @@ const NotificationCenter: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
             {unreadCount > 0 && (
               <button 
-                onClick={() => markAllAsRead()}
-                className="text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline"
+                onClick={() => readAll()}
+                className="text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline transition-all duration-300 active:scale-95"
               >
                 Mark all as read
               </button>
@@ -104,7 +104,7 @@ const NotificationCenter: React.FC = () => {
                   <div 
                     key={notification._id}
                     className={clsx(
-                      "group relative p-4 transition-all duration-200 border-l-4",
+                      "group relative p-4 transition-all duration-500 border-l-4",
                       !notification.read 
                         ? "bg-purple-50/80 border-purple-500 hover:bg-purple-100/80 shadow-sm dark:shadow-none z-10" 
                         : "bg-transparent border-transparent hover:bg-gray-50/80"

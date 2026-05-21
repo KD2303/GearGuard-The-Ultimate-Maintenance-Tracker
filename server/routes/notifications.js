@@ -11,7 +11,7 @@ router.get("/", verifyToken, notificationController.getNotifications);
 router.get("/unread/count", verifyToken, notificationController.getUnreadCount);
 
 // Mark all as read
-router.patch("/mark-all-read", verifyToken, notificationController.markAllAsRead);
+router.put("/read-all", verifyToken, notificationController.markAllAsRead);
 
 // Mark single notification as read
 router.patch("/:id/read", verifyToken, notificationController.markAsRead);
