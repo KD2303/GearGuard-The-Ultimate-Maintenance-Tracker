@@ -69,6 +69,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/predictive", predictiveRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/export", require("./routes/export"));
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -124,6 +125,7 @@ const startServer = async () => {
     app.use("/api/search", searchRoutes);
     app.use("/api/admin", adminRoutes);
     app.use("/api/inventory", inventoryRoutesLocal);
+    app.use("/api/export", require("./routes/export"));
 
     // Upload route
     app.use("/api/upload", uploadRoutes);
