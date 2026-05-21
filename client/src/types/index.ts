@@ -123,13 +123,24 @@ export interface CreateMaintenanceRequestDto {
 
 export interface Notification {
   _id: string;
-  type: 'request_created' | 'request_updated' | 'request_completed' | 'request_deleted' | 'system';
+  userId?: string;
+  title?: string;
+  type: 'request_created' | 'request_updated' | 'request_completed' | 'request_deleted' | 'system' | 'request_assigned' | 'request_overdue' | 'equipment_status' | 'general';
   message: string;
   requestId?: string;
-  read: boolean;
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  read?: boolean;
+  isRead?: boolean;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  link?: string;
+  relatedRequestId?: string;
+  relatedEquipmentId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NotificationsResponse {
+  notifications: Notification[];
+  unreadCount: number;
 }
 
 export interface RequestFilters {
