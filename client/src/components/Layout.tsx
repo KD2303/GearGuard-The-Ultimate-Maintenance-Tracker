@@ -21,6 +21,7 @@ import {
   Package,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
+import NotificationDropdown from "./NotificationDropdown";
 import LanguageSelector from "./LanguageSelector";
 import { useTranslation } from "react-i18next";
 import { authService } from "../services/authService";
@@ -203,6 +204,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             
             {/* Notifications panel */}
             <NotificationCenter />
+            <NotificationDropdown userId={user?.id || ''} />
 
             {/* Language Selector Selector */}
             <LanguageSelector />
