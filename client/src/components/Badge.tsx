@@ -6,9 +6,10 @@ interface BadgeProps {
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'gradient';
   size?: 'sm' | 'md' | 'lg';
   pulse?: boolean;
+  className?: string;
 }
 
-const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', size = 'md', pulse = false }) => {
+const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', size = 'md', pulse = false, className }) => {
   const variants = {
     default: 'bg-gray-100/80 text-gray-700 border border-gray-200/50 hover:bg-gray-200/80',
     primary: 'bg-blue-100/80 text-blue-700 border border-blue-200/50 hover:bg-blue-200/80 hover:shadow-lg hover:shadow-blue-500/20',
@@ -31,7 +32,8 @@ const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', size = 'md
         'inline-flex items-center font-semibold rounded-full transition-all duration-300 backdrop-blur-sm',
         variants[variant],
         sizes[size],
-        pulse && 'animate-pulse'
+        pulse && 'animate-pulse',
+        className
       )}
     >
       {children}
