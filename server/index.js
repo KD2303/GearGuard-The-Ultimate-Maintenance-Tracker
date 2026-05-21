@@ -34,6 +34,7 @@ const analyticsRoutes = require("./routes/analytics");
 const predictiveRoutes = require("./routes/predictiveRoutes");
 const purchaseOrderRoutes = require("./routes/purchaseOrder");
 const auditRoutes = require("./routes/audit");
+const mapRoutes = require("./routes/map");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -136,6 +137,7 @@ const defineRoutes = (router) => {
   router.use("/upload", uploadRoutes);
   router.use("/purchase-orders", purchaseOrderRoutes);
   router.use("/audit", auditRoutes);
+  router.use("/map", mapRoutes);
 };
 
 const v1Router = express.Router();

@@ -52,10 +52,17 @@ const FloorPlan: React.FC = () => {
     e.dataTransfer.setData('text/plain', id);
     // Setting a custom drag image makes it look nicer
     const ghost = document.createElement('div');
+    ghost.id = 'drag-ghost';
     ghost.style.width = '1px';
     ghost.style.height = '1px';
     document.body.appendChild(ghost);
     e.dataTransfer.setDragImage(ghost, 0, 0);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedEqId(null);
+    const ghost = document.getElementById('drag-ghost');
+    if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -121,8 +128,17 @@ const FloorPlan: React.FC = () => {
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-6 overflow-hidden">
       
-      {/* LEFT SIDEBAR: UNPLACED EQUIPMENT */}
-      <div className="w-80 flex-shrink-0 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden transition-colors">
+      {/* LEFT SIDEBAR: UNPLACED EQUIPMENT (Also acts as a Remove drop zone) */}
+      <div 
+        className="w-80 flex-shrink-0 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden transition-colors"
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (draggedEqId && placedEquipment.find(eq => eq._id === draggedEqId || eq.id === draggedEqId)) {
+            handleRemoveFromMap(draggedEqId);
+          }
+        }}
+      >
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
           <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Box className="w-4 h-4 text-indigo-500" />
@@ -145,6 +161,7 @@ const FloorPlan: React.FC = () => {
                 key={eq._id}
                 draggable
                 onDragStart={(e) => handleDragStart(e, eq._id!)}
+                onDragEnd={handleDragEnd}
                 className="group relative bg-white dark:bg-slate-750 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-400 dark:hover:border-indigo-500 transition-all hover:shadow-md"
               >
                 <div className="flex items-start justify-between">
@@ -198,10 +215,11 @@ const FloorPlan: React.FC = () => {
 
         {/* Map Container - Handles drag and drop */}
         <div 
-          className="flex-1 overflow-auto custom-scrollbar relative bg-slate-900 flex items-center justify-center p-8"
+          className="flex-1 overflow-auto custom-scrollbar relative bg-slate-900 p-8"
         >
-          <div 
-            className="relative transition-transform duration-300 origin-center shadow-2xl rounded-lg"
+          <div className="w-full h-full min-w-max min-h-max flex items-start justify-start">
+            <div 
+              className="relative transition-transform duration-300 origin-top-left shadow-2xl rounded-lg mx-auto my-auto"
             style={{ 
               transform: `scale(${zoom})`,
               width: '1200px', // Base dimensions of the map image
@@ -219,6 +237,7 @@ const FloorPlan: React.FC = () => {
                 key={eq._id}
                 draggable
                 onDragStart={(e) => handleDragStart(e, eq._id!)}
+                onDragEnd={handleDragEnd}
                 className={`absolute w-8 h-8 -ml-4 -mt-8 flex flex-col items-center justify-end cursor-grab active:cursor-grabbing group z-10 transition-transform ${draggedEqId === eq._id ? 'opacity-50' : 'opacity-100 hover:scale-110 hover:z-50'}`}
                 style={{
                   left: `${eq.mapCoordinates!.x}%`,
@@ -252,6 +271,7 @@ const FloorPlan: React.FC = () => {
               </div>
             ))}
           </div>
+          </div>
         </div>
         
         {/* Remove Zone - Bottom Bar */}
@@ -262,7 +282,6 @@ const FloorPlan: React.FC = () => {
             e.preventDefault();
             if (draggedEqId) {
               handleRemoveFromMap(draggedEqId);
-              setDraggedEqId(null);
             }
           }}
         >

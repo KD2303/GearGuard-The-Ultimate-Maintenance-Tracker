@@ -23,6 +23,7 @@ const EquipmentSchema = new Schema({
     x: { type: Number },
     y: { type: Number }
   },
+  floorPlanId: { type: Schema.Types.ObjectId, ref: 'FloorPlan' },
   
   healthScore: {
     type: Number,
