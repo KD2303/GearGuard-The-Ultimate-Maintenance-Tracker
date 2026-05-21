@@ -2,6 +2,7 @@ const Equipment = require('../models/Equipment');
 const MaintenanceRequest = require('../models/MaintenanceRequest');
 const TeamMember = require('../models/TeamMember');
 const Activity = require('../models/Activity');
+const SparePart = require('../models/SparePart');
 
 // Helper to get date sub days
 const subDays = (date, days) => {
@@ -81,13 +82,17 @@ exports.getMetrics = async (req, res) => {
     const availability = totalEquipment > 0 ? Math.round(((totalEquipment - underMaintenance) / totalEquipment) * 100) : 100;
     const availabilityTrend = 0;
 
+    // Low Stock Count
+    const lowStockCount = await SparePart.countDocuments({ reorderStatus: 'low-stock' });
+
     res.json({
       totalEquipment: { value: totalEquipment, trend: equipmentTrend },
       activeRequests: { value: activeRequests, trend: activeRequestsTrend },
       teamCount: { value: teamCount, trend: 0 },
       utilizationPercentage: { value: utilizationRate, trend: utilizationTrend },
       overdueCount: { value: overdueRequests, trend: overdueTrend },
-      availability: { value: availability, trend: availabilityTrend }
+      availability: { value: availability, trend: availabilityTrend },
+      lowStockCount: lowStockCount
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
