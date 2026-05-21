@@ -10,6 +10,8 @@ import { equipmentService } from "../services/equipmentService";
 import Badge from "../components/Badge";
 
 import Button from "../components/Button";
+import ExportButton from "../components/ExportButton";
+import { exportEquipmentExcel } from "../services/exportService";
 
 import { useNotifications } from "../contexts/NotificationContext";
 
@@ -174,6 +176,11 @@ const EquipmentList: React.FC = () => {
           </div>
 
           <div className="flex gap-2">
+            <ExportButton
+              label="Export Excel"
+              onClick={exportEquipmentExcel}
+              variant="excel"
+            />
             <Button
               onClick={
                 handleExport
