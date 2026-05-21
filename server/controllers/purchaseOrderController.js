@@ -36,15 +36,17 @@ exports.updatePurchaseOrderStatus = asyncHandler(async (req, res, next) => {
   po.status = status;
   await po.save();
 
-  // If status is changed to received, we must update inventory
+  // If status is changed to received, we must update inventory atomically
   if (oldStatus !== 'received' && status === 'received') {
-    const part = await SparePart.findById(po.partId);
-    if (part) {
-      part.quantityInStock += po.quantityNeeded;
-      if (part.quantityInStock > part.minReorderThreshold) {
-        part.reorderStatus = 'ok';
-      }
-      await part.save();
+    const updatedPart = await SparePart.findByIdAndUpdate(
+      po.partId,
+      { $inc: { quantityInStock: po.quantityNeeded } },
+      { new: true }
+    );
+
+    // If the atomic increment pushed us safely above the threshold, clear the low-stock flag
+    if (updatedPart && updatedPart.quantityInStock > updatedPart.minReorderThreshold && updatedPart.reorderStatus !== 'ok') {
+      await SparePart.findByIdAndUpdate(po.partId, { reorderStatus: 'ok' });
     }
   }
 

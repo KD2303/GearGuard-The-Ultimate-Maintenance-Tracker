@@ -15,22 +15,25 @@ const decrementInventory = async (io, partsUsed) => {
     const partId = item.partId?._id || item.partId;
     if (!partId) continue;
     try {
-      const currentPart = await SparePart.findById(partId);
-      if (currentPart) {
-        const newStock = currentPart.quantityInStock - item.quantityUsed;
-        const updates = { quantityInStock: newStock };
-        
-        if (newStock <= currentPart.minReorderThreshold) {
-          if (currentPart.reorderStatus === 'ok') {
-            updates.reorderStatus = 'low-stock';
-          }
-        } else {
-          updates.reorderStatus = 'ok';
-        }
+      // Atomic decrement prevents concurrency data loss
+      const updatedPart = await SparePart.findByIdAndUpdate(
+        partId,
+        { $inc: { quantityInStock: -item.quantityUsed } },
+        { new: true }
+      );
 
-        const part = await SparePart.findByIdAndUpdate(partId, updates, { new: true });
-        if (part && part.quantityInStock <= part.minReorderThreshold) {
-          await NotificationService.notifyLowStock(io, part);
+      if (updatedPart) {
+        if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
+          if (updatedPart.reorderStatus === 'ok') {
+            const finalPart = await SparePart.findByIdAndUpdate(
+              partId, 
+              { reorderStatus: 'low-stock' }, 
+              { new: true }
+            );
+            await NotificationService.notifyLowStock(io, finalPart);
+          }
+        } else if (updatedPart.reorderStatus !== 'ok') {
+           await SparePart.findByIdAndUpdate(partId, { reorderStatus: 'ok' });
         }
       }
     } catch (err) {

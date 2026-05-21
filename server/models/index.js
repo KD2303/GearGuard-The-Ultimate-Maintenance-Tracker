@@ -6,6 +6,7 @@ const MaintenanceRequest = require('./MaintenanceRequest');
 const Notification = require('./Notification');
 const Activity = require('./Activity');
 const SparePart = require('./SparePart');
+const FloorPlan = require('./FloorPlan');
 
 const syncDatabase = async () => {
   try {
@@ -20,7 +21,8 @@ const syncDatabase = async () => {
         MaintenanceRequest.createIndexes ? MaintenanceRequest.createIndexes() : Promise.resolve(),
         Notification.createIndexes ? Notification.createIndexes() : Promise.resolve(),
         Activity.createIndexes ? Activity.createIndexes() : Promise.resolve(),
-        SparePart.createIndexes ? SparePart.createIndexes() : Promise.resolve()
+        SparePart.createIndexes ? SparePart.createIndexes() : Promise.resolve(),
+        FloorPlan.createIndexes ? FloorPlan.createIndexes() : Promise.resolve()
       ]);
     } catch (idxErr) {
       // ignore index creation errors
@@ -41,5 +43,6 @@ module.exports = {
   MaintenanceRequest,
   Notification,
   Activity,
-  SparePart
+  SparePart,
+  FloorPlan
 };

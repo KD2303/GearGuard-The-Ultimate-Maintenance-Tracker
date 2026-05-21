@@ -17,7 +17,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import InventoryList from './pages/InventoryList';
 import PredictiveDashboard from './pages/PredictiveDashboard';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
-import FloorPlan from './pages/FloorPlan.tsx';
+import FloorPlan from './pages/FloorPlan';
 
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
