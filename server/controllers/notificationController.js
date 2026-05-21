@@ -4,12 +4,17 @@ const { Notification } = require("../models");
 exports.getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({
-      userId: req.user.id
+      userId: req.user.id || req.user._id
     })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(20);
 
-    res.json(notifications);
+    const unreadCount = await Notification.countDocuments({
+      userId: req.user.id || req.user._id,
+      isRead: false,
+    });
+
+    res.status(200).json({ notifications, unreadCount });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -33,8 +38,8 @@ exports.getUnreadCount = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id },
-      { read: true },
+      { _id: req.params.id, userId: req.user.id || req.user._id },
+      { read: true, isRead: true },
       { new: true }
     );
 
@@ -42,7 +47,7 @@ exports.markAsRead = async (req, res) => {
       return res.status(404).json({ error: "Notification not found" });
     }
 
-    res.json(notification);
+    res.status(200).json(notification);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -52,11 +57,11 @@ exports.markAsRead = async (req, res) => {
 exports.markAllAsRead = async (req, res) => {
   try {
     await Notification.updateMany(
-      { userId: req.user.id, read: false },
-      { read: true }
+      { userId: req.user.id || req.user._id, $or: [{ read: false }, { isRead: false }] },
+      { read: true, isRead: true }
     );
 
-    res.json({ message: "All notifications marked as read" });
+    res.status(200).json({ message: "All notifications marked as read" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -67,14 +72,14 @@ exports.deleteNotification = async (req, res) => {
   try {
     const notification = await Notification.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user.id
+      userId: req.user.id || req.user._id
     });
 
     if (!notification) {
       return res.status(404).json({ error: "Notification not found" });
     }
 
-    res.json({ message: "Notification deleted" });
+    res.status(200).json({ message: "Notification deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
