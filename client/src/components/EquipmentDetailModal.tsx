@@ -7,6 +7,8 @@ import Badge from './Badge';
 import { Calendar, MapPin, Wrench, AlertCircle } from 'lucide-react';
 import Spinner from './Spinner';
 import RequestModal from './RequestModal';
+import ExportButton from './ExportButton';
+import { exportEquipmentPDF } from '../services/exportService';
 
 interface EquipmentDetailModalProps {
   equipment: Equipment;
@@ -225,6 +227,11 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <ExportButton
+            label="Download PDF Report"
+            onClick={() => exportEquipmentPDF(equipment.id || equipment._id || '', equipment.name)}
+            variant="pdf"
+          />
           <Button variant="primary" onClick={() => setIsRequestModalOpen(true)}>
             <Wrench className="h-4 w-4 mr-2" />
             Request Maintenance
