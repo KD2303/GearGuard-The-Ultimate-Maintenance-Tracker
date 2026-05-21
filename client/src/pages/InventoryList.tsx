@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { SparePart } from "../types";
+import { Link } from "react-router-dom";
 import { inventoryService } from "../services/inventoryService";
 import Badge from "../components/Badge";
 import Button from "../components/Button";
@@ -187,6 +188,12 @@ const InventoryList: React.FC = () => {
         </div>
 
         <div className="flex gap-2">
+          <Link to="/purchase-orders">
+            <Button variant="secondary" className="shadow-lg">
+              <Package className="h-4 w-4 mr-2" />
+              View Purchase Orders
+            </Button>
+          </Link>
           <Button onClick={handleAddClick} className="shadow-lg shadow-teal-500/20 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white">
             <Plus className="h-4 w-4 mr-2" />
             Add Spare Part
