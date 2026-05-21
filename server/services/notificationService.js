@@ -30,6 +30,41 @@ const EMAIL_SUBJECTS = {
  * Service to handle real-time notifications via Socket.IO
  */
 class NotificationService {
+  static setSocketIO(socketInstance) {
+    this.io = socketInstance;
+  }
+
+  static async createAndEmit({
+    userId,
+    title,
+    message,
+    type = 'general',
+    link = '/kanban',
+    relatedRequestId,
+    relatedEquipmentId,
+  }) {
+    try {
+      const notification = await Notification.create({
+        userId,
+        title,
+        message,
+        type,
+        link,
+        relatedRequestId,
+        relatedEquipmentId,
+      });
+
+      // Emit real-time event to the specific user's socket room
+      if (this.io) {
+        this.io.to(`user:${userId}`).emit('new_notification', notification);
+      }
+
+      return notification;
+    } catch (error) {
+      console.error('Failed to create notification:', error.message);
+    }
+  }
+
   /**
    * Send a notification to connected clients and persist it in the DB
    * @param {Object} io - Socket.IO instance (passed from app.get('socketio'))
