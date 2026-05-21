@@ -16,6 +16,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AnalyticsPage from './pages/AnalyticsPage';
 import InventoryList from './pages/InventoryList';
 import PredictiveDashboard from './pages/PredictiveDashboard';
+import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -43,6 +44,7 @@ function AppContent() {
         <Route path="/calendar" element={<CalendarView />} />
         <Route path="/equipment" element={<EquipmentList />} />
         <Route path="/inventory" element={<InventoryList />} />
+        <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
         <Route path="/vehicles" element={<VehicleList />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />

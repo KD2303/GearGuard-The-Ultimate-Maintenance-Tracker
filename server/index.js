@@ -30,6 +30,7 @@ const searchRoutes = require("./routes/search");
 const inventoryRoutes = require("./routes/inventory");
 const analyticsRoutes = require("./routes/analytics");
 const predictiveRoutes = require("./routes/predictiveRoutes");
+const purchaseOrderRoutes = require("./routes/purchaseOrder");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -120,6 +121,7 @@ const defineRoutes = (router) => {
   router.use("/predictive", predictiveRoutes);
   router.use("/inventory", inventoryRoutes);
   router.use("/upload", uploadRoutes);
+  router.use("/purchase-orders", purchaseOrderRoutes);
 };
 
 const v1Router = express.Router();
@@ -168,6 +170,11 @@ const startServer = async () => {
       try {
         await syncDatabase();
         console.log("✓ Database synced successfully");
+        
+        // Start Cron Jobs
+        const { scheduleInventoryCron } = require("./cron/inventoryCron");
+        scheduleInventoryCron();
+        
         break;
       } catch (err) {
         retries -= 1;
