@@ -283,6 +283,64 @@ const request = await MaintenanceRequest.create({
   }
 };
 
+// --- GAMIFICATION LOGIC ---
+const processGamification = async (request, prevStage, newStage) => {
+  if (!request.assignedToId && !request.assignedTo) return;
+
+  const memberId = request.assignedToId || request.assignedTo._id;
+  if (!memberId) return;
+
+  const member = await TeamMember.findById(memberId);
+  if (!member) return;
+
+  let pointsToAdd = 0;
+  const newBadges = [];
+
+  // Check First Responder (moved from new -> in-progress)
+  if (prevStage === 'new' && newStage === 'in-progress' && request.priority === 'urgent' && !member.badges.includes('First Responder')) {
+    const diffMins = (new Date() - new Date(request.createdAt)) / 1000 / 60;
+    if (diffMins <= 5) {
+      newBadges.push('First Responder');
+      pointsToAdd += 5; // Bonus
+    }
+  }
+
+  // Check points for completion
+  const isCompleted = prevStage === 'repaired' || prevStage === 'scrap';
+  const nowCompleted = newStage === 'repaired' || newStage === 'scrap';
+  
+  if (nowCompleted && !isCompleted) {
+    const basePoints = 10;
+    let multiplier = 1;
+    if (request.priority === 'medium') multiplier = 1.5;
+    if (request.priority === 'high') multiplier = 2;
+    if (request.priority === 'urgent') multiplier = 3;
+    
+    pointsToAdd += Math.floor(basePoints * multiplier);
+
+    // Check Master Mechanic badge
+    if (!member.badges.includes('Master Mechanic')) {
+      const completedCount = await MaintenanceRequest.countDocuments({
+        $or: [ { assignedToId: member._id }, { assignedTo: member._id } ],
+        stage: { $in: ['repaired', 'scrap'] }
+      });
+      if (completedCount >= 50) { 
+        newBadges.push('Master Mechanic');
+        pointsToAdd += 50; // Big bonus
+      }
+    }
+  }
+
+  if (pointsToAdd > 0 || newBadges.length > 0) {
+    const updates = { $inc: { points: pointsToAdd } };
+    if (newBadges.length > 0) {
+      updates.$push = { badges: { $each: newBadges } };
+    }
+    await TeamMember.findByIdAndUpdate(member._id, updates);
+  }
+};
+// --- END GAMIFICATION LOGIC ---
+
 // Update request
 exports.updateRequest = async (req, res) => {
   try {
@@ -427,6 +485,8 @@ exports.updateRequest = async (req, res) => {
       });
     }
 
+    await processGamification(updatedRequest, prevStage, payload.stage || updatedRequest.stage);
+
     res.json(updatedRequest);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -534,6 +594,8 @@ exports.updateRequestStage = async (req, res) => {
         entityId: String(updatedRequest.equipment._id),
       });
     }
+
+    await processGamification(updatedRequest, prevStage, stage);
 
     res.json(updatedRequest);
   } catch (error) {

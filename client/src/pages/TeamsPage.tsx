@@ -7,6 +7,7 @@ import { Plus, Users } from 'lucide-react';
 import TeamModal from '../components/TeamModal';
 import MemberModal from '../components/MemberModal';
 import AssignmentsPanel from '../components/AssignmentsPanel';
+import Leaderboard from '../components/Leaderboard';
 import Spinner from '../components/Spinner';
 
 const TeamsPage: React.FC = () => {
@@ -117,9 +118,10 @@ const TeamsPage: React.FC = () => {
       </div>
       </div>
 
-        {/* Assignments Panel - 1 column */}
-        <div className="lg:col-span-1">
+        {/* Assignments Panel & Leaderboard - 1 column */}
+        <div className="lg:col-span-1 space-y-6">
           <AssignmentsPanel />
+          <Leaderboard />
         </div>
       </div>
 

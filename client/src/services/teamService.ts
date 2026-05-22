@@ -40,6 +40,11 @@ export const teamService = {
     return response.data;
   },
 
+  getLeaderboard: async (): Promise<TeamMember[]> => {
+    const response = await api.get('/members/leaderboard');
+    return response.data;
+  },
+
   createMember: async (data: Partial<TeamMember>): Promise<TeamMember> => {
     const response = await api.post('/members', data);
 

@@ -50,6 +50,8 @@ export interface TeamMember {
   phone?: string;
   role?: string;
   avatar?: string;
+  points?: number;
+  badges?: string[];
   isActive: boolean;
   teamId?: string;
   team?: MaintenanceTeam;

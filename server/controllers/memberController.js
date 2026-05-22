@@ -55,3 +55,16 @@ exports.deleteMember = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Get leaderboard
+exports.getLeaderboard = async (req, res) => {
+  try {
+    const leaderboard = await TeamMember.find({ points: { $gt: 0 } })
+      .populate('team')
+      .sort({ points: -1 })
+      .limit(10);
+    res.json(leaderboard);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
