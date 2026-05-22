@@ -7,6 +7,8 @@ const Notification = require('./Notification');
 const Activity = require('./Activity');
 const SparePart = require('./SparePart');
 const FloorPlan = require('./FloorPlan');
+const Supplier = require('./Supplier');
+const PurchaseOrder = require('./PurchaseOrder');
 
 const syncDatabase = async () => {
   try {
@@ -22,7 +24,9 @@ const syncDatabase = async () => {
         Notification.createIndexes ? Notification.createIndexes() : Promise.resolve(),
         Activity.createIndexes ? Activity.createIndexes() : Promise.resolve(),
         SparePart.createIndexes ? SparePart.createIndexes() : Promise.resolve(),
-        FloorPlan.createIndexes ? FloorPlan.createIndexes() : Promise.resolve()
+        FloorPlan.createIndexes ? FloorPlan.createIndexes() : Promise.resolve(),
+        Supplier.createIndexes ? Supplier.createIndexes() : Promise.resolve(),
+        PurchaseOrder.createIndexes ? PurchaseOrder.createIndexes() : Promise.resolve()
       ]);
     } catch (idxErr) {
       // ignore index creation errors
@@ -44,5 +48,7 @@ module.exports = {
   Notification,
   Activity,
   SparePart,
-  FloorPlan
+  FloorPlan,
+  Supplier,
+  PurchaseOrder
 };

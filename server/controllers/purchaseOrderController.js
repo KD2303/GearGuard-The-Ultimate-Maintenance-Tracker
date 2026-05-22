@@ -1,5 +1,4 @@
-const PurchaseOrder = require('../models/PurchaseOrder');
-const { SparePart } = require('../models');
+const { PurchaseOrder, SparePart } = require('../models');
 const { ErrorHandler, ERROR_TYPES } = require('../utils/errorHandler');
 const { asyncHandler } = require('../middleware/errorHandler');
 
@@ -7,23 +6,25 @@ const { asyncHandler } = require('../middleware/errorHandler');
 exports.getPurchaseOrders = asyncHandler(async (req, res, next) => {
   const status = req.query.status;
   const filter = {};
-  if (status) {
-    filter.status = status;
-  }
+  if (status) filter.status = status;
   
-  const purchaseOrders = await PurchaseOrder.find(filter)
-    .populate('partId', 'name sku minReorderThreshold quantityInStock unitCost')
-    .sort({ createdAt: -1 });
-    
+  const purchaseOrders = await PurchaseOrder.find(filter).sort({ createdAt: -1 });
   res.status(200).json(purchaseOrders);
 });
 
-// Update a purchase order's status (Approve & Order, or Mark Received)
+// Create a PO manually (optional, mostly auto-drafted)
+exports.createPurchaseOrder = asyncHandler(async (req, res, next) => {
+  const poNumber = 'PO-' + Math.floor(100000 + Math.random() * 900000);
+  const po = await PurchaseOrder.create({ ...req.body, poNumber });
+  res.status(201).json(po);
+});
+
+// Update a purchase order's status (Approve & Send, or Mark Received)
 exports.updatePurchaseOrderStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { status } = req.body;
 
-  if (!['draft', 'ordered', 'received'].includes(status)) {
+  if (!['draft', 'sent', 'received', 'cancelled'].includes(status)) {
     throw new ErrorHandler("Invalid status provided", ERROR_TYPES.VALIDATION_ERROR);
   }
 
@@ -34,24 +35,26 @@ exports.updatePurchaseOrderStatus = asyncHandler(async (req, res, next) => {
 
   const oldStatus = po.status;
   po.status = status;
+  if (status === 'sent') po.orderDate = new Date();
   await po.save();
 
-  // If status is changed to received, we must update inventory atomically
+  // If status is changed to received, we must update inventory atomically for all items
   if (oldStatus !== 'received' && status === 'received') {
-    const updatedPart = await SparePart.findByIdAndUpdate(
-      po.partId,
-      { $inc: { quantityInStock: po.quantityNeeded } },
-      { new: true }
-    );
+    for (const item of po.items) {
+      const updatedPart = await SparePart.findByIdAndUpdate(
+        item.partId,
+        { $inc: { quantityInStock: item.quantityNeeded } },
+        { new: true }
+      );
 
-    // If the atomic increment pushed us safely above the threshold, clear the low-stock flag
-    if (updatedPart && updatedPart.quantityInStock > updatedPart.minReorderThreshold && updatedPart.reorderStatus !== 'ok') {
-      await SparePart.findByIdAndUpdate(po.partId, { reorderStatus: 'ok' });
+      // Clear low-stock flag if safe
+      if (updatedPart && updatedPart.quantityInStock > updatedPart.minReorderThreshold && updatedPart.reorderStatus !== 'ok') {
+        await SparePart.findByIdAndUpdate(item.partId, { reorderStatus: 'ok' });
+      }
     }
   }
 
-  const updatedPO = await PurchaseOrder.findById(id)
-    .populate('partId', 'name sku minReorderThreshold quantityInStock unitCost');
+  const updatedPO = await PurchaseOrder.findById(id);
 
   res.status(200).json({
     success: true,

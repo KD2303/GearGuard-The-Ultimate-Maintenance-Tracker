@@ -17,6 +17,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import InventoryList from './pages/InventoryList';
 import PredictiveDashboard from './pages/PredictiveDashboard';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
+import ProcurementDashboard from './pages/ProcurementDashboard';
 import FloorPlan from './pages/FloorPlan';
 
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -51,6 +52,7 @@ function AppContent() {
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/predictive" element={<PredictiveDashboard />} />
+        <Route path="/procurement" element={<ProcurementDashboard />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>
