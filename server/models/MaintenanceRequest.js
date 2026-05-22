@@ -17,6 +17,10 @@ const MaintenanceRequestSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  completionProcessed: {
+    type: Boolean,
+    default: false,
+  },
   attachments: [
   {
     filename: { type: String },

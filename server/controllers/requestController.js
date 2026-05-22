@@ -284,7 +284,7 @@ const request = await MaintenanceRequest.create({
 };
 
 // --- GAMIFICATION LOGIC ---
-const processGamification = async (request, prevStage, newStage) => {
+const processGamification = async (request, prevStage, newStage, shouldProcessCompletion) => {
   if (!request.assignedToId && !request.assignedTo) return;
 
   const memberId = request.assignedToId || request.assignedTo._id;
@@ -295,9 +295,10 @@ const processGamification = async (request, prevStage, newStage) => {
 
   let pointsToAdd = 0;
   const newBadges = [];
+  const userBadges = member.badges || [];
 
   // Check First Responder (moved from new -> in-progress)
-  if (prevStage === 'new' && newStage === 'in-progress' && request.priority === 'urgent' && !member.badges.includes('First Responder')) {
+  if (prevStage === 'new' && newStage === 'in-progress' && request.priority === 'urgent' && !userBadges.includes('First Responder')) {
     const diffMins = (new Date() - new Date(request.createdAt)) / 1000 / 60;
     if (diffMins <= 5) {
       newBadges.push('First Responder');
@@ -306,10 +307,7 @@ const processGamification = async (request, prevStage, newStage) => {
   }
 
   // Check points for completion
-  const isCompleted = prevStage === 'repaired' || prevStage === 'scrap';
-  const nowCompleted = newStage === 'repaired' || newStage === 'scrap';
-  
-  if (nowCompleted && !isCompleted) {
+  if (shouldProcessCompletion) {
     const basePoints = 10;
     let multiplier = 1;
     if (request.priority === 'medium') multiplier = 1.5;
@@ -319,7 +317,7 @@ const processGamification = async (request, prevStage, newStage) => {
     pointsToAdd += Math.floor(basePoints * multiplier);
 
     // Check Master Mechanic badge
-    if (!member.badges.includes('Master Mechanic')) {
+    if (!userBadges.includes('Master Mechanic')) {
       const completedCount = await MaintenanceRequest.countDocuments({
         $or: [ { assignedToId: member._id }, { assignedTo: member._id } ],
         stage: { $in: ['repaired', 'scrap'] }
@@ -415,7 +413,8 @@ exports.updateRequest = async (req, res) => {
 
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = payload.stage === "repaired" || payload.stage === "scrap";
-    if (payload.stage && nowCompleted && !isCompleted) {
+    const shouldProcessCompletion = payload.stage && nowCompleted && !isCompleted && !request.completionProcessed;
+    if (shouldProcessCompletion) {
       const io = req.app.get("socketio");
       await decrementInventory(io, request.partsUsed);
     }
@@ -485,7 +484,11 @@ exports.updateRequest = async (req, res) => {
       });
     }
 
-    await processGamification(updatedRequest, prevStage, payload.stage || updatedRequest.stage);
+    await processGamification(updatedRequest, prevStage, payload.stage || updatedRequest.stage, shouldProcessCompletion);
+
+    if (shouldProcessCompletion) {
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
+    }
 
     res.json(updatedRequest);
   } catch (error) {
@@ -532,7 +535,8 @@ exports.updateRequestStage = async (req, res) => {
 
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = stage === "repaired" || stage === "scrap";
-    if (nowCompleted && !isCompleted) {
+    const shouldProcessCompletion = nowCompleted && !isCompleted && !request.completionProcessed;
+    if (shouldProcessCompletion) {
       const io = req.app.get("socketio");
       await decrementInventory(io, request.partsUsed);
     }
@@ -595,7 +599,11 @@ exports.updateRequestStage = async (req, res) => {
       });
     }
 
-    await processGamification(updatedRequest, prevStage, stage);
+    await processGamification(updatedRequest, prevStage, stage, shouldProcessCompletion);
+
+    if (shouldProcessCompletion) {
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
+    }
 
     res.json(updatedRequest);
   } catch (error) {
