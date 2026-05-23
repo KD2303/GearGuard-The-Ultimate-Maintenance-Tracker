@@ -140,4 +140,9 @@ export const requestService = {
 
     return response.data;
   },
+
+  addComment: async (requestId: string, content: string): Promise<any> => {
+    const response = await api.post(`/requests/${requestId}/comments`, { content });
+    return response.data;
+  },
 };

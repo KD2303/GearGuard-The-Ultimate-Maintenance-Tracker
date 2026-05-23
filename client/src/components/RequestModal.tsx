@@ -8,6 +8,9 @@ import { teamService } from '../services/teamService';
 import { uploadService } from '../services/uploadService';
 import { inventoryService } from '../services/inventoryService';
 import { Plus, Trash2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import TicketComments from './TicketComments';
+import { MaintenanceRequest } from '../types';
 interface RequestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,6 +18,7 @@ interface RequestModalProps {
   initialDate?: Date | string;
   initialType?: 'corrective' | 'preventive';
   initialEquipmentId?: string;
+  editRequestId?: string;
 }
 
 const RequestModal: React.FC<RequestModalProps> = ({
@@ -24,7 +28,11 @@ const RequestModal: React.FC<RequestModalProps> = ({
   initialDate,
   initialType = 'corrective',
   initialEquipmentId,
+  editRequestId,
 }) => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
+  const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
     if (!dateInput) return '';
@@ -125,6 +133,30 @@ const RequestModal: React.FC<RequestModalProps> = ({
       }
     }
   }, [isOpen, initialDate, initialEquipmentId]);
+
+  useEffect(() => {
+    if (isOpen && editRequestId) {
+      requestService.getById(editRequestId)
+        .then(req => {
+          setExistingRequest(req);
+          // Auto-fill form data for view/edit mode
+          setFormData({
+            subject: req.subject || '',
+            description: req.description || '',
+            type: req.type,
+            priority: req.priority,
+            scheduledDate: formatDateForInput(req.scheduledDate),
+            equipmentId: typeof req.equipmentId === 'object' ? (req.equipmentId as any)._id : req.equipmentId || '',
+            teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
+            assignedToId: typeof req.assignedToId === 'object' ? (req.assignedToId as any)._id : req.assignedToId || '',
+          });
+        })
+        .catch(err => console.error(err));
+    } else if (!isOpen) {
+      setExistingRequest(null);
+      setActiveTab('details');
+    }
+  }, [isOpen, editRequestId]);
 
   // Auto-fill category/team
   const handleEquipmentChange = async (
@@ -254,11 +286,18 @@ if (attachments.length > 0) {
     );
 }
 
-await requestService.create({
-  ...formData,
-  attachments: uploadedAttachments,
-  partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
-});
+if (editRequestId) {
+  await requestService.update(editRequestId, {
+    ...formData,
+    // Add logic if attachments are updated in edit mode
+  });
+} else {
+  await requestService.create({
+    ...formData,
+    attachments: uploadedAttachments,
+    partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
+  });
+}
 
       onSuccess();
     } catch (error) {
@@ -300,9 +339,29 @@ await requestService.create({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Create Maintenance Request"
+      title={editRequestId ? `Request ${existingRequest?.requestNumber || ''}` : "Create Maintenance Request"}
       size="lg"
     >
+      {editRequestId && (
+        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+          <button
+            type="button"
+            className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'details' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+            onClick={() => setActiveTab('details')}
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'comments' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+            onClick={() => setActiveTab('comments')}
+          >
+            Comments
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'details' && (
       <form
         onSubmit={handleSubmit}
         className="space-y-4"
@@ -675,6 +734,11 @@ await requestService.create({
           </Button>
         </div>
       </form>
+      )}
+
+      {activeTab === 'comments' && existingRequest && (
+        <TicketComments request={existingRequest} currentUser={user} />
+      )}
     </Modal>
   );
 };

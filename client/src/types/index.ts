@@ -82,6 +82,13 @@ export interface MaintenanceRequest {
   createdById?: string;
   createdBy?: TeamMember;
   partsUsed?: { partId: string | SparePart; quantityUsed: number }[];
+  comments?: {
+    _id?: string;
+    authorId: string;
+    authorName: string;
+    content: string;
+    timestamp: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
 }

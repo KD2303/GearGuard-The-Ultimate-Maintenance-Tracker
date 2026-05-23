@@ -12,6 +12,7 @@ router.get('/:id', requestController.getRequestById);
 router.post('/', requestController.createRequest);
 router.put('/:id', requestController.updateRequest);
 router.patch('/:id/stage', requestController.updateRequestStage);
+router.post('/:id/comments', requestController.addComment);
 router.delete('/:id', authorizeRoles('Admin', 'Manager'), requestController.deleteRequest);
 
 module.exports = router;

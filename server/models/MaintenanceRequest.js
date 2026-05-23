@@ -35,6 +35,12 @@ const MaintenanceRequestSchema = new Schema({
   partsUsed: [{
     partId: { type: Schema.Types.ObjectId, ref: 'SparePart' },
     quantityUsed: { type: Number, required: true, default: 1 }
+  }],
+  comments: [{
+    authorId: { type: Schema.Types.ObjectId, ref: 'TeamMember', required: true },
+    authorName: { type: String, required: true },
+    content: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
   }]
 }, { timestamps: true });
 

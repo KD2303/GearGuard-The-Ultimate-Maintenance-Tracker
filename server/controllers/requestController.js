@@ -806,3 +806,34 @@ exports.getAnalytics = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.addComment = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    const newComment = {
+      authorId: req.user.id,
+      authorName: req.user.name,
+      content: req.body.content,
+      timestamp: new Date()
+    };
+
+    request.comments.push(newComment);
+    await request.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      io.to(`ticket_${req.params.id}`).emit("new_comment", {
+        ticketId: req.params.id,
+        comment: newComment
+      });
+    }
+
+    res.status(201).json(newComment);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
