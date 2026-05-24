@@ -7,7 +7,8 @@ import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { uploadService } from '../services/uploadService';
 import { inventoryService } from '../services/inventoryService';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Sparkles } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import TicketComments from './TicketComments';
 import { MaintenanceRequest } from '../types';
@@ -255,6 +256,30 @@ const RequestModal: React.FC<RequestModalProps> = ({
       });
 
     setAttachments(validFiles);
+  };
+
+  const handleSmartAssignInModal = async () => {
+    if (!editRequestId) {
+      toast.error("Please create the ticket first before using auto-assign.");
+      return;
+    }
+    try {
+      setLoading(true);
+      const updated = await requestService.smartAssign(editRequestId);
+      if (updated) {
+        const assignedId = typeof updated.assignedToId === 'object' ? (updated.assignedToId as any)._id : updated.assignedToId;
+        setFormData(prev => ({
+          ...prev,
+          assignedToId: assignedId || ''
+        }));
+        onSuccess();
+      }
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || "Failed to auto-assign";
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (
@@ -576,6 +601,17 @@ if (editRequestId) {
               );
             })}
           </select>
+
+          {!formData.assignedToId && editRequestId && (
+            <button
+              type="button"
+              onClick={handleSmartAssignInModal}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 hover:from-violet-500/20 hover:to-indigo-500/20 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 rounded-lg text-xs font-semibold border border-violet-200/50 dark:border-violet-800/30 transition-all duration-200 shadow-sm shadow-violet-500/5"
+            >
+              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+              Smart Auto-Assign
+            </button>
+          )}
         </div>
 
         {/* Spare Parts Used */}
