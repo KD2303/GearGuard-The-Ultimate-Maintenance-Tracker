@@ -30,7 +30,10 @@ import {
   User,
   AlertCircle,
   Plus,
+  Sparkles,
 } from "lucide-react";
+
+import toast from "react-hot-toast";
 
 import Button from "../components/Button";
 
@@ -129,6 +132,17 @@ const RequestCard: React.FC<
     corrective: "warning",
     preventive: "info",
   } as const;
+
+  const handleSmartAssign = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await requestService.smartAssign(request.id || request._id || "");
+      _onUpdate();
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || "Failed to auto-assign";
+      toast.error(errorMsg);
+    }
+  };
 
   return (
     <div
@@ -235,6 +249,16 @@ const RequestCard: React.FC<
           Duration:{" "}
           {request.duration}h
         </div>
+      )}
+
+      {!request.assignedTo && (
+        <button
+          onClick={handleSmartAssign}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 hover:from-violet-500/20 hover:to-indigo-500/20 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 rounded-lg text-xs font-semibold border border-violet-200/50 dark:border-violet-800/30 transition-all duration-200 shadow-sm shadow-violet-500/5"
+        >
+          <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+          Smart Assign
+        </button>
       )}
     </div>
   );

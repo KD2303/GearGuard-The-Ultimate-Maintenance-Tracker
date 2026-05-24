@@ -837,3 +837,140 @@ exports.addComment = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+exports.smartAssignRequest = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    let targetSpecialization = null;
+    let teamIds = [];
+
+    // 1. Resolve Specialization & Teams
+    if (request.teamId) {
+      const team = await MaintenanceTeam.findById(request.teamId);
+      if (team) {
+        targetSpecialization = team.specialization;
+        teamIds.push(team._id);
+      }
+    }
+
+    if (!targetSpecialization && request.equipmentId) {
+      const equipment = await Equipment.findById(request.equipmentId);
+      if (equipment && equipment.maintenanceTeamId) {
+        const team = await MaintenanceTeam.findById(equipment.maintenanceTeamId);
+        if (team) {
+          targetSpecialization = team.specialization;
+          teamIds.push(team._id);
+        }
+      }
+    }
+
+    if (targetSpecialization) {
+      const matchingTeams = await MaintenanceTeam.find({ specialization: targetSpecialization, isActive: true });
+      const matchingTeamIds = matchingTeams.map(t => t._id);
+      teamIds = Array.from(new Set([...teamIds, ...matchingTeamIds]));
+    }
+
+    if (teamIds.length === 0) {
+      return res.status(400).json({ error: "Could not determine required specialization or team for this request. Please assign a team manually." });
+    }
+
+    // 2. Find All Active Technicians in these Teams
+    const technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+    if (technicians.length === 0) {
+      return res.status(404).json({ error: "No active technicians found for the required specialization. Please assign manually." });
+    }
+
+    // 3. Query workload counts for these technicians (new and in-progress requests)
+    const activeRequests = await MaintenanceRequest.find({
+      stage: { $in: ['new', 'in-progress'] },
+      assignedToId: { $in: technicians.map(tech => tech._id) }
+    });
+
+    const workloadMap = {};
+    technicians.forEach(tech => {
+      workloadMap[tech._id.toString()] = 0;
+    });
+    activeRequests.forEach(r => {
+      if (r.assignedToId) {
+        const techIdStr = r.assignedToId.toString();
+        if (workloadMap[techIdStr] !== undefined) {
+          workloadMap[techIdStr]++;
+        }
+      }
+    });
+
+    // 4. Identify optimal technician with lowest workload
+    let bestTechnician = null;
+    let minWorkload = Infinity;
+
+    for (const tech of technicians) {
+      const workload = workloadMap[tech._id.toString()];
+      if (workload < minWorkload) {
+        minWorkload = workload;
+        bestTechnician = tech;
+      }
+    }
+
+    // 5. Apply capacity protection limit (MAX_WORKLOAD = 5)
+    const MAX_WORKLOAD = 5;
+    if (minWorkload >= MAX_WORKLOAD) {
+      return res.status(400).json({ 
+        error: `All qualified technicians for specialization "${targetSpecialization || 'this team'}" are at maximum workload capacity (${MAX_WORKLOAD}+ active tickets). Please assign manually.` 
+      });
+    }
+
+    // Preserve old document for logging
+    const oldRequest = await MaintenanceRequest.findById(request._id);
+
+    // 6. Assign request
+    request.assignedToId = bestTechnician._id;
+    // If the request doesn't have a teamId, assign the best technician's teamId
+    if (!request.teamId) {
+      request.teamId = bestTechnician.teamId;
+    }
+    await request.save();
+
+    // 7. Trigger Assignment Notifications
+    await NotificationService.createAndEmit({
+      userId: bestTechnician._id,
+      title: 'Request Auto-Assigned to You',
+      message: `You have been automatically assigned to: "${request.subject || request.requestNumber}" based on workload & specialization.`,
+      type: 'request_assigned',
+      link: '/kanban',
+      relatedRequestId: request._id,
+    });
+
+    // 8. Log Audit Records
+    await auditLog({
+      entityType: 'MaintenanceRequest',
+      entityId: request._id,
+      action: 'UPDATE',
+      oldDoc: oldRequest,
+      newDoc: request.toObject(),
+      userId: req.user?._id,
+      userName: "System Auto-Assigner"
+    });
+
+    // 9. Emit Socket.io update
+    const io = req.app.get("socketio");
+    const updatedRequest = await MaintenanceRequest.findById(request._id)
+      .populate('equipment')
+      .populate('team')
+      .populate('assignedTo');
+
+    await NotificationService.notifyRequestChange(
+      io, 
+      "request_updated", 
+      updatedRequest, 
+      `Automatically assigned to ${bestTechnician.name}`
+    );
+
+    res.status(200).json(updatedRequest);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
