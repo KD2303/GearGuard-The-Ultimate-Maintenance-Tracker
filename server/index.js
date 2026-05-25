@@ -133,6 +133,14 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 // Apply global rate limiter to all routes
 app.use(globalLimiter);
 
+// Serve uploaded attachments statically
+const path = require("path");
+const fs = require("fs");
+const uploadsPath = fs.existsSync(path.join(__dirname, "../uploads"))
+  ? path.join(__dirname, "../uploads")
+  : path.join(__dirname, "uploads");
+app.use("/uploads", express.static(uploadsPath));
+
 // Swagger Documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

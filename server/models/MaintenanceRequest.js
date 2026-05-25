@@ -35,7 +35,9 @@ const MaintenanceRequestSchema = new Schema({
   comments: [{
     authorId: { type: Schema.Types.ObjectId, ref: 'TeamMember', required: true },
     authorName: { type: String, required: true },
-    content: { type: String, required: true },
+    content: { type: String },
+    audioUrl: { type: String },
+    audioDuration: { type: Number },
     timestamp: { type: Date, default: Date.now }
   }]
 }, { timestamps: true });
