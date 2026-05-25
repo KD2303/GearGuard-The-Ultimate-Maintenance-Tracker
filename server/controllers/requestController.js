@@ -6,6 +6,7 @@ const {
   SparePart,
 } = require("../models");
 const { logActivity } = require("../utils/logActivity");
+const { auditLog } = require("../utils/auditLogger");
 const NotificationService = require("../services/notificationService");
 
 const decrementInventory = async (io, partsUsed) => {
@@ -14,22 +15,25 @@ const decrementInventory = async (io, partsUsed) => {
     const partId = item.partId?._id || item.partId;
     if (!partId) continue;
     try {
-      const currentPart = await SparePart.findById(partId);
-      if (currentPart) {
-        const newStock = currentPart.quantityInStock - item.quantityUsed;
-        const updates = { quantityInStock: newStock };
-        
-        if (newStock <= currentPart.minReorderThreshold) {
-          if (currentPart.reorderStatus === 'ok') {
-            updates.reorderStatus = 'low-stock';
-          }
-        } else {
-          updates.reorderStatus = 'ok';
-        }
+      // Atomic decrement prevents concurrency data loss
+      const updatedPart = await SparePart.findByIdAndUpdate(
+        partId,
+        { $inc: { quantityInStock: -item.quantityUsed } },
+        { new: true }
+      );
 
-        const part = await SparePart.findByIdAndUpdate(partId, updates, { new: true });
-        if (part && part.quantityInStock <= part.minReorderThreshold) {
-          await NotificationService.notifyLowStock(io, part);
+      if (updatedPart) {
+        if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
+          if (updatedPart.reorderStatus === 'ok') {
+            const finalPart = await SparePart.findByIdAndUpdate(
+              partId, 
+              { reorderStatus: 'low-stock' }, 
+              { new: true }
+            );
+            await NotificationService.notifyLowStock(io, finalPart);
+          }
+        } else if (updatedPart.reorderStatus !== 'ok') {
+           await SparePart.findByIdAndUpdate(partId, { reorderStatus: 'ok' });
         }
       }
     } catch (err) {
@@ -220,6 +224,14 @@ const request = await MaintenanceRequest.create({
       entityId: String(requestWithRelations._id),
     });
 
+    await auditLog({
+      entityType: 'MaintenanceRequest',
+      entityId: request._id,
+      action: 'CREATE',
+      userId: req.user?._id,
+      userName: userName
+    });
+
     // Notify: request created
     const io = req.app.get("socketio");
     await NotificationService.notifyRequestChange(io, "request_created", requestWithRelations);
@@ -270,6 +282,62 @@ const request = await MaintenanceRequest.create({
     res.status(400).json({ error: error.message });
   }
 };
+
+// --- GAMIFICATION LOGIC ---
+const processGamification = async (request, prevStage, newStage, shouldProcessCompletion) => {
+  if (!request.assignedToId && !request.assignedTo) return;
+
+  const memberId = request.assignedToId || request.assignedTo._id;
+  if (!memberId) return;
+
+  const member = await TeamMember.findById(memberId);
+  if (!member) return;
+
+  let pointsToAdd = 0;
+  const newBadges = [];
+  const userBadges = member.badges || [];
+
+  // Check First Responder (moved from new -> in-progress)
+  if (prevStage === 'new' && newStage === 'in-progress' && request.priority === 'urgent' && !userBadges.includes('First Responder')) {
+    const diffMins = (new Date() - new Date(request.createdAt)) / 1000 / 60;
+    if (diffMins <= 5) {
+      newBadges.push('First Responder');
+      pointsToAdd += 5; // Bonus
+    }
+  }
+
+  // Check points for completion
+  if (shouldProcessCompletion) {
+    const basePoints = 10;
+    let multiplier = 1;
+    if (request.priority === 'medium') multiplier = 1.5;
+    if (request.priority === 'high') multiplier = 2;
+    if (request.priority === 'urgent') multiplier = 3;
+    
+    pointsToAdd += Math.floor(basePoints * multiplier);
+
+    // Check Master Mechanic badge
+    if (!userBadges.includes('Master Mechanic')) {
+      const completedCount = await MaintenanceRequest.countDocuments({
+        $or: [ { assignedToId: member._id }, { assignedTo: member._id } ],
+        stage: { $in: ['repaired', 'scrap'] }
+      });
+      if (completedCount >= 50) { 
+        newBadges.push('Master Mechanic');
+        pointsToAdd += 50; // Big bonus
+      }
+    }
+  }
+
+  if (pointsToAdd > 0 || newBadges.length > 0) {
+    const updates = { $inc: { points: pointsToAdd } };
+    if (newBadges.length > 0) {
+      updates.$push = { badges: { $each: newBadges } };
+    }
+    await TeamMember.findByIdAndUpdate(member._id, updates);
+  }
+};
+// --- END GAMIFICATION LOGIC ---
 
 // Update request
 exports.updateRequest = async (req, res) => {
@@ -330,11 +398,23 @@ exports.updateRequest = async (req, res) => {
       });
     }
 
+    // Call auditLogger for diff tracking
+    await auditLog({
+      entityType: 'MaintenanceRequest',
+      entityId: request._id,
+      action: 'UPDATE',
+      oldDoc: request,
+      newDoc: { ...request.toObject(), ...payload },
+      userId: req.user?._id,
+      userName: request.createdBy?.name || ""
+    });
+
     await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload);
 
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = payload.stage === "repaired" || payload.stage === "scrap";
-    if (payload.stage && nowCompleted && !isCompleted) {
+    const shouldProcessCompletion = payload.stage && nowCompleted && !isCompleted && !request.completionProcessed;
+    if (shouldProcessCompletion) {
       const io = req.app.get("socketio");
       await decrementInventory(io, request.partsUsed);
     }
@@ -404,6 +484,12 @@ exports.updateRequest = async (req, res) => {
       });
     }
 
+    await processGamification(updatedRequest, prevStage, payload.stage || updatedRequest.stage, shouldProcessCompletion);
+
+    if (shouldProcessCompletion) {
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
+    }
+
     res.json(updatedRequest);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -423,6 +509,16 @@ exports.updateRequestStage = async (req, res) => {
 
     const prevStage = request.stage;
 
+    await auditLog({
+      entityType: 'MaintenanceRequest',
+      entityId: request._id,
+      action: 'UPDATE',
+      oldDoc: request,
+      newDoc: { ...request.toObject(), stage },
+      userId: req.user?._id,
+      userName: request.createdBy?.name || ""
+    });
+
     await MaintenanceRequest.findByIdAndUpdate(req.params.id, { stage });
 
     if (stage === "repaired" || stage === "scrap") {
@@ -439,7 +535,8 @@ exports.updateRequestStage = async (req, res) => {
 
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = stage === "repaired" || stage === "scrap";
-    if (nowCompleted && !isCompleted) {
+    const shouldProcessCompletion = nowCompleted && !isCompleted && !request.completionProcessed;
+    if (shouldProcessCompletion) {
       const io = req.app.get("socketio");
       await decrementInventory(io, request.partsUsed);
     }
@@ -502,6 +599,12 @@ exports.updateRequestStage = async (req, res) => {
       });
     }
 
+    await processGamification(updatedRequest, prevStage, stage, shouldProcessCompletion);
+
+    if (shouldProcessCompletion) {
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
+    }
+
     res.json(updatedRequest);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -527,6 +630,14 @@ exports.deleteRequest = async (req, res) => {
       metadata: { requestNumber: request.requestNumber },
       entityType: "request",
       entityId: String(request._id),
+    });
+
+    await auditLog({
+      entityType: 'MaintenanceRequest',
+      entityId: request._id,
+      action: 'DELETE',
+      userId: req.user?._id,
+      userName: userName
     });
 
     // Notify: request deleted
@@ -691,6 +802,174 @@ exports.getAnalytics = async (req, res) => {
         trend: trendData,
       },
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.addComment = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    const newComment = {
+      authorId: req.user.id,
+      authorName: req.user.name,
+      content: req.body.content,
+      timestamp: new Date()
+    };
+
+    request.comments.push(newComment);
+    await request.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      io.to(`ticket_${req.params.id}`).emit("new_comment", {
+        ticketId: req.params.id,
+        comment: newComment
+      });
+    }
+
+    res.status(201).json(newComment);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.smartAssignRequest = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    let targetSpecialization = null;
+    let teamIds = [];
+
+    // 1. Resolve Specialization & Teams
+    if (request.teamId) {
+      const team = await MaintenanceTeam.findById(request.teamId);
+      if (team) {
+        targetSpecialization = team.specialization;
+        teamIds.push(team._id);
+      }
+    }
+
+    if (!targetSpecialization && request.equipmentId) {
+      const equipment = await Equipment.findById(request.equipmentId);
+      if (equipment && equipment.maintenanceTeamId) {
+        const team = await MaintenanceTeam.findById(equipment.maintenanceTeamId);
+        if (team) {
+          targetSpecialization = team.specialization;
+          teamIds.push(team._id);
+        }
+      }
+    }
+
+    if (targetSpecialization) {
+      const matchingTeams = await MaintenanceTeam.find({ specialization: targetSpecialization, isActive: true });
+      const matchingTeamIds = matchingTeams.map(t => t._id);
+      teamIds = Array.from(new Set([...teamIds, ...matchingTeamIds]));
+    }
+
+    if (teamIds.length === 0) {
+      return res.status(400).json({ error: "Could not determine required specialization or team for this request. Please assign a team manually." });
+    }
+
+    // 2. Find All Active Technicians in these Teams
+    const technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+    if (technicians.length === 0) {
+      return res.status(404).json({ error: "No active technicians found for the required specialization. Please assign manually." });
+    }
+
+    // 3. Query workload counts for these technicians (new and in-progress requests)
+    const activeRequests = await MaintenanceRequest.find({
+      stage: { $in: ['new', 'in-progress'] },
+      assignedToId: { $in: technicians.map(tech => tech._id) }
+    });
+
+    const workloadMap = {};
+    technicians.forEach(tech => {
+      workloadMap[tech._id.toString()] = 0;
+    });
+    activeRequests.forEach(r => {
+      if (r.assignedToId) {
+        const techIdStr = r.assignedToId.toString();
+        if (workloadMap[techIdStr] !== undefined) {
+          workloadMap[techIdStr]++;
+        }
+      }
+    });
+
+    // 4. Identify optimal technician with lowest workload
+    let bestTechnician = null;
+    let minWorkload = Infinity;
+
+    for (const tech of technicians) {
+      const workload = workloadMap[tech._id.toString()];
+      if (workload < minWorkload) {
+        minWorkload = workload;
+        bestTechnician = tech;
+      }
+    }
+
+    // 5. Apply capacity protection limit (MAX_WORKLOAD = 5)
+    const MAX_WORKLOAD = 5;
+    if (minWorkload >= MAX_WORKLOAD) {
+      return res.status(400).json({ 
+        error: `All qualified technicians for specialization "${targetSpecialization || 'this team'}" are at maximum workload capacity (${MAX_WORKLOAD}+ active tickets). Please assign manually.` 
+      });
+    }
+
+    // Preserve old document for logging
+    const oldRequest = await MaintenanceRequest.findById(request._id);
+
+    // 6. Assign request
+    request.assignedToId = bestTechnician._id;
+    // If the request doesn't have a teamId, assign the best technician's teamId
+    if (!request.teamId) {
+      request.teamId = bestTechnician.teamId;
+    }
+    await request.save();
+
+    // 7. Trigger Assignment Notifications
+    await NotificationService.createAndEmit({
+      userId: bestTechnician._id,
+      title: 'Request Auto-Assigned to You',
+      message: `You have been automatically assigned to: "${request.subject || request.requestNumber}" based on workload & specialization.`,
+      type: 'request_assigned',
+      link: '/kanban',
+      relatedRequestId: request._id,
+    });
+
+    // 8. Log Audit Records
+    await auditLog({
+      entityType: 'MaintenanceRequest',
+      entityId: request._id,
+      action: 'UPDATE',
+      oldDoc: oldRequest,
+      newDoc: request.toObject(),
+      userId: req.user?._id,
+      userName: "System Auto-Assigner"
+    });
+
+    // 9. Emit Socket.io update
+    const io = req.app.get("socketio");
+    const updatedRequest = await MaintenanceRequest.findById(request._id)
+      .populate('equipment')
+      .populate('team')
+      .populate('assignedTo');
+
+    await NotificationService.notifyRequestChange(
+      io, 
+      "request_updated", 
+      updatedRequest, 
+      `Automatically assigned to ${bestTechnician.name}`
+    );
+
+    res.status(200).json(updatedRequest);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

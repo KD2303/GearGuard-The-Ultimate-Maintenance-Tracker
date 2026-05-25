@@ -33,6 +33,10 @@ const inventoryRoutes = require("./routes/inventory");
 const analyticsRoutes = require("./routes/analytics");
 const predictiveRoutes = require("./routes/predictiveRoutes");
 const purchaseOrderRoutes = require("./routes/purchaseOrder");
+const auditRoutes = require("./routes/audit");
+const mapRoutes = require("./routes/map");
+const supplierRoutes = require("./routes/supplierRoutes");
+const procurementRoutes = require("./routes/procurementRoutes");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -87,6 +91,23 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Ticket Collaboration Events
+  socket.on("join_ticket", (ticketId) => {
+    socket.join(`ticket_${ticketId}`);
+  });
+
+  socket.on("leave_ticket", (ticketId) => {
+    socket.leave(`ticket_${ticketId}`);
+  });
+
+  socket.on("typing", ({ ticketId, userName }) => {
+    socket.to(`ticket_${ticketId}`).emit("user_typing", { userName });
+  });
+
+  socket.on("stop_typing", ({ ticketId, userName }) => {
+    socket.to(`ticket_${ticketId}`).emit("user_stop_typing", { userName });
+  });
+
   socket.on("disconnect", () => {
     console.log(`❌ User disconnected: ${socket.id}`);
   });
@@ -135,6 +156,10 @@ const defineRoutes = (router) => {
   router.use("/upload", uploadRoutes);
   router.use("/export", require("./routes/export"));
   router.use("/purchase-orders", purchaseOrderRoutes);
+  router.use("/audit", auditRoutes);
+  router.use("/map", mapRoutes);
+  router.use("/suppliers", supplierRoutes);
+  router.use("/procurement", procurementRoutes);
 };
 
 const v1Router = express.Router();
@@ -187,6 +212,9 @@ const startServer = async () => {
         const { scheduleInventoryCron } = require("./cron/inventoryCron");
         scheduleInventoryCron();
         
+        const { startProcurementCron } = require("./jobs/procurementCron");
+        startProcurementCron();
+        
         break;
       } catch (err) {
         retries -= 1;
@@ -199,7 +227,7 @@ const startServer = async () => {
     // Start overdue checker cron job
     startOverdueChecker();
 
-    server.listen(PORT, () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`\n🚀 GearGuard Server Running!`);
       console.log(`📡 API: http://localhost:${PORT}/api/v1`);
       console.log(`💚 Health: http://localhost:${PORT}/api/health`);

@@ -4,7 +4,7 @@ const rateLimit = require('express-rate-limit');
 // Allows 200 requests per IP per 15 minutes
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: process.env.NODE_ENV === 'production' ? 200 : 2000,
   message: {
     error: 'Too many requests from this IP. Please try again after 15 minutes.',
   },

@@ -7,6 +7,7 @@ const { authorizeRoles } = require('../middleware/role');
 router.use(protect);
 
 router.get('/', memberController.getAllMembers);
+router.get('/leaderboard', memberController.getLeaderboard);
 router.get('/:id', memberController.getMemberById);
 router.post('/', authorizeRoles('Admin', 'Manager'), memberController.createMember);
 router.put('/:id', authorizeRoles('Admin', 'Manager'), memberController.updateMember);

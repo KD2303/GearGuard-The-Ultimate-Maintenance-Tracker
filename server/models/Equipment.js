@@ -19,6 +19,11 @@ const EquipmentSchema = new Schema({
   notes: { type: String },
   maintenanceTeamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   defaultTechnicianId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
+  mapCoordinates: { 
+    x: { type: Number },
+    y: { type: Number }
+  },
+  floorPlanId: { type: Schema.Types.ObjectId, ref: 'FloorPlan' },
   
   healthScore: {
     type: Number,

@@ -10,6 +10,7 @@ import Spinner from './Spinner';
 import RequestModal from './RequestModal';
 import ExportButton from './ExportButton';
 import { exportEquipmentPDF } from '../services/exportService';
+import AuditTimeline from './AuditTimeline';
 
 interface EquipmentDetailModalProps {
   equipment: Equipment;
@@ -230,6 +231,18 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
               <p>No maintenance history yet</p>
             </div>
           )}
+        </div>
+
+        {/* Equipment Audit History */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+              Equipment History
+            </h4>
+          </div>
+          <div className="bg-slate-900 rounded-lg p-6 max-h-[400px] overflow-y-auto">
+            <AuditTimeline entityType="Equipment" entityId={equipment.id || equipment._id || ''} />
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

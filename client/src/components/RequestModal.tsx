@@ -7,7 +7,11 @@ import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { uploadService } from '../services/uploadService';
 import { inventoryService } from '../services/inventoryService';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Sparkles } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
+import TicketComments from './TicketComments';
+import { MaintenanceRequest } from '../types';
 interface RequestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,6 +19,7 @@ interface RequestModalProps {
   initialDate?: Date | string;
   initialType?: 'corrective' | 'preventive';
   initialEquipmentId?: string;
+  editRequestId?: string;
 }
 
 const RequestModal: React.FC<RequestModalProps> = ({
@@ -24,7 +29,11 @@ const RequestModal: React.FC<RequestModalProps> = ({
   initialDate,
   initialType = 'corrective',
   initialEquipmentId,
+  editRequestId,
 }) => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
+  const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
     if (!dateInput) return '';
@@ -126,6 +135,30 @@ const RequestModal: React.FC<RequestModalProps> = ({
     }
   }, [isOpen, initialDate, initialEquipmentId]);
 
+  useEffect(() => {
+    if (isOpen && editRequestId) {
+      requestService.getById(editRequestId)
+        .then(req => {
+          setExistingRequest(req);
+          // Auto-fill form data for view/edit mode
+          setFormData({
+            subject: req.subject || '',
+            description: req.description || '',
+            type: req.type,
+            priority: req.priority,
+            scheduledDate: formatDateForInput(req.scheduledDate),
+            equipmentId: typeof req.equipmentId === 'object' ? (req.equipmentId as any)._id : req.equipmentId || '',
+            teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
+            assignedToId: typeof req.assignedToId === 'object' ? (req.assignedToId as any)._id : req.assignedToId || '',
+          });
+        })
+        .catch(err => console.error(err));
+    } else if (!isOpen) {
+      setExistingRequest(null);
+      setActiveTab('details');
+    }
+  }, [isOpen, editRequestId]);
+
   // Auto-fill category/team
   const handleEquipmentChange = async (
     equipmentId: string
@@ -225,6 +258,30 @@ const RequestModal: React.FC<RequestModalProps> = ({
     setAttachments(validFiles);
   };
 
+  const handleSmartAssignInModal = async () => {
+    if (!editRequestId) {
+      toast.error("Please create the ticket first before using auto-assign.");
+      return;
+    }
+    try {
+      setLoading(true);
+      const updated = await requestService.smartAssign(editRequestId);
+      if (updated) {
+        const assignedId = typeof updated.assignedToId === 'object' ? (updated.assignedToId as any)._id : updated.assignedToId;
+        setFormData(prev => ({
+          ...prev,
+          assignedToId: assignedId || ''
+        }));
+        onSuccess();
+      }
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || "Failed to auto-assign";
+      toast.error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (
     e: React.FormEvent
   ) => {
@@ -254,11 +311,18 @@ if (attachments.length > 0) {
     );
 }
 
-await requestService.create({
-  ...formData,
-  attachments: uploadedAttachments,
-  partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
-});
+if (editRequestId) {
+  await requestService.update(editRequestId, {
+    ...formData,
+    // Add logic if attachments are updated in edit mode
+  });
+} else {
+  await requestService.create({
+    ...formData,
+    attachments: uploadedAttachments,
+    partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
+  });
+}
 
       onSuccess();
     } catch (error) {
@@ -300,9 +364,29 @@ await requestService.create({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Create Maintenance Request"
+      title={editRequestId ? `Request ${existingRequest?.requestNumber || ''}` : "Create Maintenance Request"}
       size="lg"
     >
+      {editRequestId && (
+        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+          <button
+            type="button"
+            className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'details' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+            onClick={() => setActiveTab('details')}
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'comments' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+            onClick={() => setActiveTab('comments')}
+          >
+            Comments
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'details' && (
       <form
         onSubmit={handleSubmit}
         className="space-y-4"
@@ -517,6 +601,17 @@ await requestService.create({
               );
             })}
           </select>
+
+          {!formData.assignedToId && editRequestId && (
+            <button
+              type="button"
+              onClick={handleSmartAssignInModal}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 hover:from-violet-500/20 hover:to-indigo-500/20 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 rounded-lg text-xs font-semibold border border-violet-200/50 dark:border-violet-800/30 transition-all duration-200 shadow-sm shadow-violet-500/5"
+            >
+              <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+              Smart Auto-Assign
+            </button>
+          )}
         </div>
 
         {/* Spare Parts Used */}
@@ -675,6 +770,11 @@ await requestService.create({
           </Button>
         </div>
       </form>
+      )}
+
+      {activeTab === 'comments' && existingRequest && (
+        <TicketComments request={existingRequest} currentUser={user} />
+      )}
     </Modal>
   );
 };

@@ -25,6 +25,7 @@ export interface Equipment {
   defaultTechnicianId?: string | { _id: string; name: string; email?: string; role?: string };
   defaultTechnician?: TeamMember;
   openRequestsCount?: number;
+  mapCoordinates?: { x: number; y: number };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -49,6 +50,8 @@ export interface TeamMember {
   phone?: string;
   role?: string;
   avatar?: string;
+  points?: number;
+  badges?: string[];
   isActive: boolean;
   teamId?: string;
   team?: MaintenanceTeam;
@@ -79,6 +82,13 @@ export interface MaintenanceRequest {
   createdById?: string;
   createdBy?: TeamMember;
   partsUsed?: { partId: string | SparePart; quantityUsed: number }[];
+  comments?: {
+    _id?: string;
+    authorId: string;
+    authorName: string;
+    content: string;
+    timestamp: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -101,6 +111,7 @@ export interface CreateEquipmentDto {
   notes?: string;
   maintenanceTeamId?: string;
   defaultTechnicianId?: string;
+  mapCoordinates?: { x: number; y: number };
 }
 
 export interface CreateMaintenanceRequestDto {
@@ -195,6 +206,23 @@ export interface SearchRequestResult {
 export interface GlobalSearchResults {
   equipment: SearchEquipmentResult[];
   requests: SearchRequestResult[];
+}
+
+export interface AuditChange {
+  field: string;
+  oldValue: any;
+  newValue: any;
+}
+
+export interface AuditLog {
+  _id: string;
+  entityType: string;
+  entityId: string;
+  userId?: { _id: string; name: string; email: string };
+  userName?: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  changes: AuditChange[];
+  createdAt: string;
 }
 
 export * from './activity';

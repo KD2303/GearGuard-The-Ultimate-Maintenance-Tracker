@@ -30,7 +30,10 @@ import {
   User,
   AlertCircle,
   Plus,
+  Sparkles,
 } from "lucide-react";
+
+import toast from "react-hot-toast";
 
 import Button from "../components/Button";
 
@@ -77,6 +80,7 @@ const STAGES = [
 interface RequestCardProps {
   request: MaintenanceRequest;
   onUpdate: () => void;
+  onClick: () => void;
 }
 
 const RequestCard: React.FC<
@@ -84,6 +88,7 @@ const RequestCard: React.FC<
 > = ({
   request,
   onUpdate: _onUpdate,
+  onClick,
 }) => {
   const [{ isDragging }, drag] =
     useDrag(() => ({
@@ -132,21 +137,33 @@ const RequestCard: React.FC<
     preventive: "info",
   } as const;
 
+  const handleSmartAssign = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await requestService.smartAssign(request.id || request._id || "");
+      _onUpdate();
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || "Failed to auto-assign";
+      toast.error(errorMsg);
+    }
+  };
+
   return (
     <div
       ref={drag}
+      onClick={onClick}
       style={{
         opacity: isDragging
           ? 0.5
           : 1,
       }}
-      className={`kanban-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-none border-2 mb-3 ${
+      className={`kanban-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-none border-2 mb-3 cursor-pointer ${
         isOverdue(
           request.scheduledDate,
           request.stage
         )
           ? "border-red-400 bg-red-50 dark:bg-red-900/20"
-          : "border-gray-200 dark:border-gray-700"
+          : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-500/50"
       }`}
     >
       {isOverdue(
@@ -237,6 +254,16 @@ const RequestCard: React.FC<
           {request.duration}h
         </div>
       )}
+
+      {!request.assignedTo && (
+        <button
+          onClick={handleSmartAssign}
+          className="mt-3 w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-500/10 to-indigo-500/10 hover:from-violet-500/20 hover:to-indigo-500/20 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 rounded-lg text-xs font-semibold border border-violet-200/50 dark:border-violet-800/30 transition-all duration-200 shadow-sm shadow-violet-500/5"
+        >
+          <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+          Smart Assign
+        </button>
+      )}
     </div>
   );
 };
@@ -252,6 +279,8 @@ interface ColumnProps {
   ) => void;
 
   onUpdate: () => void;
+
+  onRequestClick: (requestId: string) => void;
 }
 
 const Column: React.FC<
@@ -260,6 +289,7 @@ const Column: React.FC<
   stage,
   requests,
   onDrop,
+  onRequestClick,
 }) => {
   const [{ isOver }, drop] =
     useDrop(() => ({
@@ -323,6 +353,7 @@ const Column: React.FC<
                 request
               }
               onUpdate={() => {}}
+              onClick={() => onRequestClick(request.id || request._id || '')}
             />
           )
         )}
@@ -345,6 +376,8 @@ const KanbanBoard: React.FC =
       isModalOpen,
       setIsModalOpen,
     ] = useState(false);
+
+    const [editRequestId, setEditRequestId] = useState<string | undefined>(undefined);
 
     const [filters, setFilters] =
       useState<RequestFilters>(
@@ -507,11 +540,10 @@ const KanbanBoard: React.FC =
               />
               <Button
                 className="w-full sm:w-auto"
-                onClick={() =>
-                  setIsModalOpen(
-                    true
-                  )
-                }
+                onClick={() => {
+                  setEditRequestId(undefined);
+                  setIsModalOpen(true);
+                }}
               >
                 <Plus className="h-4 w-4 mr-2" />
 
@@ -560,6 +592,10 @@ const KanbanBoard: React.FC =
                     onUpdate={
                       loadRequests
                     }
+                    onRequestClick={(id) => {
+                      setEditRequestId(id);
+                      setIsModalOpen(true);
+                    }}
                   />
                 )
               )}
@@ -571,16 +607,18 @@ const KanbanBoard: React.FC =
               isOpen={
                 isModalOpen
               }
-              onClose={() =>
+              editRequestId={editRequestId}
+              onClose={() => {
                 setIsModalOpen(
                   false
-                )
-              }
+                );
+                setEditRequestId(undefined);
+              }}
               onSuccess={() => {
                 setIsModalOpen(
                   false
                 );
-
+                setEditRequestId(undefined);
                 loadRequests();
               }}
             />

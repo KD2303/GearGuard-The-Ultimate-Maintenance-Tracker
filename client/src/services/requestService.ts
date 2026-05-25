@@ -140,4 +140,16 @@ export const requestService = {
 
     return response.data;
   },
+
+  addComment: async (requestId: string, content: string): Promise<any> => {
+    const response = await api.post(`/requests/${requestId}/comments`, { content });
+    return response.data;
+  },
+
+  smartAssign: async (id: string): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${id}/smart-assign`);
+    const assignedName = response.data.assignedTo?.name || "a technician";
+    toast.success(`Automatically assigned to ${assignedName}!`);
+    return response.data;
+  },
 };

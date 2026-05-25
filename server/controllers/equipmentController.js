@@ -5,6 +5,7 @@ const {
   MaintenanceRequest,
 } = require("../models");
 const NotificationService = require("../services/notificationService");
+const { auditLog } = require("../utils/auditLogger");
 const { ErrorHandler, ERROR_TYPES } = require("../utils/errorHandler");
 const { asyncHandler } = require("../middleware/errorHandler");
 
@@ -125,6 +126,14 @@ exports.createEquipment = asyncHandler(async (req, res, next) => {
     .populate("maintenanceTeam")
     .populate("defaultTechnician");
 
+  await auditLog({
+    entityType: 'Equipment',
+    entityId: equipment._id,
+    action: 'CREATE',
+    userId: req.user?._id,
+    userName: req.user?.name || ""
+  });
+
   // Notify: new equipment or vehicle added
   const io = req.app.get("socketio");
   if (io) {
@@ -147,6 +156,7 @@ exports.createEquipment = asyncHandler(async (req, res, next) => {
 // Update equipment
 exports.updateEquipment = asyncHandler(async (req, res, next) => {
   const payload = sanitizeBody(req.body);
+  const oldDoc = await Equipment.findById(req.params.id);
   const updatedEquipment = await Equipment.findByIdAndUpdate(
     req.params.id,
     payload,
@@ -158,6 +168,16 @@ exports.updateEquipment = asyncHandler(async (req, res, next) => {
   if (!updatedEquipment) {
     throw new ErrorHandler("Equipment not found", ERROR_TYPES.NOT_FOUND_ERROR);
   }
+
+  await auditLog({
+    entityType: 'Equipment',
+    entityId: updatedEquipment._id,
+    action: 'UPDATE',
+    oldDoc,
+    newDoc: { ...oldDoc.toObject(), ...payload },
+    userId: req.user?._id,
+    userName: req.user?.name || ""
+  });
 
   const openRequestsCount = await MaintenanceRequest.countDocuments({
     equipmentId: req.params.id,
@@ -177,6 +197,15 @@ exports.deleteEquipment = asyncHandler(async (req, res, next) => {
   if (!equipment) {
     throw new ErrorHandler("Equipment not found", ERROR_TYPES.NOT_FOUND_ERROR);
   }
+
+  await auditLog({
+    entityType: 'Equipment',
+    entityId: equipment._id,
+    action: 'DELETE',
+    userId: req.user?._id,
+    userName: req.user?.name || ""
+  });
+
   res.status(200).json({
     success: true,
     message: "Equipment deleted successfully",

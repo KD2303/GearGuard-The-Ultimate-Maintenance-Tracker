@@ -2,6 +2,7 @@ import { useState, useEffect, Fragment } from "react";
 import { MaintenanceRequest } from "../types";
 import { requestService } from "../services/requestService";
 import { getRelativeDateLabel } from "../utils/dateUtils";
+import AuditTimeline from "./AuditTimeline";
 
 import Badge from "./Badge";
 import Button from "./Button";
@@ -417,6 +418,13 @@ const DetailedRequestsTable = () => {
                               ? `${request.duration} hrs`
                               : "TBD"}
                           </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Request History</h4>
+                        <div className="bg-slate-900 rounded-lg p-6 max-h-[400px] overflow-y-auto">
+                          <AuditTimeline entityType="MaintenanceRequest" entityId={request.id || request._id || ''} />
                         </div>
                       </div>
                     </td>

@@ -19,6 +19,7 @@ import {
   BarChart3,
   LogOut,
   Package,
+  Map,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
 import NotificationDropdown from "./NotificationDropdown";
@@ -63,12 +64,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-rose-600 shadow-pink-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600 shadow-cyan-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-emerald-600 shadow-green-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/floor-plan', icon: Map, label: 'Floor Plan', gradient: 'from-sky-500 to-indigo-500 shadow-sky-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/inventory', icon: Package, label: t('nav.inventory') || 'Inventory', gradient: 'from-teal-500 to-emerald-600 shadow-teal-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/vehicles', icon: Car, label: t('nav.vehicles'), gradient: 'from-orange-500 to-amber-600 shadow-orange-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/teams', icon: Users, label: t('nav.teams'), gradient: 'from-yellow-500 to-orange-600 shadow-yellow-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/activity', icon: Activity, label: t('nav.activity'), gradient: 'from-indigo-500 to-purple-600 shadow-indigo-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/analytics', icon: BarChart3, label: t('nav.analytics'), gradient: 'from-emerald-500 to-teal-600 shadow-emerald-500/20', roles: ['Admin', 'Manager'] },
     { to: '/predictive', icon: Activity, label: t('nav.predictive') || 'Predictive Portal', gradient: 'from-rose-500 to-pink-600 shadow-rose-500/20', roles: ['Admin', 'Manager'] },
+    { to: '/procurement', icon: Package, label: 'Procurement Hub', gradient: 'from-amber-500 to-yellow-600 shadow-amber-500/20', roles: ['Admin', 'Manager'] },
   ];
 
   const navItems = allNavItems.filter(item => user && item.roles.includes(user.role));
