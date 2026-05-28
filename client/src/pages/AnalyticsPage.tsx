@@ -102,6 +102,11 @@ const AnalyticsPage: React.FC = () => {
     [data]
   );
 
+  const costByCategoryData = useMemo(
+    () => data?.charts.costByCategory || [],
+    [data]
+  );
+
   if (loading) {
     return <Spinner size="lg" label="Loading analytics..." centered />;
   }
@@ -168,7 +173,7 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
         <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <p className="text-sm text-gray-500 dark:text-gray-400">Total requests</p>
           <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
@@ -185,6 +190,14 @@ const AnalyticsPage: React.FC = () => {
           <p className="text-sm text-gray-500 dark:text-gray-400">Overdue rate</p>
           <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
             {data?.metrics.overdueRate ?? 0}%
+          </p>
+        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 shadow-sm dark:border-red-900/50 dark:bg-red-900/10">
+          <p className="text-sm font-semibold text-red-600 dark:text-red-400 flex items-center">
+            <span className="mr-1">💸</span> Financial Bleed
+          </p>
+          <p className="mt-2 text-3xl font-bold text-red-700 dark:text-red-300">
+            ${data?.metrics.totalFinancialLoss?.toLocaleString() || '0'}
           </p>
         </div>
       </div>
@@ -227,26 +240,45 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Request trend</h3>
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={trendChartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="total" stroke="#3B82F6" strokeWidth={2} dot={false} />
-              <Line
-                type="monotone"
-                dataKey="completed"
-                stroke="#10B981"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 mt-6">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Request trend</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="label" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="total" stroke="#3B82F6" strokeWidth={2} dot={false} />
+                <Line
+                  type="monotone"
+                  dataKey="completed"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-red-100 bg-white p-5 shadow-sm dark:border-red-900/30 dark:bg-gray-800">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+            <span className="mr-2">📉</span> Cost by Category
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={costByCategoryData} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={(val) => `$${val}`} />
+                <YAxis type="category" dataKey="category" width={80} />
+                <Tooltip formatter={(value: number) => [`$${value}`, 'Lost Revenue']} />
+                <Bar dataKey="value" fill="#ef4444" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>

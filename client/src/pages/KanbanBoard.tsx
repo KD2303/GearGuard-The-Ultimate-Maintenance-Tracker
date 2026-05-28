@@ -31,6 +31,7 @@ import {
   AlertCircle,
   Plus,
   Sparkles,
+  ArrowDownUp
 } from "lucide-react";
 
 import toast from "react-hot-toast";
@@ -255,6 +256,12 @@ const RequestCard: React.FC<
         </div>
       )}
 
+      {request.equipment?.hourlyDowntimeCost ? (
+        <div className="text-xs text-red-500 font-bold mt-2 flex items-center bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded w-fit border border-red-100 dark:border-red-800/50 shadow-sm">
+          💸 Bleed: ${request.equipment.hourlyDowntimeCost}/hr
+        </div>
+      ) : null}
+
       {!request.assignedTo && (
         <button
           onClick={handleSmartAssign}
@@ -281,6 +288,8 @@ interface ColumnProps {
   onUpdate: () => void;
 
   onRequestClick: (requestId: string) => void;
+  
+  sortByCost: boolean;
 }
 
 const Column: React.FC<
@@ -290,6 +299,7 @@ const Column: React.FC<
   requests,
   onDrop,
   onRequestClick,
+  sortByCost
 }) => {
   const [{ isOver }, drop] =
     useDrop(() => ({
@@ -345,7 +355,12 @@ const Column: React.FC<
           </p>
         )}
 
-        {requests.map(
+        {[...requests].sort((a, b) => {
+          if (!sortByCost) return 0;
+          const costA = a.equipment?.hourlyDowntimeCost || 0;
+          const costB = b.equipment?.hourlyDowntimeCost || 0;
+          return costB - costA;
+        }).map(
           (request) => (
             <RequestCard
               key={request.id}
@@ -388,6 +403,8 @@ const KanbanBoard: React.FC =
       resultCount,
       setResultCount,
     ] = useState(0);
+
+    const [sortByCost, setSortByCost] = useState(false);
 
     useEffect(() => {
       loadRequests();
@@ -539,6 +556,13 @@ const KanbanBoard: React.FC =
                 variant="excel"
               />
               <Button
+                onClick={() => setSortByCost(!sortByCost)}
+                variant={sortByCost ? "primary" : "secondary"}
+              >
+                <ArrowDownUp className="h-4 w-4 mr-2" />
+                Sort by Cost Rate
+              </Button>
+              <Button
                 className="w-full sm:w-auto"
                 onClick={() => {
                   setEditRequestId(undefined);
@@ -596,6 +620,7 @@ const KanbanBoard: React.FC =
                       setEditRequestId(id);
                       setIsModalOpen(true);
                     }}
+                    sortByCost={sortByCost}
                   />
                 )
               )}

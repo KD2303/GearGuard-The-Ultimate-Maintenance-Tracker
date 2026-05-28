@@ -19,11 +19,13 @@ export interface AnalyticsResponse {
     completedRequests: number;
     mttrHours: number;
     overdueRate: number;
+    totalFinancialLoss?: number;
   };
   charts: {
     stageBreakdown: Array<{ stage: string; value: number }>;
     typeBreakdown: Array<{ type: string; value: number }>;
     trend: Array<{ date: string; total: number; completed: number }>;
+    costByCategory?: Array<{ category: string; value: number }>;
   };
 }
 

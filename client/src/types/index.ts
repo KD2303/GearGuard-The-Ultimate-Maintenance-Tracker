@@ -26,6 +26,7 @@ export interface Equipment {
   defaultTechnician?: TeamMember;
   openRequestsCount?: number;
   mapCoordinates?: { x: number; y: number };
+  hourlyDowntimeCost?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -89,8 +90,11 @@ export interface MaintenanceRequest {
     content?: string;
     audioUrl?: string;
     audioDuration?: number;
+    audioDuration?: number;
     timestamp: string;
   }[];
+  downtimeDurationHours?: number;
+  totalDowntimeCost?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -114,6 +118,7 @@ export interface CreateEquipmentDto {
   maintenanceTeamId?: string;
   defaultTechnicianId?: string;
   mapCoordinates?: { x: number; y: number };
+  hourlyDowntimeCost?: number;
 }
 
 export interface CreateMaintenanceRequestDto {

@@ -522,9 +522,24 @@ exports.updateRequestStage = async (req, res) => {
     await MaintenanceRequest.findByIdAndUpdate(req.params.id, { stage });
 
     if (stage === "repaired" || stage === "scrap") {
+      const completedDate = new Date();
+      let downtimeDurationHours = 0;
+      let totalDowntimeCost = 0;
+
+      if (request.createdAt) {
+        downtimeDurationHours = Math.max(0, (completedDate - request.createdAt) / (1000 * 60 * 60));
+      }
+
+      if (request.equipment && request.equipment.hourlyDowntimeCost) {
+        totalDowntimeCost = downtimeDurationHours * request.equipment.hourlyDowntimeCost;
+      }
+
       await MaintenanceRequest.findByIdAndUpdate(req.params.id, {
-        completedDate: new Date(),
+        completedDate,
+        downtimeDurationHours,
+        totalDowntimeCost
       });
+
       if (request.equipmentId) {
         const newStatus = stage === "scrap" ? "scrapped" : "active";
         await Equipment.findByIdAndUpdate(request.equipmentId, {
@@ -717,6 +732,8 @@ exports.getAnalytics = async (req, res) => {
       typeBreakdown,
       trendData,
       mttrResult,
+      financialLossResult,
+      costByCategory
     ] = await Promise.all([
       MaintenanceRequest.countDocuments(rangeMatch),
       MaintenanceRequest.countDocuments({
@@ -778,11 +795,41 @@ exports.getAnalytics = async (req, res) => {
           },
         },
       ]),
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $group: {
+            _id: null,
+            totalCost: { $sum: "$totalDowntimeCost" },
+          },
+        },
+      ]),
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $group: {
+            _id: "$equipmentDoc.category",
+            value: { $sum: "$totalDowntimeCost" }
+          }
+        },
+        { $project: { _id: 0, category: "$_id", value: 1 } },
+        { $sort: { value: -1 } }
+      ])
     ]);
 
     const avgResolutionMs = mttrResult[0]?.avgResolutionMs || 0;
     const mttrHours = avgResolutionMs ? avgResolutionMs / (1000 * 60 * 60) : 0;
     const overdueRate = totalRequests ? (overdueRequests / totalRequests) * 100 : 0;
+    const totalFinancialLoss = financialLossResult[0]?.totalCost || 0;
 
     res.json({
       range: {
@@ -795,11 +842,13 @@ exports.getAnalytics = async (req, res) => {
         completedRequests,
         mttrHours: Number(mttrHours.toFixed(2)),
         overdueRate: Number(overdueRate.toFixed(2)),
+        totalFinancialLoss: Number(totalFinancialLoss.toFixed(2)),
       },
       charts: {
         stageBreakdown,
         typeBreakdown,
         trend: trendData,
+        costByCategory
       },
     });
   } catch (error) {

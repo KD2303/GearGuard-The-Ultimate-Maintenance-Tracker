@@ -264,6 +264,13 @@ const EquipmentList: React.FC = () => {
                       }
                     </div>
 
+                    {item.hourlyDowntimeCost !== undefined && item.hourlyDowntimeCost > 0 && (
+                      <div className="flex items-center text-red-500 font-medium">
+                        <span className="mr-2">💸</span>
+                        Downtime: ${item.hourlyDowntimeCost}/hr
+                      </div>
+                    )}
+
                     {item.department && (
                       <div className="flex items-center">
                         <span className="font-medium">
