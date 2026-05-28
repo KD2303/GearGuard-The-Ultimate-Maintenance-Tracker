@@ -4,7 +4,7 @@ const rateLimit = require('express-rate-limit');
 // Allows 200 requests per IP per 15 minutes
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'production' ? 200 : 2000,
+  max: process.env.NODE_ENV === 'production' ? 200 : 100000,
   message: {
     error: 'Too many requests from this IP. Please try again after 15 minutes.',
   },
@@ -17,7 +17,7 @@ const globalLimiter = rateLimit({
 // Successful requests do not count toward the limit
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV === 'production' ? 10 : 100000,
   message: {
     error: 'Too many authentication attempts from this IP. Please try again after 15 minutes.',
   },

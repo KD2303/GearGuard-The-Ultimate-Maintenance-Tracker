@@ -14,6 +14,8 @@ router.put('/:id', requestController.updateRequest);
 router.patch('/:id/stage', requestController.updateRequestStage);
 router.post('/:id/comments', requestController.addComment);
 router.post('/:id/smart-assign', requestController.smartAssignRequest);
+router.get('/:id/predictions', requestController.predictSpareParts);
+router.post('/:id/parts', requestController.addPartToRequest);
 router.delete('/:id', authorizeRoles('Admin', 'Manager'), requestController.deleteRequest);
 
 module.exports = router;

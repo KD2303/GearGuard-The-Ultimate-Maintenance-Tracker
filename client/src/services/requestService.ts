@@ -152,4 +152,14 @@ export const requestService = {
     toast.success(`Automatically assigned to ${assignedName}!`);
     return response.data;
   },
+
+  getPredictions: async (requestId: string): Promise<any[]> => {
+    const response = await api.get(`/requests/${requestId}/predictions`);
+    return response.data;
+  },
+
+  reservePart: async (requestId: string, partId: string, quantityUsed: number = 1): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${requestId}/parts`, { partId, quantityUsed });
+    return response.data;
+  }
 };

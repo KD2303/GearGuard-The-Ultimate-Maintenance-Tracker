@@ -974,3 +974,102 @@ exports.smartAssignRequest = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.predictSpareParts = async (req, res) => {
+  try {
+    const targetReq = await MaintenanceRequest.findById(req.params.id);
+    if (!targetReq || !targetReq.equipmentId) {
+      return res.status(200).json([]);
+    }
+
+    const text = ((targetReq.subject || '') + ' ' + (targetReq.description || '')).toLowerCase();
+    const keywords = text.split(/\W+/).filter(w => w.length > 3);
+
+    const pastRequests = await MaintenanceRequest.find({
+      equipmentId: targetReq.equipmentId,
+      stage: 'repaired',
+      _id: { $ne: targetReq._id }
+    }).populate('partsUsed.partId');
+
+    const partScores = {};
+
+    pastRequests.forEach(pastReq => {
+      const pastText = ((pastReq.subject || '') + ' ' + (pastReq.description || '')).toLowerCase();
+      let matchScore = 0;
+      keywords.forEach(kw => {
+        if (pastText.includes(kw)) matchScore += 1;
+      });
+
+      if (matchScore > 0 && pastReq.partsUsed && pastReq.partsUsed.length > 0) {
+        pastReq.partsUsed.forEach(used => {
+          if (!used.partId) return;
+          const pId = used.partId._id.toString();
+          if (!partScores[pId]) {
+            partScores[pId] = {
+              part: used.partId,
+              score: 0
+            };
+          }
+          partScores[pId].score += matchScore;
+        });
+      }
+    });
+
+    const sortedParts = Object.values(partScores)
+      .sort((a, b) => b.score - a.score)
+      .map(p => p.part)
+      .slice(0, 3);
+
+    res.status(200).json(sortedParts);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.addPartToRequest = async (req, res) => {
+  try {
+    const { partId, quantityUsed } = req.body;
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const part = await SparePart.findById(partId);
+    if (!part) return res.status(404).json({ error: "Part not found" });
+
+    const qty = quantityUsed || 1;
+    if (part.quantityInStock < qty) {
+      return res.status(400).json({ error: "Insufficient stock" });
+    }
+
+    const existingIndex = request.partsUsed.findIndex(p => p.partId.toString() === partId);
+    if (existingIndex > -1) {
+      request.partsUsed[existingIndex].quantityUsed += qty;
+    } else {
+      request.partsUsed.push({ partId, quantityUsed: qty });
+    }
+
+    await request.save();
+
+    part.quantityInStock -= qty;
+    if (part.quantityInStock <= part.minReorderThreshold && part.reorderStatus === 'ok') {
+      part.reorderStatus = 'low-stock';
+    }
+    await part.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      const updatedReq = await MaintenanceRequest.findById(request._id)
+        .populate('equipment')
+        .populate('team')
+        .populate('assignedTo');
+        
+      // Ensure partsUsed is populated for the frontend to re-render properly if needed
+      await updatedReq.populate('partsUsed.partId');
+        
+      await NotificationService.notifyRequestChange(io, "request_updated", updatedReq, `Part ${part.name} added and checked out.`);
+    }
+
+    res.status(200).json(request);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
