@@ -6,20 +6,22 @@
     "allRequests": "All Requests",
     "calendar": "Calendar",
     "equipment": "Equipment",
+    "floorPlan": "Floor Plan",
+    "inventory": "Inventory",
     "vehicles": "Vehicles",
     "teams": "Teams",
     "activity": "Activity",
     "analytics": "Analytics",
-    "inventory": "Inventory",
-    "predictive": "Predictive Portal"
+    "predictive": "Predictive Portal",
+    "procurement": "Procurement Hub",
+    "logout": "Log Out"
   },
-
   "layout": {
     "title": "GearGuard",
     "subtitle": "Maintenance Tracker",
     "settings": "Settings",
     "profile": "Profile",
-    "rights": "© 2025 GearGuard. All rights reserved.",
+    "rights": "© 2026 GearGuard. All rights reserved.",
     "privacy": "Privacy",
     "terms": "Terms",
     "support": "Support"
@@ -27,7 +29,7 @@
   "dashboard": {
     "searchPlaceholder": "Search equipment, requests...",
     "welcomeTitle": "Welcome Back! 👋",
-    "welcomeSubtitle": "GearGuard: The Ultimate Maintenance Tracker - Monitor, manage, and maintain your equipment with ease",
+    "welcomeSubtitle": "GearGuard: The Ultimate Maintenance Tracker",
     "totalRequests": "Total Requests",
     "newRequests": "New Requests",
     "inProgress": "In Progress",
@@ -40,6 +42,25 @@
     "recentRequests": "Recent Requests",
     "noRecentRequests": "No recent requests",
     "getStarted": "Get started by creating a new maintenance request.",
-    "equipmentLabel": "Equipment:"
+    "equipmentLabel": "Equipment:",
+    "lowStockAlert": "Low Stock Alert",
+    "lowStockDesc": "{{count}} spare part is currently running low on stock.",
+    "lowStockDesc_plural": "{{count}} spare parts are currently running low on stock.",
+    "resolveNow": "Resolve Now",
+    "highRiskEquipment": "High Risk Equipment",
+    "noHighRisk": "No high risk equipment found.",
+    "healthScore": "Health Score:"
+  },
+  "equipment": {
+    "management": "Equipment Management",
+    "manageSubtitle": "Manage and monitor all equipment resources",
+    "exportExcel": "Export Excel",
+    "exportCSV": "Export CSV",
+    "addEquipment": "Add Equipment",
+    "resourceManager": "Resource Manager",
+    "allEquipment": "All Equipment",
+    "active": "active",
+    "underMaintenance": "under maintenance",
+    "retired": "retired"
   }
 }

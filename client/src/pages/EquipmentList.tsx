@@ -15,6 +15,7 @@ import ExportButton from "../components/ExportButton";
 import { exportEquipmentExcel } from "../services/exportService";
 
 import { useNotifications } from "../contexts/NotificationContext";
+import { useTranslation } from "react-i18next";
 
 // @ts-ignore
 import Papa from "papaparse";
@@ -41,6 +42,7 @@ const EquipmentList: React.FC = () => {
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
 
   const { notifications } = useNotifications();
+  const { t } = useTranslation();
 
   const loadEquipment = async () => {
     try {
@@ -165,20 +167,17 @@ const EquipmentList: React.FC = () => {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold dark:text-white">
-              Equipment
-              Management
+              {t('equipment.management')}
             </h2>
 
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage and monitor
-              all equipment
-              resources
+              {t('equipment.manageSubtitle')}
             </p>
           </div>
 
           <div className="flex gap-2">
             <ExportButton
-              label="Export Excel"
+              label={t('equipment.exportExcel')}
               onClick={exportEquipmentExcel}
               variant="excel"
             />
@@ -187,7 +186,7 @@ const EquipmentList: React.FC = () => {
                 handleExport
               }
             >
-              Export CSV
+              {t('equipment.exportCSV')}
             </Button>
 
             <Button
@@ -199,7 +198,7 @@ const EquipmentList: React.FC = () => {
             >
               <Plus className="h-4 w-4 mr-2" />
 
-              Add Equipment
+              {t('equipment.addEquipment')}
             </Button>
           </div>
         </div>
@@ -210,7 +209,7 @@ const EquipmentList: React.FC = () => {
         {/* Equipment Grid */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            All Equipment
+            {t('equipment.allEquipment')}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

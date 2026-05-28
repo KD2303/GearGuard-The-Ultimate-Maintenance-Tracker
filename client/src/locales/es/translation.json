@@ -6,19 +6,22 @@
     "allRequests": "Todas las Solicitudes",
     "calendar": "Calendario",
     "equipment": "Equipamiento",
+    "floorPlan": "Plano de Planta",
+    "inventory": "Inventario",
     "vehicles": "Vehículos",
     "teams": "Equipos",
     "activity": "Actividad",
     "analytics": "Análisis",
-    "inventory": "Inventario",
-    "predictive": "Portal Predictivo"
+    "predictive": "Portal Predictivo",
+    "procurement": "Centro de Adquisiciones",
+    "logout": "Cerrar Sesión"
   },
   "layout": {
     "title": "GearGuard",
     "subtitle": "Rastreador de Mantenimiento",
     "settings": "Configuración",
     "profile": "Perfil",
-    "rights": "© 2025 GearGuard. Todos los derechos reservados.",
+    "rights": "© 2026 GearGuard. Todos los derechos reservados.",
     "privacy": "Privacidad",
     "terms": "Términos",
     "support": "Soporte"
@@ -26,7 +29,7 @@
   "dashboard": {
     "searchPlaceholder": "Buscar equipos, solicitudes...",
     "welcomeTitle": "¡Bienvenido de nuevo! 👋",
-    "welcomeSubtitle": "GearGuard: El Rastreador de Mantenimiento Definitivo - Monitorea, gestiona y mantén tus equipos con facilidad",
+    "welcomeSubtitle": "GearGuard: El Rastreador de Mantenimiento Definitivo",
     "totalRequests": "Solicitudes Totales",
     "newRequests": "Nuevas Solicitudes",
     "inProgress": "En Progreso",
@@ -39,6 +42,25 @@
     "recentRequests": "Solicitudes Recientes",
     "noRecentRequests": "No hay solicitudes recientes",
     "getStarted": "Comienza creando una nueva solicitud de mantenimiento.",
-    "equipmentLabel": "Equipo:"
+    "equipmentLabel": "Equipo:",
+    "lowStockAlert": "Alerta de Stock Bajo",
+    "lowStockDesc": "{{count}} repuesto tiene un stock bajo actualmente.",
+    "lowStockDesc_plural": "{{count}} repuestos tienen un stock bajo actualmente.",
+    "resolveNow": "Resolver Ahora",
+    "highRiskEquipment": "Equipos de Alto Riesgo",
+    "noHighRisk": "No se encontraron equipos de alto riesgo.",
+    "healthScore": "Puntuación de Salud:"
+  },
+  "equipment": {
+    "management": "Gestión de Equipamiento",
+    "manageSubtitle": "Gestiona y monitorea todos los recursos de equipamiento",
+    "exportExcel": "Exportar Excel",
+    "exportCSV": "Exportar CSV",
+    "addEquipment": "Agregar Equipo",
+    "resourceManager": "Gestor de Recursos",
+    "allEquipment": "Todos los Equipos",
+    "active": "activo",
+    "underMaintenance": "en mantenimiento",
+    "retired": "retirado"
   }
 }

@@ -10,6 +10,7 @@ const LanguageSelector: React.FC = () => {
   const languages = [
     { code: 'en', label: 'English', flag: '🇺🇸' },
     { code: 'es', label: 'Español', flag: '🇪🇸' },
+    { code: 'fr', label: 'Français', flag: '🇫🇷' },
   ];
 
   const currentLang = languages.find((lang) => lang.code === i18n.language?.split('-')[0]) || languages[0];
