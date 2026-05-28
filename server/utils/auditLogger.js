@@ -64,13 +64,25 @@ async function auditLog({
       changes = [{ field: 'document', oldValue: 'Deleted', newValue: null }];
     }
 
-    await AuditLog.create({
+    const lastLog = await AuditLog.findOne().sort({ createdAt: -1 });
+    const previousHash = lastLog ? lastLog.hash : 'GENESIS';
+
+    const payload = {
       entityType,
       entityId,
       userId,
       userName,
       action,
       changes
+    };
+
+    const hashString = previousHash + JSON.stringify(payload);
+    const hash = require('crypto').createHash('sha256').update(hashString).digest('hex');
+
+    await AuditLog.create({
+      ...payload,
+      previousHash,
+      hash
     });
   } catch (err) {
     console.error("Audit logging failed:", err.message);

@@ -11,7 +11,9 @@ const AuditLogSchema = new Schema({
     field: String,
     oldValue: Schema.Types.Mixed,
     newValue: Schema.Types.Mixed
-  }]
+  }],
+  hash: { type: String, required: true },
+  previousHash: { type: String, required: true }
 }, { timestamps: true });
 
 // Index for fast timeline queries
