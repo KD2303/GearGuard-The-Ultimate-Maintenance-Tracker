@@ -7,6 +7,7 @@ import { Calendar, MapPin, Wrench, AlertCircle, CheckCircle, Package } from 'luc
 import Spinner from './Spinner';
 import RequestModal from './RequestModal';
 import { useNotifications } from '../contexts/NotificationContext';
+import HealthRing from './HealthRing';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'gradient';
 
@@ -115,6 +116,7 @@ const ResourceManager = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
+                      <HealthRing score={item.healthScore ?? 100} size={28} strokeWidth={3} showText={false} />
                       <span className="font-medium text-gray-900 dark:text-white truncate">{item.name}</span>
                       {item.openRequestsCount !== undefined && item.openRequestsCount > 0 && (
                         <Badge variant="danger" size="sm">
@@ -142,9 +144,12 @@ const ResourceManager = () => {
             <div className="space-y-6">
               {/* Header */}
               <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedEquipment.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">SN: {selectedEquipment.serialNumber}</p>
+                <div className="flex items-center gap-4">
+                  <HealthRing score={selectedEquipment.healthScore ?? 100} size={64} strokeWidth={5} />
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedEquipment.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">SN: {selectedEquipment.serialNumber}</p>
+                  </div>
                 </div>
                 <Badge variant={getStatusColor(selectedEquipment.status)}>
                   {selectedEquipment.status.replace('-', ' ')}
