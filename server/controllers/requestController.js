@@ -523,6 +523,16 @@ exports.updateRequestStage = async (req, res) => {
 
     if (!request) return res.status(404).json({ error: "Request not found" });
 
+    // Authorization Check
+    const isAuthorized = 
+      req.user.role === 'Admin' || 
+      req.user.role === 'Manager' || 
+      (req.user.role === 'Technician' && request.assignedToId?.toString() === req.user._id.toString());
+
+    if (!isAuthorized) {
+      return res.status(403).json({ error: 'You are not authorized to change the stage of this request' });
+    }
+
     const prevStage = request.stage;
 
     await auditLog({
