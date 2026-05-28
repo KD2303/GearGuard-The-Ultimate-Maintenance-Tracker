@@ -56,6 +56,10 @@ const EquipmentSchema = new Schema({
     maxHours: { type: Number, default: 2000 },
     maxTemp: { type: Number, default: 85 },
     maxVibration: { type: Number, default: 4.5 }
+  },
+  hourlyDowntimeCost: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
 

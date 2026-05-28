@@ -235,6 +235,9 @@ const startServer = async () => {
     // Start overdue checker cron job
     startOverdueChecker();
 
+    const { startHealthScoreCron } = require("./cron/healthScoreCron");
+    startHealthScoreCron();
+
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`\n🚀 GearGuard Server Running!`);
       console.log(`📡 API: http://localhost:${PORT}/api/v1`);

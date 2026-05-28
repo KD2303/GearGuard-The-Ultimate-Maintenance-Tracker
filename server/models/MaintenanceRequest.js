@@ -43,7 +43,9 @@ const MaintenanceRequestSchema = new Schema({
     audioUrl: { type: String },
     audioDuration: { type: Number },
     timestamp: { type: Date, default: Date.now }
-  }]
+  }],
+  downtimeDurationHours: { type: Number, default: 0 },
+  totalDowntimeCost: { type: Number, default: 0 }
 }, { timestamps: true });
 
 MaintenanceRequestSchema.virtual('equipment', {

@@ -79,17 +79,22 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
       <div className="space-y-6">
         {/* Equipment Details */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
-            <Badge variant={statusColors[equipment.status]}>{equipment.status}</Badge>
+          <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
+            <HealthRing score={equipment.healthScore ?? 100} size={80} strokeWidth={6} />
+            <div className="mt-3 flex flex-col items-center">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">System Status</p>
+              <Badge variant={statusColors[equipment.status]}>{equipment.status}</Badge>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Serial Number</p>
-            <p className="font-medium text-gray-900 dark:text-white">{equipment.serialNumber}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Category</p>
-            <p className="font-medium text-gray-900 dark:text-white">{equipment.category}</p>
+          <div className="flex flex-col justify-center space-y-4">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Serial Number</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.serialNumber}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Category</p>
+              <p className="font-medium text-gray-900 dark:text-white">{equipment.category}</p>
+            </div>
           </div>
           <div className="flex items-center">
             <MapPin className="h-4 w-4 mr-2 text-gray-600 dark:text-gray-400" />

@@ -19,11 +19,13 @@ export interface AnalyticsResponse {
     completedRequests: number;
     mttrHours: number;
     overdueRate: number;
+    totalFinancialLoss?: number;
   };
   charts: {
     stageBreakdown: Array<{ stage: string; value: number }>;
     typeBreakdown: Array<{ type: string; value: number }>;
     trend: Array<{ date: string; total: number; completed: number }>;
+    costByCategory?: Array<{ category: string; value: number }>;
   };
 }
 
@@ -157,4 +159,14 @@ export const requestService = {
     toast.success(`Automatically assigned to ${assignedName}!`);
     return response.data;
   },
+
+  getPredictions: async (requestId: string): Promise<any[]> => {
+    const response = await api.get(`/requests/${requestId}/predictions`);
+    return response.data;
+  },
+
+  reservePart: async (requestId: string, partId: string, quantityUsed: number = 1): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${requestId}/parts`, { partId, quantityUsed });
+    return response.data;
+  }
 };

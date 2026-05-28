@@ -97,6 +97,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
         purchaseDate: formData.purchaseDate || undefined,
         warrantyExpiry: formData.warrantyExpiry || undefined,
         notes: formData.notes?.trim() || undefined,
+        hourlyDowntimeCost: formData.hourlyDowntimeCost || 0,
       };
 
       await equipmentService.create(payload);
@@ -391,6 +392,23 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 </option>
               ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+            Hourly Downtime Cost ($)
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={formData.hourlyDowntimeCost || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, hourlyDowntimeCost: Number(e.target.value) })
+            }
+            className="input-dark"
+            placeholder="e.g. 150"
+          />
         </div>
 
         <div>

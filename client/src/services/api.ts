@@ -26,6 +26,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 401) {
+      // Clear expired auth data and force redirect to login
+      localStorage.removeItem('gearguard_token');
+      localStorage.removeItem('gearguard_user');
+      window.location.href = '/login';
+      return Promise.reject(error);
+    }
+
     const message =
       error.response?.data?.message ||
       error.response?.data?.error ||
