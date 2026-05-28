@@ -27,12 +27,18 @@ const fileFilter = (req, file, cb) => {
     "image/png",
     "image/jpg",
     "application/pdf",
+    "audio/webm",
+    "audio/ogg",
+    "audio/wav",
+    "audio/mp3",
+    "audio/mpeg",
+    "audio/x-wav",
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error("Only images and PDFs are allowed"), false);
+    cb(new Error("Only images, PDFs, and audio files are allowed"), false);
   }
 };
 

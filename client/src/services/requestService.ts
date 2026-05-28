@@ -141,8 +141,13 @@ export const requestService = {
     return response.data;
   },
 
-  addComment: async (requestId: string, content: string): Promise<any> => {
-    const response = await api.post(`/requests/${requestId}/comments`, { content });
+  addComment: async (requestId: string, content: string, audioUrl?: string, audioDuration?: number): Promise<any> => {
+    const response = await api.post(`/requests/${requestId}/comments`, { content, audioUrl, audioDuration });
+    return response.data;
+  },
+
+  deleteComment: async (requestId: string, commentId: string): Promise<any> => {
+    const response = await api.delete(`/requests/${requestId}/comments/${commentId}`);
     return response.data;
   },
 

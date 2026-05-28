@@ -817,22 +817,62 @@ exports.addComment = async (req, res) => {
     const newComment = {
       authorId: req.user.id,
       authorName: req.user.name,
-      content: req.body.content,
+      content: req.body.content || "",
+      audioUrl: req.body.audioUrl,
+      audioDuration: req.body.audioDuration,
       timestamp: new Date()
     };
 
     request.comments.push(newComment);
     await request.save();
 
+    const savedComment = request.comments[request.comments.length - 1];
+
     const io = req.app.get("socketio");
     if (io) {
       io.to(`ticket_${req.params.id}`).emit("new_comment", {
         ticketId: req.params.id,
-        comment: newComment
+        comment: savedComment
       });
     }
 
-    res.status(201).json(newComment);
+    res.status(201).json(savedComment);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    const commentIndex = request.comments.findIndex(
+      (c) => c._id && c._id.toString() === req.params.commentId
+    );
+
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    if (request.comments[commentIndex].authorId.toString() !== req.user.id && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: "Not authorized to delete this comment" });
+    }
+
+    request.comments.splice(commentIndex, 1);
+    await request.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      io.to(`ticket_${req.params.id}`).emit("delete_comment", {
+        ticketId: req.params.id,
+        commentId: req.params.commentId
+      });
+    }
+
+    res.status(200).json({ success: true });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

@@ -86,7 +86,9 @@ export interface MaintenanceRequest {
     _id?: string;
     authorId: string;
     authorName: string;
-    content: string;
+    content?: string;
+    audioUrl?: string;
+    audioDuration?: number;
     timestamp: string;
   }[];
   createdAt?: string;
