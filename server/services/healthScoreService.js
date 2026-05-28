@@ -6,6 +6,7 @@ async function calculateAndUpdateHealthScore(equipmentId) {
     if (!equipment) return null;
 
     let score = 100;
+    const breakdown = [];
 
     // 1. Age Penalty: -1 point for every 6 months of age
     if (equipment.purchaseDate) {
@@ -14,7 +15,10 @@ async function calculateAndUpdateHealthScore(equipmentId) {
       const monthsDiff = (now.getFullYear() - purchaseDate.getFullYear()) * 12 + (now.getMonth() - purchaseDate.getMonth());
       if (monthsDiff > 0) {
         const agePenalty = Math.floor(monthsDiff / 6);
-        score -= agePenalty;
+        if (agePenalty > 0) {
+          score -= agePenalty;
+          breakdown.push({ factor: 'Age Penalty', deduction: agePenalty });
+        }
       }
     }
 
@@ -25,7 +29,11 @@ async function calculateAndUpdateHealthScore(equipmentId) {
       type: 'corrective',
       createdAt: { $gte: thirtyDaysAgo }
     });
-    score -= recentBreakdowns * 10;
+    if (recentBreakdowns > 0) {
+      const deduction = recentBreakdowns * 10;
+      score -= deduction;
+      breakdown.push({ factor: 'Recent Breakdowns', deduction });
+    }
 
     // 3. Overdue Penalty: -15 points for every open ticket that is currently overdue
     const openStages = ['new', 'in-progress'];
@@ -34,14 +42,21 @@ async function calculateAndUpdateHealthScore(equipmentId) {
       stage: { $in: openStages },
       scheduledDate: { $lt: new Date() }
     });
-    score -= overdueTickets * 15;
+    if (overdueTickets > 0) {
+      const deduction = overdueTickets * 15;
+      score -= deduction;
+      breakdown.push({ factor: 'Overdue Tickets', deduction });
+    }
 
     // 4. Floor the score at 0
     score = Math.max(0, score);
 
-    // Update equipment if score changed
+    // Always update breakdown, and update score if changed
+    let updated = false;
+    
     if (equipment.healthScore !== score) {
       equipment.healthScore = score;
+      updated = true;
       
       // Optionally update riskLevel based on score
       if (score >= 75) {
@@ -51,9 +66,12 @@ async function calculateAndUpdateHealthScore(equipmentId) {
       } else {
         equipment.riskLevel = 'Critical';
       }
-
-      await equipment.save();
     }
+
+    // Checking if breakdown changed is trickier, so we just update it
+    // Mongoose handles modified checking
+    equipment.healthScoreBreakdown = breakdown;
+    await equipment.save();
 
     return score;
   } catch (error) {

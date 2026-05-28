@@ -5,6 +5,7 @@ interface HealthRingProps {
   size?: number;
   strokeWidth?: number;
   showText?: boolean;
+  breakdown?: { factor: string; deduction: number }[];
 }
 
 const HealthRing: React.FC<HealthRingProps> = ({
@@ -12,6 +13,7 @@ const HealthRing: React.FC<HealthRingProps> = ({
   size = 60,
   strokeWidth = 6,
   showText = true,
+  breakdown,
 }) => {
   // Clamp score between 0 and 100
   const normalizedScore = Math.min(100, Math.max(0, score));
@@ -49,8 +51,8 @@ const HealthRing: React.FC<HealthRingProps> = ({
   const strokeDashoffset = circumference - (normalizedScore / 100) * circumference;
 
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg className="transform -rotate-90 w-full h-full" viewBox={`0 0 ${size} ${size}`}>
+    <div className="relative inline-flex items-center justify-center group" style={{ width: size, height: size }}>
+      <svg className={`transform -rotate-90 w-full h-full ${normalizedScore < 40 ? 'animate-critical-pulse' : ''}`} viewBox={`0 0 ${size} ${size}`}>
         <defs>
           <linearGradient id={`gradient-${normalizedScore}`} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={colorObj.gradientStart} />
@@ -86,13 +88,29 @@ const HealthRing: React.FC<HealthRingProps> = ({
 
       {/* Center Text */}
       {showText && (
-        <div className="absolute flex flex-col items-center justify-center font-bold">
+        <div className="absolute flex flex-col items-center justify-center font-bold pointer-events-none">
           <span className={`text-lg leading-none ${colorObj.textClass}`}>
             {normalizedScore}
           </span>
           <span className={`text-[9px] uppercase tracking-wider ${colorObj.textClass} opacity-80 mt-0.5`}>
             Health
           </span>
+        </div>
+      )}
+
+      {/* Breakdown Tooltip */}
+      {breakdown && breakdown.length > 0 && (
+        <div className="absolute z-50 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 bottom-full mb-2 bg-gray-900 text-white text-xs rounded shadow-lg p-3 w-max min-w-[150px] max-w-[250px] text-center pointer-events-none">
+          <p className="font-semibold border-b border-gray-700 pb-1 mb-2">Score Deductions</p>
+          <ul className="text-left space-y-1">
+            {breakdown.map((item, i) => (
+              <li key={i} className="flex justify-between gap-4 text-gray-300">
+                <span>{item.factor}:</span>
+                <span className="text-red-400 font-bold">-{item.deduction}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="absolute left-1/2 -bottom-1 w-2 h-2 bg-gray-900 transform -translate-x-1/2 rotate-45"></div>
         </div>
       )}
     </div>
