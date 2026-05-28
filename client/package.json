@@ -16,6 +16,7 @@
     "i18next": "^26.2.0",
     "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^0.303.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-big-calendar": "^1.10.0",
     "react-dnd": "^16.0.1",

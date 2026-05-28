@@ -8,6 +8,8 @@ import Spinner from './Spinner';
 import RequestModal from './RequestModal';
 import { useNotifications } from '../contexts/NotificationContext';
 import HealthRing from './HealthRing';
+import { QRCodeCanvas } from 'qrcode.react';
+import { QrCode } from 'lucide-react';
 
 type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'gradient';
 
@@ -79,6 +81,22 @@ const ResourceManager = () => {
         return 'danger';
       default:
         return 'default';
+    }
+  };
+
+  const downloadQRCode = () => {
+    if (!selectedEquipment) return;
+    const canvas = document.getElementById("rm-qr-gen") as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas
+        .toDataURL("image/png")
+        .replace("image/png", "image/octet-stream");
+      const downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = `${selectedEquipment.name.replace(/\s+/g, '_')}-QR-Badge.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
     }
   };
 
@@ -269,6 +287,15 @@ const ResourceManager = () => {
 
               {/* Actions */}
               <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div style={{ display: 'none' }}>
+                  <QRCodeCanvas
+                    id="rm-qr-gen"
+                    value={`${window.location.origin}/requests?action=newRequest&equipmentId=${selectedEquipment._id ?? selectedEquipment.id}`}
+                    size={512}
+                    level={"H"}
+                    includeMargin={true}
+                  />
+                </div>
                 <Button variant="primary" size="sm" onClick={() => setIsRequestModalOpen(true)}>
                   <Wrench className="w-4 h-4 mr-2" />
                   Create Maintenance Request
@@ -280,6 +307,10 @@ const ResourceManager = () => {
                 </Button>
                 <Button variant="secondary" size="sm">
                   Edit Equipment
+                </Button>
+                <Button variant="secondary" size="sm" onClick={downloadQRCode}>
+                  <QrCode className="w-4 h-4 mr-2" />
+                  Download QR Badge
                 </Button>
               </div>
             </div>

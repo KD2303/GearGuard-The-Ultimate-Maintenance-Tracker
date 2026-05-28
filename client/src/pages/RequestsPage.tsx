@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import DetailedRequestsTable from '../components/DetailedRequestsTable';
 import RequestModal from '../components/RequestModal';
@@ -6,6 +7,29 @@ import Button from '../components/Button';
 
 const RequestsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [initialEquipmentId, setInitialEquipmentId] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'newRequest') {
+      const equipmentId = searchParams.get('equipmentId');
+      if (equipmentId) {
+        setInitialEquipmentId(equipmentId);
+      }
+      setIsModalOpen(true);
+      
+      // Clean up the URL to prevent reopening on refresh
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('action');
+      newParams.delete('equipmentId');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setInitialEquipmentId(undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -24,9 +48,10 @@ const RequestsPage = () => {
 
       <RequestModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
+        initialEquipmentId={initialEquipmentId}
         onSuccess={() => {
-          setIsModalOpen(false);
+          handleCloseModal();
           // Reload requests
           window.location.reload();
         }}
