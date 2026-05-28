@@ -29,6 +29,10 @@ const EquipmentSchema = new Schema({
     type: Number,
     default: 100
   },
+  healthScoreBreakdown: [{
+    factor: { type: String },
+    deduction: { type: Number }
+  }],
   riskLevel: {
     type: String,
     default: "Healthy"

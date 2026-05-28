@@ -63,7 +63,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
         {/* Equipment Details */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
-            <HealthRing score={equipment.healthScore ?? 100} size={80} strokeWidth={6} />
+            <HealthRing score={equipment.healthScore ?? 100} size={80} strokeWidth={6} breakdown={equipment.healthScoreBreakdown} />
             <div className="mt-3 flex flex-col items-center">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 tracking-wider uppercase">System Status</p>
               <Badge variant={statusColors[equipment.status]}>{equipment.status}</Badge>

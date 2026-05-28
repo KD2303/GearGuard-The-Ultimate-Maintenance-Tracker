@@ -21,6 +21,15 @@ export default {
           800: '#075985',
           900: '#0c4a6e',
         }
+      },
+      keyframes: {
+        criticalPulse: {
+          '0%, 100%': { transform: 'scale(1)', filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.6))' },
+          '50%': { transform: 'scale(1.05)', filter: 'drop-shadow(0 0 16px rgba(239, 68, 68, 1))' },
+        }
+      },
+      animation: {
+        'critical-pulse': 'criticalPulse 1.5s ease-in-out infinite',
       }
     },
   },

@@ -26,6 +26,7 @@ export interface Equipment {
   defaultTechnician?: TeamMember;
   openRequestsCount?: number;
   healthScore?: number;
+  healthScoreBreakdown?: { factor: string; deduction: number }[];
   mapCoordinates?: { x: number; y: number };
   hourlyDowntimeCost?: number;
   createdAt?: string;
