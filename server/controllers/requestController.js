@@ -8,6 +8,7 @@ const {
 const { logActivity } = require("../utils/logActivity");
 const { auditLog } = require("../utils/auditLogger");
 const NotificationService = require("../services/notificationService");
+const { calculateAndUpdateHealthScore } = require("../services/healthScoreService");
 
 const decrementInventory = async (io, partsUsed) => {
   if (!partsUsed || !Array.isArray(partsUsed) || partsUsed.length === 0) return;
@@ -160,6 +161,7 @@ exports.getRequestById = async (req, res) => {
       .populate("partsUsed.partId");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
+
     res.json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -275,6 +277,12 @@ const request = await MaintenanceRequest.create({
         entityType: "equipment",
         entityId: String(equipmentDoc._id),
       });
+    }
+
+    if (requestWithRelations.equipmentId) {
+      calculateAndUpdateHealthScore(requestWithRelations.equipmentId).catch(err => 
+        console.error('Background health score update failed:', err)
+      );
     }
 
     res.status(201).json(requestWithRelations);
@@ -490,6 +498,12 @@ exports.updateRequest = async (req, res) => {
       await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
     }
 
+    if (updatedRequest.equipmentId) {
+      calculateAndUpdateHealthScore(updatedRequest.equipmentId).catch(err => 
+        console.error('Background health score update failed:', err)
+      );
+    }
+
     res.json(updatedRequest);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -605,6 +619,12 @@ exports.updateRequestStage = async (req, res) => {
       await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
     }
 
+    if (updatedRequest.equipmentId) {
+      calculateAndUpdateHealthScore(updatedRequest.equipmentId).catch(err => 
+        console.error('Background health score update failed:', err)
+      );
+    }
+
     res.json(updatedRequest);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -643,6 +663,12 @@ exports.deleteRequest = async (req, res) => {
     // Notify: request deleted
     const io = req.app.get("socketio");
     await NotificationService.notifyRequestChange(io, "request_deleted", request);
+
+    if (request.equipmentId) {
+      calculateAndUpdateHealthScore(request.equipmentId).catch(err => 
+        console.error('Background health score update failed:', err)
+      );
+    }
 
     res.json({ message: "Request deleted successfully" });
   } catch (error) {
@@ -1008,6 +1034,12 @@ exports.smartAssignRequest = async (req, res) => {
       updatedRequest, 
       `Automatically assigned to ${bestTechnician.name}`
     );
+
+    if (request.equipmentId) {
+      calculateAndUpdateHealthScore(request.equipmentId).catch(err => 
+        console.error('Background health score update failed:', err)
+      );
+    }
 
     res.status(200).json(updatedRequest);
   } catch (error) {

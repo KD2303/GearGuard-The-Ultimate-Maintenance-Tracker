@@ -8,6 +8,7 @@ import { Equipment } from "../types";
 import { equipmentService } from "../services/equipmentService";
 
 import Badge from "../components/Badge";
+import HealthRing from "../components/HealthRing";
 
 import Button from "../components/Button";
 import ExportButton from "../components/ExportButton";
@@ -226,9 +227,12 @@ const EquipmentList: React.FC = () => {
                 >
                   {/* Header */}
                   <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
-                      {item.name}
-                    </h3>
+                    <div className="flex items-center gap-3">
+                      <HealthRing score={item.healthScore ?? 100} size={40} strokeWidth={4} />
+                      <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+                        {item.name}
+                      </h3>
+                    </div>
 
                     <Badge
                       variant={

@@ -25,6 +25,7 @@ export interface Equipment {
   defaultTechnicianId?: string | { _id: string; name: string; email?: string; role?: string };
   defaultTechnician?: TeamMember;
   openRequestsCount?: number;
+  healthScore?: number;
   mapCoordinates?: { x: number; y: number };
   createdAt?: string;
   updatedAt?: string;
