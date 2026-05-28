@@ -94,6 +94,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [selectedParts, setSelectedParts] = useState<{ partId: string; quantityUsed: number }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [predictions, setPredictions] = useState<SparePart[]>([]);
+  const [loadingPredictions, setLoadingPredictions] = useState(false);
 
   // Attachments state
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -153,11 +155,34 @@ const RequestModal: React.FC<RequestModalProps> = ({
           });
         })
         .catch(err => console.error(err));
+
+      setLoadingPredictions(true);
+      requestService.getPredictions(editRequestId)
+        .then(parts => {
+          setPredictions(parts);
+          setLoadingPredictions(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoadingPredictions(false);
+        });
     } else if (!isOpen) {
       setExistingRequest(null);
       setActiveTab('details');
+      setPredictions([]);
     }
   }, [isOpen, editRequestId]);
+
+  const handleReservePart = async (partId: string) => {
+    if (!editRequestId) return;
+    try {
+      await requestService.reservePart(editRequestId, partId, 1);
+      toast.success('Part reserved successfully!');
+      setPredictions(prev => prev.map(p => p._id === partId ? { ...p, quantityInStock: p.quantityInStock - 1 } : p));
+    } catch (error: any) {
+      toast.error('Failed to reserve part: ' + (error.response?.data?.error || error.message));
+    }
+  };
 
   // Auto-fill category/team
   const handleEquipmentChange = async (
@@ -387,6 +412,38 @@ if (editRequestId) {
       )}
 
       {activeTab === 'details' && (
+      <div className="space-y-6">
+        {editRequestId && (predictions.length > 0 || loadingPredictions) && (
+          <div className="p-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900 rounded-xl">
+            <h3 className="flex items-center text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">
+              <Sparkles className="w-4 h-4 mr-1.5 text-blue-500" />
+              AI Recommended Parts
+            </h3>
+            {loadingPredictions ? (
+              <div className="flex justify-center py-2"><Loader2 className="w-5 h-5 animate-spin text-blue-400" /></div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {predictions.map(part => (
+                  <div key={part._id} className="p-3 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-lg border border-blue-100/50 dark:border-blue-800/50 flex flex-col justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-900 dark:text-gray-100">{part.name}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Stock: {part.quantityInStock}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleReservePart(part._id!)}
+                      disabled={part.quantityInStock <= 0}
+                      className="mt-2 w-full py-1.5 px-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-[10px] font-medium rounded-md transition-colors"
+                    >
+                      {part.quantityInStock <= 0 ? 'Out of Stock' : 'Reserve Part'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
       <form
         onSubmit={handleSubmit}
         className="space-y-4"
@@ -770,6 +827,7 @@ if (editRequestId) {
           </Button>
         </div>
       </form>
+      </div>
       )}
 
       {activeTab === 'comments' && existingRequest && (
