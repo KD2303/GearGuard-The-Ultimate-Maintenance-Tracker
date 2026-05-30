@@ -55,6 +55,7 @@ async function calculateAndUpdateHealthScore(equipmentId) {
     let updated = false;
     
     if (equipment.healthScore !== score) {
+      const oldScore = equipment.healthScore;
       equipment.healthScore = score;
       updated = true;
       
@@ -65,6 +66,13 @@ async function calculateAndUpdateHealthScore(equipmentId) {
         equipment.riskLevel = 'At Risk';
       } else {
         equipment.riskLevel = 'Critical';
+      }
+
+      // Webhook Integration: Push to Slack/Discord/Teams if health drops below 40
+      if (score < 40 && oldScore >= 40) {
+        const NotificationService = require('./notificationService');
+        const payloadText = `⚠️ *Critical Equipment Health*\n*Equipment:* ${equipment.name}\n*New Health Score:* ${score}\n*Risk Level:* Critical`;
+        NotificationService.sendWebhookAlert('health_critical', payloadText).catch(err => console.error("Webhook alert error:", err));
       }
     }
 

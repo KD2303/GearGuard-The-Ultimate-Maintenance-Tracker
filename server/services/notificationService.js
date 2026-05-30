@@ -1,5 +1,6 @@
-const { Notification } = require("../models");
+const { Notification, Webhook } = require("../models");
 const nodemailer = require("nodemailer");
+const axios = require("axios");
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
@@ -155,6 +156,12 @@ class NotificationService {
     // 🔥 Decide who gets notification
     const userId = request.assignedToId || request.createdById;
 
+    // Webhook Integration: Push to Slack/Discord/Teams if High/Urgent
+    if (type === "request_created" && (request.priority === "high" || request.priority === "urgent" || request.priority === "critical")) {
+      const payloadText = `🚨 *Urgent Maintenance Required*\n*Equipment:* ${equipmentName}\n*Subject:* ${request.subject || 'N/A'}`;
+      this.sendWebhookAlert('urgent_request', payloadText).catch(err => console.error("Webhook alert error:", err));
+    }
+
     return this.sendNotification(io, {
       userId,
       type,
@@ -162,6 +169,34 @@ class NotificationService {
       requestId: request._id,
       priority,
     });
+  }
+
+  /**
+   * Send Webhook Alert to configured third-party channels
+   */
+  static async sendWebhookAlert(event, messageText) {
+    try {
+      const webhooks = await Webhook.find({ isActive: true, events: event });
+      
+      const requests = webhooks.map(async (webhook) => {
+        let payload = {};
+        if (webhook.provider === 'Slack' || webhook.provider === 'Teams') {
+          payload = { text: messageText };
+        } else if (webhook.provider === 'Discord') {
+          payload = { content: messageText };
+        }
+        
+        try {
+          await axios.post(webhook.url, payload, { timeout: 5000 });
+        } catch (postErr) {
+          console.error(`Failed to push webhook to ${webhook.provider}:`, postErr.message);
+        }
+      });
+
+      await Promise.allSettled(requests);
+    } catch (error) {
+      console.error("Error fetching webhooks:", error);
+    }
   }
   static async notifyLowStock(io, part) {
     const message = `⚠️ Low Stock Alert: "${part.name}" has dropped to ${part.quantityInStock} units (threshold: ${part.minReorderThreshold}).`;

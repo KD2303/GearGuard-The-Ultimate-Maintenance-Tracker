@@ -9,6 +9,7 @@ const SparePart = require('./SparePart');
 const FloorPlan = require('./FloorPlan');
 const Supplier = require('./Supplier');
 const PurchaseOrder = require('./PurchaseOrder');
+const Webhook = require('./Webhook');
 
 const syncDatabase = async () => {
   try {
@@ -26,7 +27,8 @@ const syncDatabase = async () => {
         SparePart.createIndexes ? SparePart.createIndexes() : Promise.resolve(),
         FloorPlan.createIndexes ? FloorPlan.createIndexes() : Promise.resolve(),
         Supplier.createIndexes ? Supplier.createIndexes() : Promise.resolve(),
-        PurchaseOrder.createIndexes ? PurchaseOrder.createIndexes() : Promise.resolve()
+        PurchaseOrder.createIndexes ? PurchaseOrder.createIndexes() : Promise.resolve(),
+        Webhook.createIndexes ? Webhook.createIndexes() : Promise.resolve()
       ]);
     } catch (idxErr) {
       // ignore index creation errors
@@ -50,5 +52,6 @@ module.exports = {
   SparePart,
   FloorPlan,
   Supplier,
-  PurchaseOrder
+  PurchaseOrder,
+  Webhook
 };
