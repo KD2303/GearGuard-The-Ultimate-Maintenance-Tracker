@@ -45,7 +45,8 @@ const MaintenanceRequestSchema = new Schema({
     timestamp: { type: Date, default: Date.now }
   }],
   downtimeDurationHours: { type: Number, default: 0 },
-  totalDowntimeCost: { type: Number, default: 0 }
+  totalDowntimeCost: { type: Number, default: 0 },
+  syncId: { type: String, default: null } // UUID from offline device to prevent replay attacks or resolve conflicts
 }, { timestamps: true });
 
 MaintenanceRequestSchema.virtual('equipment', {

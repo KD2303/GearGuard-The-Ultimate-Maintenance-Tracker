@@ -41,6 +41,7 @@ const procurementRoutes = require("./routes/procurementRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes");
 const telemetryRoutes = require("./routes/telemetry");
+const syncRoutes = require("./routes/sync");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -176,6 +177,7 @@ const defineRoutes = (router) => {
   router.use("/webhooks", webhookRoutes);
   router.use("/schedules", scheduleRoutes);
   router.use("/telemetry", telemetryRoutes);
+  router.use("/sync", syncRoutes);
 };
 
 const v1Router = express.Router();
