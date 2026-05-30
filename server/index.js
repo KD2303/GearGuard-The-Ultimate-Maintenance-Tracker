@@ -17,6 +17,7 @@ const NotificationService = require("./services/notificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
 const { syncDatabase } = require("./models");
 const swaggerSpec = require("./config/swagger");
+const passport = require("./config/passport");
 
 // Route imports
 const authRoutes = require("./routes/auth");
@@ -133,6 +134,7 @@ app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:3000" }));
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use(passport.initialize());
 
 // Apply global rate limiter to all routes
 app.use(globalLimiter);
@@ -240,11 +242,9 @@ const startServer = async () => {
     startOverdueChecker();
 
     const { startHealthScoreCron } = require('./cron/healthScoreCron');
-    const { startInventoryCron } = require('./cron/inventoryCron');
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');
     
     startHealthScoreCron();
-    startInventoryCron();
     startPreventiveSchedulerCron(io);
 
     server.listen(PORT, "0.0.0.0", () => {

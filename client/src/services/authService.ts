@@ -12,6 +12,17 @@ export const authService = {
     return response.data;
   },
 
+  loginWithToken: async (token: string) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('gearguard_token', token);
+    const response = await api.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('gearguard_user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
+
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('gearguard_token');

@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
+import OAuthCallback from './pages/OAuthCallback';
 
 import Dashboard from './pages/Dashboard';
 import KanbanBoard from './pages/KanbanBoard';
@@ -30,6 +31,7 @@ function AppContent() {
   if (!user) {
     return (
       <Routes>
+        <Route path="/oauth-callback" element={<OAuthCallback />} />
         <Route path="*" element={<LoginPage />} />
       </Routes>
     );

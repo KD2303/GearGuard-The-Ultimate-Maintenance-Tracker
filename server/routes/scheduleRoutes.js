@@ -7,7 +7,7 @@ const {
   deleteSchedule
 } = require('../controllers/scheduleController');
 
-const { protect } = require('../middlewares/authMiddleware');
+const protect = require('../middleware/auth');
 
 router.use(protect);
 

@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const webhookController = require('../controllers/webhookController');
-const { protect, authorize } = require('../middleware/auth');
+const protect = require('../middleware/auth');
+const roleGuard = require('../middleware/roleGuard');
 
 // Note: Ensure users accessing webhooks are Admins, if requested. 
 // Assuming Admin role is required for global settings.
 router.use(protect);
-router.use(authorize('Admin'));
+router.use(roleGuard('Admin'));
 
 router.route('/')
   .get(webhookController.getWebhooks)
