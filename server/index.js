@@ -38,6 +38,7 @@ const mapRoutes = require("./routes/map");
 const supplierRoutes = require("./routes/supplierRoutes");
 const procurementRoutes = require("./routes/procurementRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
+const scheduleRoutes = require("./routes/scheduleRoutes");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -170,6 +171,7 @@ const defineRoutes = (router) => {
   router.use("/suppliers", supplierRoutes);
   router.use("/procurement", procurementRoutes);
   router.use("/webhooks", webhookRoutes);
+  router.use("/schedules", scheduleRoutes);
 };
 
 const v1Router = express.Router();
@@ -237,8 +239,13 @@ const startServer = async () => {
     // Start overdue checker cron job
     startOverdueChecker();
 
-    const { startHealthScoreCron } = require("./cron/healthScoreCron");
+    const { startHealthScoreCron } = require('./cron/healthScoreCron');
+    const { startInventoryCron } = require('./cron/inventoryCron');
+    const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');
+    
     startHealthScoreCron();
+    startInventoryCron();
+    startPreventiveSchedulerCron(io);
 
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`\n🚀 GearGuard Server Running!`);
