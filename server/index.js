@@ -13,7 +13,7 @@ const swaggerUi = require("swagger-ui-express");
 
 const { globalLimiter } = require("./middleware/rateLimiter");
 const { errorMiddleware } = require("./middleware/errorHandler");
-const NotificationService = require("./services/notificationService");
+const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
 const { syncDatabase } = require("./models");
 const swaggerSpec = require("./config/swagger");
@@ -40,6 +40,7 @@ const supplierRoutes = require("./routes/supplierRoutes");
 const procurementRoutes = require("./routes/procurementRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes");
+const telemetryRoutes = require("./routes/telemetry");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -174,6 +175,7 @@ const defineRoutes = (router) => {
   router.use("/procurement", procurementRoutes);
   router.use("/webhooks", webhookRoutes);
   router.use("/schedules", scheduleRoutes);
+  router.use("/telemetry", telemetryRoutes);
 };
 
 const v1Router = express.Router();
