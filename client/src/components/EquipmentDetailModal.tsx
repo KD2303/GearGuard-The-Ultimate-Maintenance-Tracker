@@ -14,6 +14,8 @@ import AuditTimeline from './AuditTimeline';
 import HealthRing from './HealthRing';
 import { QRCodeCanvas } from 'qrcode.react';
 import { QrCode } from 'lucide-react';
+import TelemetryChart from './telemetry/TelemetryChart';
+import AlertRulesConfig from './telemetry/AlertRulesConfig';
 
 interface EquipmentDetailModalProps {
   equipment: Equipment;
@@ -254,6 +256,20 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
               <p>No maintenance history yet</p>
             </div>
           )}
+        </div>
+
+        {/* Telemetry Charts & Rules */}
+        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+              Real-time Telemetry
+            </h4>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TelemetryChart equipmentId={equipment.id || (equipment as any)._id || ''} metricType="temperature" />
+            <TelemetryChart equipmentId={equipment.id || (equipment as any)._id || ''} metricType="vibration" />
+          </div>
+          <AlertRulesConfig equipmentId={equipment.id || (equipment as any)._id || ''} />
         </div>
 
         {/* Equipment Audit History */}
