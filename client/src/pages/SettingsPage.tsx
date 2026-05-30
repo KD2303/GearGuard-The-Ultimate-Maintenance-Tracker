@@ -31,7 +31,7 @@ const SettingsPage: React.FC = () => {
     const fetchWebhooks = async () => {
       try {
         const res = await axios.get('/api/v1/webhooks', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          headers: { Authorization: `Bearer ${localStorage.getItem('gearguard_token')}` }
         });
         setWebhooks(res.data.data);
       } catch (err) {
@@ -45,7 +45,7 @@ const SettingsPage: React.FC = () => {
     if (!newWebhook.url) return toast.error("URL is required");
     try {
       const res = await axios.post('/api/v1/webhooks', newWebhook, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('gearguard_token')}` }
       });
       setWebhooks([res.data.data, ...webhooks]);
       setNewWebhook({ ...newWebhook, url: '' });
@@ -58,7 +58,7 @@ const SettingsPage: React.FC = () => {
   const handleDeleteWebhook = async (id: string) => {
     try {
       await axios.delete(`/api/v1/webhooks/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('gearguard_token')}` }
       });
       setWebhooks(webhooks.filter(w => w._id !== id));
       toast.success("Webhook deleted");
@@ -70,7 +70,7 @@ const SettingsPage: React.FC = () => {
   const handleTestWebhook = async (webhook: any) => {
     try {
       await axios.post('/api/v1/webhooks/test', { url: webhook.url, provider: webhook.provider }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('gearguard_token')}` }
       });
       toast.success("Test payload sent!");
     } catch (err) {

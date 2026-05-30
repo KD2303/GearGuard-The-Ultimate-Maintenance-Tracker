@@ -4,20 +4,16 @@ export const authService = {
   login: async (credentials: any) => {
     const response = await api.post('/auth/login', credentials);
     if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
       localStorage.setItem('gearguard_token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
       localStorage.setItem('gearguard_user', JSON.stringify(response.data.user));
     }
     return response.data;
   },
 
   loginWithToken: async (token: string) => {
-    localStorage.setItem('token', token);
     localStorage.setItem('gearguard_token', token);
     const response = await api.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } });
     if (response.data.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user));
       localStorage.setItem('gearguard_user', JSON.stringify(response.data.user));
     }
     return response.data;
@@ -31,11 +27,11 @@ export const authService = {
   },
 
   getCurrentUser: () => {
-    const userStr = localStorage.getItem('user') || localStorage.getItem('gearguard_user');
+    const userStr = localStorage.getItem('gearguard_user');
     return userStr ? JSON.parse(userStr) : null;
   },
 
   isAuthenticated: () => {
-    return !!(localStorage.getItem('token') || localStorage.getItem('gearguard_token'));
+    return !!localStorage.getItem('gearguard_token');
   }
 };
