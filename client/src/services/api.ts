@@ -1,5 +1,6 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { dbService } from './db';
 
 const API_BASE_URL = '/api';
 
@@ -25,7 +26,20 @@ api.interceptors.request.use(
 // Error interceptor
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    // If it's a network error and a mutation (POST/PUT/PATCH/DELETE), queue it
+    if (!error.response && error.config && ['post', 'put', 'patch', 'delete'].includes(error.config.method?.toLowerCase() || '')) {
+      console.log('[Offline] Network error detected, queueing action:', error.config);
+      await dbService.addSyncAction({
+        url: error.config.url || '',
+        method: error.config.method?.toUpperCase() as any,
+        payload: error.config.data ? JSON.parse(error.config.data) : undefined,
+      });
+      toast.success('Action saved offline. Will sync when connected.');
+      // Return a fake successful response to prevent the UI from crashing
+      return Promise.resolve({ data: { success: true, offline: true } });
+    }
+
     if (error.response?.status === 401) {
       // Clear expired auth data and force redirect to login
       localStorage.removeItem('token');
@@ -57,5 +71,4 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
 export default api;
