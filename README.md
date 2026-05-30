@@ -40,11 +40,11 @@ We welcome contributors to collaborate, learn, and build impactful features.
 npm run install-all
 ```
 
-### 2. Setup Database
+### 2. Setup Database and Environment
 
 ```bash
-cp .env.example .env
-# Add your MongoDB URI
+cp server/.env.example server/.env
+# Update .env with your MongoDB URI, JWT Secret, and OAuth SSO credentials
 ```
 
 ### 3. Run Development Server
@@ -129,6 +129,7 @@ gearguard/
 
 - Database issues: verify MongoDB availability and `.env` values
 - Port conflicts: change `PORT` in `.env` or stop conflicting processes
+- SSO issues: verify your Google and Microsoft Client IDs and Secrets are set in `.env` and callback URIs match exactly.
 - Dependency issues: reinstall packages after clearing `node_modules`
 - For full production troubleshooting and hardening, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
@@ -377,6 +378,7 @@ This section consolidates the complete implementation checklist that was previou
 - ✅ Separate dev/prod configs
 - ✅ Database configuration
 - ✅ Port configuration
+- ✅ Single Sign-On (OAuth2) Configuration
 
 #### Documentation
 - ✅ README.md with quick start and complete checklist
@@ -441,7 +443,7 @@ The application is production-ready with:
 ### Next Steps (Optional Enhancements)
 
 Potential future enhancements:
-- User authentication and authorization
+- Advanced reporting and analytics
 - File attachments for requests
 - Email notifications
 - Mobile app version
