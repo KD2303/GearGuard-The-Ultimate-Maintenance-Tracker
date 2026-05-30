@@ -88,7 +88,7 @@ const QuickActionCards = ({ onNewTask }: QuickActionCardsProps) => {
           size="sm"
           className="w-full mt-4 hover:shadow-md"
         >
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="w-4 h-4" />
           Add New To-Do
         </Button>
       </div>
