@@ -44,6 +44,10 @@ const MaintenanceRequestSchema = new Schema({
     audioDuration: { type: Number },
     timestamp: { type: Date, default: Date.now }
   }],
+  checklist: [{
+    text: { type: String, required: true },
+    isCompleted: { type: Boolean, default: false }
+  }],
   downtimeDurationHours: { type: Number, default: 0 },
   totalDowntimeCost: { type: Number, default: 0 },
   syncId: { type: String, default: null } // UUID from offline device to prevent replay attacks or resolve conflicts

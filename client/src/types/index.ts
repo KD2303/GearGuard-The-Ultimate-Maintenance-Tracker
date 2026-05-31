@@ -97,6 +97,7 @@ export interface MaintenanceRequest {
   }[];
   downtimeDurationHours?: number;
   totalDowntimeCost?: number;
+  checklist?: { _id?: string; text: string; isCompleted: boolean }[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -139,6 +140,7 @@ export interface CreateMaintenanceRequestDto {
     fileType: string;
   }[];
   partsUsed?: PartUsedInput[];
+  checklist?: { text: string; isCompleted: boolean }[];
 }
 
 export interface Notification {
