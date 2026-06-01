@@ -1,5 +1,9 @@
 const User = require("../models/user");
 const Session = require("../models/Session");
+const { authRateLimiters } = require("../middleware/rateLimiter");
+
+let dummyHash = '';
+require('bcryptjs').hash('dummy_password', 10).then(hash => dummyHash = hash);
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -84,22 +88,38 @@ exports.login = asyncHandler(async (req, res, next) => {
     );
   }
 
-  // Fetch user including hidden fields for lockout check
-  const user = await User.findOne({ email: email.toLowerCase().trim() })
-    .select('+password +failedLoginAttempts +lockUntil');
+  // Fetch user including hidden password and lockout fields
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password +lockUntil +failedLoginAttempts');
 
-  if (!user) {
-    // SECURITY: Use generic error message
+  // To prevent timing attacks, if user doesn't exist, compare with dummy hash
+  const isMatch = await bcrypt.compare(password, user ? user.password : dummyHash);
+
+  // If password doesn't match (or user doesn't exist)
+  if (!isMatch) {
+    // Consume rate limits on failure
+    const ip = req.ip;
+    const emailKey = email.toLowerCase().trim();
+    try {
+      await Promise.all([
+        authRateLimiters.loginIpLimiter.consume(ip),
+        authRateLimiters.loginIpUserLimiter.consume(`${ip}_${emailKey}`),
+        authRateLimiters.loginUserLimiter.consume(emailKey)
+      ]);
+    } catch (rejRes) {
+      // If consuming pushed them over the limit, it will be caught next time.
+    }
+
+    // SECURITY: Use identical error message for missing user and invalid password
     throw new ErrorHandler(
       "Invalid email or password.",
       ERROR_TYPES.AUTHENTICATION_ERROR,
     );
   }
 
-  // Check if account is currently locked
+  // At this point, password is CORRECT.
+  // We can safely tell them if their account is locked by an admin/system
   if (user.lockUntil && user.lockUntil > Date.now()) {
     const minutesLeft = Math.ceil((user.lockUntil - Date.now()) / 60000);
-    // Send 423 directly to bypass production message overriding
     return res.status(423).json({
       success: false,
       error: `Account temporarily locked due to too many failed attempts. Try again in ${minutesLeft} minute(s).`,
@@ -107,35 +127,18 @@ exports.login = asyncHandler(async (req, res, next) => {
     });
   }
 
-  // Compare password
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) {
-    // Increment failed attempts
-    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+  // Successful login — reset limiters for this user/IP combo
+  const ip = req.ip;
+  const emailKey = email.toLowerCase().trim();
+  authRateLimiters.loginIpUserLimiter.delete(`${ip}_${emailKey}`).catch(() => {});
+  authRateLimiters.loginUserLimiter.delete(emailKey).catch(() => {});
 
-    // Lock account after 5 failed attempts
-    if (user.failedLoginAttempts >= 5) {
-      user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min lock
-      await user.save();
-      return res.status(423).json({
-        success: false,
-        error: 'Account locked for 15 minutes due to too many failed login attempts.',
-        lockUntil: user.lockUntil,
-      });
-    }
-
+  // Reset DB lockout fields if any
+  if (user.failedLoginAttempts > 0 || user.lockUntil) {
+    user.failedLoginAttempts = 0;
+    user.lockUntil = undefined;
     await user.save();
-    const attemptsLeft = 5 - user.failedLoginAttempts;
-    return res.status(401).json({
-      success: false,
-      error: `Invalid email or password. ${attemptsLeft} attempt(s) remaining before account lockout.`,
-    });
   }
-
-  // Successful login — reset lockout fields
-  user.failedLoginAttempts = 0;
-  user.lockUntil = undefined;
-  await user.save();
 
   // Generate tokens
   const accessToken = generateAccessToken(user._id, user.role);
