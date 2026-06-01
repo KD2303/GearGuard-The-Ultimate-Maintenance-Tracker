@@ -19,6 +19,8 @@ exports.createPurchaseOrder = asyncHandler(async (req, res, next) => {
   res.status(201).json(po);
 });
 
+const { withTransactionFallback } = require('../utils/transaction');
+
 // Update a purchase order's status (Approve & Send, or Mark Received)
 exports.updatePurchaseOrderStatus = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
@@ -28,33 +30,35 @@ exports.updatePurchaseOrderStatus = asyncHandler(async (req, res, next) => {
     throw new ErrorHandler("Invalid status provided", ERROR_TYPES.VALIDATION_ERROR);
   }
 
-  const po = await PurchaseOrder.findById(id);
-  if (!po) {
-    throw new ErrorHandler("Purchase Order not found", ERROR_TYPES.NOT_FOUND_ERROR);
-  }
+  const updatedPO = await withTransactionFallback(async (session) => {
+    const po = await PurchaseOrder.findById(id).session(session);
+    if (!po) {
+      throw new ErrorHandler("Purchase Order not found", ERROR_TYPES.NOT_FOUND_ERROR);
+    }
 
-  const oldStatus = po.status;
-  po.status = status;
-  if (status === 'sent') po.orderDate = new Date();
-  await po.save();
+    const oldStatus = po.status;
+    po.status = status;
+    if (status === 'sent') po.orderDate = new Date();
+    await po.save({ session });
 
-  // If status is changed to received, we must update inventory atomically for all items
-  if (oldStatus !== 'received' && status === 'received') {
-    for (const item of po.items) {
-      const updatedPart = await SparePart.findByIdAndUpdate(
-        item.partId,
-        { $inc: { quantityInStock: item.quantityNeeded } },
-        { new: true }
-      );
+    // If status is changed to received, we must update inventory atomically for all items
+    if (oldStatus !== 'received' && status === 'received') {
+      for (const item of po.items) {
+        const updatedPart = await SparePart.findByIdAndUpdate(
+          item.partId,
+          { $inc: { quantityInStock: item.quantityNeeded } },
+          { new: true, session }
+        );
 
-      // Clear low-stock flag if safe
-      if (updatedPart && updatedPart.quantityInStock > updatedPart.minReorderThreshold && updatedPart.reorderStatus !== 'ok') {
-        await SparePart.findByIdAndUpdate(item.partId, { reorderStatus: 'ok' });
+        // Clear low-stock flag if safe
+        if (updatedPart && updatedPart.quantityInStock > updatedPart.minReorderThreshold && updatedPart.reorderStatus !== 'ok') {
+          await SparePart.findByIdAndUpdate(item.partId, { reorderStatus: 'ok' }, { session });
+        }
       }
     }
-  }
 
-  const updatedPO = await PurchaseOrder.findById(id);
+    return await PurchaseOrder.findById(id).session(session);
+  });
 
   res.status(200).json({
     success: true,

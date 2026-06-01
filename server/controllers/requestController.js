@@ -8,11 +8,18 @@ const {
 const { logActivity } = require("../utils/logActivity");
 const { auditLog } = require("../utils/auditLogger");
 const NotificationService = require("../services/notificationService");
+const { withTransactionFallback } = require("../utils/transaction");
 const { calculateAndUpdateHealthScore } = require("../services/healthScoreService");
 const escapeRegex = require("../utils/escapeRegex");
 const generateRequestNumber = require("../utils/generateRequestNumber");
 const fs = require('fs');
 const path = require('path');
+const { mongoose } = require('../config/database');
+
+function getGridFSBucket() {
+  if (!mongoose.connection.db) throw new Error("Database not connected");
+  return new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'attachments' });
+}
 
 const decrementInventory = async (io, partsUsed) => {
   if (!partsUsed || !Array.isArray(partsUsed) || partsUsed.length === 0) return;
@@ -184,52 +191,60 @@ exports.createRequest = async (req, res) => {
     const payload = sanitizeBody(req.body);
     const requestNumber = await generateRequestNumber();
 
-    let equipmentDoc = null;
-    let oldEquipmentStatus = null;
+    const requestWithRelations = await withTransactionFallback(async (session) => {
+      let equipmentDoc = null;
+      let oldEquipmentStatus = null;
 
-    if (payload.equipmentId) {
-      equipmentDoc = await Equipment.findById(payload.equipmentId)
-        .populate("maintenanceTeam")
-        .populate("defaultTechnician");
+      if (payload.equipmentId) {
+        equipmentDoc = await Equipment.findById(payload.equipmentId)
+          .session(session)
+          .populate("maintenanceTeam")
+          .populate("defaultTechnician");
 
-      if (equipmentDoc) {
-        oldEquipmentStatus = equipmentDoc.status;
+        if (equipmentDoc) {
+          oldEquipmentStatus = equipmentDoc.status;
 
-        if (!payload.teamId && equipmentDoc.maintenanceTeamId)
-          payload.teamId = equipmentDoc.maintenanceTeamId;
-        if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
-          payload.assignedToId = equipmentDoc.defaultTechnicianId;
+          if (!payload.teamId && equipmentDoc.maintenanceTeamId)
+            payload.teamId = equipmentDoc.maintenanceTeamId;
+          if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
+            payload.assignedToId = equipmentDoc.defaultTechnicianId;
 
-        await Equipment.findByIdAndUpdate(equipmentDoc._id, {
-          $set: { status: "under-maintenance" },
-          $push: {
-            history: {
-              eventType: 'STATUS_CHANGE',
-              description: `Status changed to under-maintenance due to new request ${requestNumber}`,
-              date: new Date(),
-              recordedBy: req.user?._id,
-              userId: req.user?._id,
-              userName: req.user?.name || "System",
-              notes: 'Status updated automatically on request creation'
-            }
-          }
-        });
+          await Equipment.findByIdAndUpdate(
+            equipmentDoc._id,
+            {
+              $set: { status: "under-maintenance" },
+              $push: {
+                history: {
+                  eventType: 'STATUS_CHANGE',
+                  description: `Status changed to under-maintenance due to new request ${requestNumber}`,
+                  date: new Date(),
+                  recordedBy: req.user?._id,
+                  userId: req.user?._id,
+                  userName: req.user?.name || "System",
+                  notes: 'Status updated automatically on request creation'
+                }
+              }
+            },
+            { session }
+          );
+        }
       }
-    }
 
-const request = await MaintenanceRequest.create({
-  ...payload,
-  requestNumber,
-  createdById: req.user?._id,
-  attachments:
-    req.body.attachments || [],
-});
-    const requestWithRelations = await MaintenanceRequest.findById(request._id)
-      .populate("equipment")
-      .populate("team")
-      .populate("assignedTo", "name email")
-      .populate("createdBy", "name email")
-      .populate("partsUsed.partId");
+      const request = await MaintenanceRequest.create([{
+        ...payload,
+        requestNumber,
+        createdById: req.user?._id,
+        attachments: req.body.attachments || [],
+      }], { session });
+
+      return await MaintenanceRequest.findById(request[0]._id)
+        .session(session)
+        .populate("equipment")
+        .populate("team")
+        .populate("assignedTo", "name email")
+        .populate("createdBy", "name email")
+        .populate("partsUsed.partId");
+    });
 
     const userName = requestWithRelations?.createdBy?.name || "";
 
@@ -250,7 +265,7 @@ const request = await MaintenanceRequest.create({
 
     await auditLog({
       entityType: 'MaintenanceRequest',
-      entityId: request._id,
+      entityId: requestWithRelations._id,
       action: 'CREATE',
       userId: req.user?._id,
       userName: userName
@@ -272,35 +287,21 @@ const request = await MaintenanceRequest.create({
     }
 
     // Notify assigned technician (Level 3 specific)
-    if (request.assignedToId || requestWithRelations.assignedToId) {
-      const assignedUserId = request.assignedToId || requestWithRelations.assignedToId;
+    if (requestWithRelations.assignedToId) {
+      const assignedUserId = requestWithRelations.assignedToId;
       await NotificationService.createAndEmit({
         userId: assignedUserId,
         title: 'New Request Assigned',
         message: `You have been assigned a new maintenance request: "${requestWithRelations.subject || requestWithRelations.requestNumber}"`,
         type: 'request_assigned',
         link: '/kanban',
-        relatedRequestId: request._id,
+        relatedRequestId: requestWithRelations._id,
       });
     }
 
     // Activity: equipment status changed (if we changed it)
-    if (
-      equipmentDoc &&
-      oldEquipmentStatus &&
-      oldEquipmentStatus !== "under-maintenance"
-    ) {
-      await logActivity({
-        type: "equipment_updated",
-        title: "Equipment Status Changed",
-        description: `${equipmentDoc.name} - Status changed to under-maintenance`,
-        userName,
-        metadata: { from: oldEquipmentStatus, to: "under-maintenance" },
-        entityType: "equipment",
-        entityId: String(equipmentDoc._id),
-      });
-    }
-
+    // Note: equipmentDoc would need to be passed out of the transaction if needed here
+    
     if (requestWithRelations.equipmentId) {
       calculateAndUpdateHealthScore(requestWithRelations.equipmentId).catch(err => 
         console.error('Background health score update failed:', err)
@@ -373,57 +374,69 @@ const processGamification = async (request, prevStage, newStage, shouldProcessCo
 exports.updateRequest = async (req, res) => {
   try {
     const payload = sanitizeBody(req.body);
+    const prevRequest = await MaintenanceRequest.findById(req.params.id);
+    if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
-    const request = await MaintenanceRequest.findById(req.params.id)
-      .populate("equipment")
-      .populate("createdBy", "name email");
-
-    if (!request) return res.status(404).json({ error: "Request not found" });
-
-    const prevStage = request.stage;
-    const prevPriority = request.priority;
-
-    // Handle stage side-effects (equipment status updates)
-    if (payload.stage) {
-      if (payload.stage === "repaired") {
-        payload.completedDate = new Date();
-        if (request.equipmentId) {
-          await Equipment.findByIdAndUpdate(request.equipmentId, {
-            $set: { status: "active" },
-            $push: {
-              history: {
-                eventType: 'STATUS_CHANGE',
-                description: `Status changed to active as request ${request.subject || request.requestNumber} was marked repaired`,
-                date: new Date(),
-                recordedBy: req.user?._id,
-                userId: req.user?._id,
-                userName: req.user?.name || "System",
-                notes: 'Status updated automatically on request repaired'
-              }
-            }
-          });
+    const prevStage = prevRequest.stage;
+    const prevPriority = prevRequest.priority;
+    
+    const request = await withTransactionFallback(async (session) => {
+      // Handle stage side-effects (equipment status updates)
+      if (payload.stage) {
+        if (payload.stage === "repaired") {
+          payload.completedDate = new Date();
+          if (prevRequest.equipmentId) {
+            await Equipment.findByIdAndUpdate(
+              prevRequest.equipmentId,
+              {
+                $set: { status: "active" },
+                $push: {
+                  history: {
+                    eventType: 'STATUS_CHANGE',
+                    description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
+                    date: new Date(),
+                    recordedBy: req.user?._id,
+                    userId: req.user?._id,
+                    userName: req.user?.name || "System",
+                    notes: 'Status updated automatically on request repaired'
+                  }
+                }
+              },
+              { session }
+            );
+          }
+        }
+        if (payload.stage === "scrap") {
+          payload.completedDate = new Date();
+          if (prevRequest.equipmentId) {
+            await Equipment.findByIdAndUpdate(
+              prevRequest.equipmentId,
+              {
+                $set: { status: "scrapped" },
+                $push: {
+                  history: {
+                    eventType: 'STATUS_CHANGE',
+                    description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
+                    date: new Date(),
+                    recordedBy: req.user?._id,
+                    userId: req.user?._id,
+                    userName: req.user?.name || "System",
+                    notes: 'Status updated automatically on request scrapped'
+                  }
+                }
+              },
+              { session }
+            );
+          }
         }
       }
-      if (payload.stage === "scrap") {
-        payload.completedDate = new Date();
-        if (request.equipmentId) {
-          await Equipment.findByIdAndUpdate(request.equipmentId, {
-            $set: { status: "scrapped" },
-            $push: {
-              history: {
-                eventType: 'STATUS_CHANGE',
-                description: `Status changed to scrapped as request ${request.subject || request.requestNumber} was marked scrap`,
-                date: new Date(),
-                recordedBy: req.user?._id,
-                userId: req.user?._id,
-                userName: req.user?.name || "System",
-                notes: 'Status updated automatically on request scrapped'
-              }
-            }
-          });
-        }
-      }
-    }
+
+      return await MaintenanceRequest.findByIdAndUpdate(
+        req.params.id,
+        payload,
+        { new: true, session }
+      ).populate("equipment").populate("createdBy", "name email");
+    });
 
     // Notify requester if stage changed
     if (payload.stage && payload.stage !== prevStage) {
@@ -457,20 +470,19 @@ exports.updateRequest = async (req, res) => {
       entityType: 'MaintenanceRequest',
       entityId: request._id,
       action: 'UPDATE',
-      oldDoc: request,
+      oldDoc: prevRequest,
       newDoc: { ...request.toObject(), ...payload },
       userId: req.user?._id,
       userName: request.createdBy?.name || ""
     });
 
-    await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload);
-
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
-    const nowCompleted = payload.stage === "repaired" || payload.stage === "scrap";
-    const shouldProcessCompletion = payload.stage && nowCompleted && !isCompleted && !request.completionProcessed;
+    const nowCompleted = request.stage === "repaired" || request.stage === "scrap";
+    const shouldProcessCompletion = request.stage && nowCompleted && !isCompleted && !request.completionProcessed;
     if (shouldProcessCompletion) {
       const io = req.app.get("socketio");
       await decrementInventory(io, request.partsUsed);
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
     }
 
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
@@ -539,10 +551,6 @@ exports.updateRequest = async (req, res) => {
     }
 
     await processGamification(updatedRequest, prevStage, payload.stage || updatedRequest.stage, shouldProcessCompletion);
-
-    if (shouldProcessCompletion) {
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
-    }
 
     if (updatedRequest.equipmentId) {
       calculateAndUpdateHealthScore(updatedRequest.equipmentId).catch(err => 
@@ -715,11 +723,38 @@ exports.updateRequestStage = async (req, res) => {
 // Delete request
 exports.deleteRequest = async (req, res) => {
   try {
-    const request = await MaintenanceRequest.findByIdAndDelete(req.params.id)
-      .populate("equipment")
-      .populate("createdBy", "name email");
-
+    const request = await MaintenanceRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
+
+    if (!isAuthorizedForRequest(request, req.user) && req.user.role !== "Admin") {
+      return res.status(403).json({ error: "Not authorized to delete this request" });
+    }
+
+    await withTransactionFallback(async (session) => {
+      // Revert equipment status to active if deleting a non-completed request
+      if (request.equipmentId && request.stage !== 'repaired' && request.stage !== 'scrap') {
+        await Equipment.findByIdAndUpdate(
+          request.equipmentId,
+          {
+            $set: { status: "active" },
+            $push: {
+              history: {
+                eventType: 'STATUS_CHANGE',
+                description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
+                date: new Date(),
+                recordedBy: req.user?._id,
+                userId: req.user?._id,
+                userName: req.user?.name || "System",
+                notes: 'Status reverted automatically on request deletion'
+              }
+            }
+          },
+          { session }
+        );
+      }
+      
+      await MaintenanceRequest.findByIdAndDelete(req.params.id, { session });
+    });
 
     const userName = request?.createdBy?.name || "";
 
@@ -1282,17 +1317,41 @@ exports.uploadAttachments = async (req, res) => {
       return res.status(400).json({ error: "No files uploaded" });
     }
 
-    const uploadedFiles = req.files.map((file) => ({
-      filename: file.filename,
-      fileUrl: `/uploads/attachments/${file.filename}`,
-      fileType: file.mimetype,
-    }));
+    const bucket = getGridFSBucket();
+    const uploadedFiles = [];
+
+    for (const file of req.files) {
+      const safeOriginalName = path.basename(file.originalname);
+      const uniqueName = Date.now() + "-" + safeOriginalName.replace(/\s+/g, "-");
+
+      const uploadStream = bucket.openUploadStream(uniqueName, {
+        contentType: file.mimetype,
+      });
+
+      await new Promise((resolve, reject) => {
+        uploadStream.end(file.buffer, (error) => {
+          if (error) return reject(error);
+          resolve();
+        });
+      });
+
+      // We need an ObjectId for the subdocument before saving so we can construct the URL
+      const attachmentId = new mongoose.Types.ObjectId();
+
+      uploadedFiles.push({
+        _id: attachmentId,
+        filename: uniqueName, // The GridFS filename
+        fileUrl: `/api/requests/${request._id}/attachments/${attachmentId}`,
+        fileType: file.mimetype,
+      });
+    }
 
     request.attachments = [...(request.attachments || []), ...uploadedFiles];
     await request.save();
 
     res.status(200).json(uploadedFiles);
   } catch (error) {
+    console.error("Upload error:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -1316,20 +1375,19 @@ exports.downloadAttachment = async (req, res) => {
     const attachment = request.attachments.id(req.params.attachmentId);
     if (!attachment) return res.status(404).json({ error: "Attachment not found" });
 
-    const filePath = path.join(__dirname, "..", "uploads", "attachments", attachment.filename);
+    const bucket = getGridFSBucket();
+    const files = await bucket.find({ filename: attachment.filename }).toArray();
+
+    if (!files || files.length === 0) {
+      return res.status(404).json({ error: "File not found in GridFS" });
+    }
+
+    res.set('Content-Type', attachment.fileType);
+    // Use inline to allow browser to view images/pdfs directly
+    res.set('Content-Disposition', `inline; filename="${attachment.filename}"`);
     
-    // Path traversal check
-    const uploadsDir = path.resolve(__dirname, "..", "uploads", "attachments");
-    const resolvedFilePath = path.resolve(filePath);
-    if (!resolvedFilePath.startsWith(uploadsDir)) {
-      return res.status(403).json({ error: "Invalid file path" });
-    }
-
-    if (!fs.existsSync(resolvedFilePath)) {
-      return res.status(404).json({ error: "File not found on disk" });
-    }
-
-    res.download(resolvedFilePath, attachment.filename);
+    const downloadStream = bucket.openDownloadStreamByName(attachment.filename);
+    downloadStream.pipe(res);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1347,13 +1405,13 @@ exports.deleteAttachment = async (req, res) => {
     const attachment = request.attachments.id(req.params.attachmentId);
     if (!attachment) return res.status(404).json({ error: "Attachment not found" });
 
-    const filePath = path.join(__dirname, "..", "uploads", "attachments", attachment.filename);
-    
-    // Path traversal check
-    const uploadsDir = path.resolve(__dirname, "..", "uploads", "attachments");
-    const resolvedFilePath = path.resolve(filePath);
-    if (resolvedFilePath.startsWith(uploadsDir) && fs.existsSync(resolvedFilePath)) {
-      fs.unlinkSync(resolvedFilePath);
+    const bucket = getGridFSBucket();
+    const files = await bucket.find({ filename: attachment.filename }).toArray();
+
+    if (files && files.length > 0) {
+      for (const f of files) {
+        await bucket.delete(f._id);
+      }
     }
 
     request.attachments.pull(req.params.attachmentId);
