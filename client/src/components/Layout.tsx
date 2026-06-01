@@ -63,6 +63,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600 shadow-purple-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-rose-600 shadow-pink-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600 shadow-cyan-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/downtime', icon: Activity, label: 'Downtime Schedule', gradient: 'from-blue-400 to-indigo-500 shadow-blue-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-emerald-600 shadow-green-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/floor-plan', icon: Map, label: 'Floor Plan', gradient: 'from-sky-500 to-indigo-500 shadow-sky-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/inventory', icon: Package, label: t('nav.inventory') || 'Inventory', gradient: 'from-teal-500 to-emerald-600 shadow-teal-500/20', roles: ['Admin', 'Manager', 'Technician'] },

@@ -20,6 +20,7 @@ import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import ProcurementDashboard from './pages/ProcurementDashboard';
 import FloorPlan from './pages/FloorPlan';
 import FinancialDashboard from './pages/FinancialDashboard';
+import DowntimeGantt from './pages/DowntimeGantt';
 
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -46,6 +47,7 @@ function AppContent() {
         <Route path="/requests-all" element={<RequestsPage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/calendar" element={<CalendarView />} />
+        <Route path="/downtime" element={<DowntimeGantt />} />
         <Route path="/floor-plan" element={<FloorPlan />} />
         <Route path="/equipment" element={<EquipmentList />} />
         <Route path="/inventory" element={<InventoryList />} />
