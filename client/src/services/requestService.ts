@@ -1,5 +1,5 @@
 import api from './api';
-import { MaintenanceRequest, CreateMaintenanceRequestDto, RequestFilters } from '../types';
+import { MaintenanceRequest, CreateMaintenanceRequestDto, RequestFilters, PaginatedResponse } from '../types';
 import toast from 'react-hot-toast';
 
 export interface AnalyticsQuery {
@@ -31,12 +31,8 @@ export interface AnalyticsResponse {
 
 export const requestService = {
   getAll: async (
-    filters?: {
-      stage?: string;
-      type?: string;
-      teamId?: string;
-    }
-  ): Promise<MaintenanceRequest[]> => {
+    filters?: RequestFilters
+  ): Promise<PaginatedResponse<MaintenanceRequest>> => {
     const response = await api.get("/requests", {
       params: filters,
     });
@@ -121,13 +117,13 @@ export const requestService = {
 
   getFiltered: async (
     filters: RequestFilters
-  ): Promise<MaintenanceRequest[]> => {
+  ): Promise<PaginatedResponse<MaintenanceRequest>> => {
     const params = new URLSearchParams();
 
     Object.entries(filters).forEach(
       ([key, value]) => {
         if (
-          value &&
+          value !== undefined && value !== null &&
           value.toString().trim() !== ""
         ) {
           params.append(

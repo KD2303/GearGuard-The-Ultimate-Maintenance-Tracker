@@ -45,8 +45,8 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [requests, equipment, teams, metrics] = await Promise.all([
-          requestService.getAll(),
+        const [requestsData, equipment, teams, metrics] = await Promise.all([
+          requestService.getAll({ limit: 1000 }),
           equipmentService.getAll(),
           teamService.getAllTeams(),
           adminService.getMetrics(),
@@ -56,8 +56,10 @@ const Dashboard: React.FC = () => {
           setLowStockCount(metrics.lowStockCount);
         }
 
+        const requests = requestsData.items;
+
         setStats({
-          totalRequests: requests.length,
+          totalRequests: requestsData.totalItems,
 
           newRequests: requests.filter((r) => r.stage === "new").length,
 

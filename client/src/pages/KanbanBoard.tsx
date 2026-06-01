@@ -432,13 +432,13 @@ const KanbanBoard: React.FC =
         try {
           const data =
             await requestService.getFiltered(
-              filters
+              { ...filters, limit: 1000 }
             );
 
-          setRequests(data);
+          setRequests(data.items);
 
           setResultCount(
-            data.length
+            data.totalItems
           );
         } catch (error) {
           console.error(

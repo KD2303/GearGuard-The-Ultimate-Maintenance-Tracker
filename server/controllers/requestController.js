@@ -90,6 +90,10 @@ exports.getAllRequests = async (req, res) => {
       startDate,
       endDate,
       search,
+      page = 1,
+      limit = 20,
+      sortBy = "createdAt",
+      sortOrder = "desc",
     } = req.query;
 
     const query = {};
@@ -122,15 +126,35 @@ exports.getAllRequests = async (req, res) => {
       ];
     }
 
-    const requests = await MaintenanceRequest.find(query)
-      .populate("equipment")
-      .populate("team")
-      .populate("assignedTo", "name email")
-      .populate("createdBy", "name email")
-      .populate("partsUsed.partId")
-      .sort({ createdAt: -1 });
+    const sortObject = {};
+    sortObject[sortBy] = sortOrder === "asc" ? 1 : -1;
 
-    res.json(requests);
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 20;
+    const skipNum = (pageNum - 1) * limitNum;
+
+    const [requests, totalItems] = await Promise.all([
+      MaintenanceRequest.find(query)
+        .populate("equipment")
+        .populate("team")
+        .populate("assignedTo", "name email")
+        .populate("createdBy", "name email")
+        .populate("partsUsed.partId")
+        .sort(sortObject)
+        .skip(skipNum)
+        .limit(limitNum),
+      MaintenanceRequest.countDocuments(query),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limitNum);
+
+    res.json({
+      items: requests,
+      page: pageNum,
+      limit: limitNum,
+      totalItems,
+      totalPages,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
