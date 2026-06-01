@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Bell, Volume2, VolumeX, Mail, Smartphone, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, Volume2, VolumeX, Mail, Smartphone, ShieldCheck, Webhook, Trash2, Play, Plus } from 'lucide-react';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 const SettingsPage: React.FC = () => {
   const [preferences, setPreferences] = useState({
@@ -21,6 +22,60 @@ const SettingsPage: React.FC = () => {
         color: '#fff',
       },
     });
+  };
+
+  const [webhooks, setWebhooks] = useState<any[]>([]);
+  const [newWebhook, setNewWebhook] = useState({ url: '', provider: 'Slack', events: ['urgent_request', 'health_critical'] });
+
+  useEffect(() => {
+    const fetchWebhooks = async () => {
+      try {
+        const res = await axios.get('/api/v1/webhooks', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('gearguard_token')}` }
+        });
+        setWebhooks(res.data.data);
+      } catch (err) {
+        console.error("Failed to load webhooks", err);
+      }
+    };
+    fetchWebhooks();
+  }, []);
+
+  const handleAddWebhook = async () => {
+    if (!newWebhook.url) return toast.error("URL is required");
+    try {
+      const res = await axios.post('/api/v1/webhooks', newWebhook, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('gearguard_token')}` }
+      });
+      setWebhooks([res.data.data, ...webhooks]);
+      setNewWebhook({ ...newWebhook, url: '' });
+      toast.success("Webhook added!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to add webhook");
+    }
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    try {
+      await axios.delete(`/api/v1/webhooks/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('gearguard_token')}` }
+      });
+      setWebhooks(webhooks.filter(w => w._id !== id));
+      toast.success("Webhook deleted");
+    } catch (err) {
+      toast.error("Failed to delete webhook");
+    }
+  };
+
+  const handleTestWebhook = async (webhook: any) => {
+    try {
+      await axios.post('/api/v1/webhooks/test', { url: webhook.url, provider: webhook.provider }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('gearguard_token')}` }
+      });
+      toast.success("Test payload sent!");
+    } catch (err) {
+      toast.error("Failed to send test payload");
+    }
   };
 
   return (
@@ -134,6 +189,77 @@ const SettingsPage: React.FC = () => {
           <button className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors">
             Change Password
           </button>
+        </section>
+
+        {/* Webhook Integrations Section */}
+        <section className="glass rounded-3xl border border-gray-200 dark:border-gray-700 bg-white/40 dark:bg-gray-800/60 p-6 lg:p-8 shadow-xl backdrop-blur-xl">
+          <div className="flex items-center space-x-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
+            <Webhook className="h-6 w-6 text-indigo-600" />
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Webhook Integrations</h2>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Automatically send alerts to third-party services like Slack or Discord.</p>
+          
+          <div className="flex gap-4 mb-6 flex-col sm:flex-row">
+            <select 
+              value={newWebhook.provider}
+              onChange={(e) => setNewWebhook({...newWebhook, provider: e.target.value})}
+              className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white"
+            >
+              <option value="Slack">Slack</option>
+              <option value="Discord">Discord</option>
+              <option value="Teams">Teams</option>
+            </select>
+            <input 
+              type="text" 
+              value={newWebhook.url}
+              onChange={(e) => setNewWebhook({...newWebhook, url: e.target.value})}
+              placeholder="https://hooks.slack.com/services/..."
+              className="flex-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white"
+            />
+            <button 
+              onClick={handleAddWebhook}
+              className="flex items-center justify-center space-x-2 px-6 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add</span>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {webhooks.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No webhooks configured yet.</p>
+            )}
+            {webhooks.map((wh) => (
+              <div key={wh._id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-white/60 dark:bg-gray-700/60 rounded-2xl border border-gray-100 dark:border-gray-600 shadow-sm">
+                <div className="mb-4 sm:mb-0">
+                  <div className="flex items-center space-x-2">
+                    <span className={clsx(
+                      "px-2 py-1 text-xs font-bold rounded-full",
+                      wh.provider === 'Slack' ? "bg-red-100 text-red-700" :
+                      wh.provider === 'Discord' ? "bg-indigo-100 text-indigo-700" :
+                      "bg-blue-100 text-blue-700"
+                    )}>{wh.provider}</span>
+                    <span className="text-sm font-mono text-gray-600 dark:text-gray-300 truncate max-w-[200px] sm:max-w-xs">{wh.url}</span>
+                  </div>
+                  <div className="flex space-x-2 mt-2">
+                    {wh.events.map((ev: string) => (
+                      <span key={ev} className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+                        {ev.replace('_', ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <button onClick={() => handleTestWebhook(wh)} className="p-2 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors" title="Test Webhook">
+                    <Play className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDeleteWebhook(wh._id)} className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors" title="Delete Webhook">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
     </div>

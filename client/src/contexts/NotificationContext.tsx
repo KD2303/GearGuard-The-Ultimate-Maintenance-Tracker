@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { useAuth } from './AuthContext';
 import { Socket } from "socket.io-client";
 import toast from 'react-hot-toast';
 import { Notification } from '../types';
-import axios from 'axios';
+import api from '../services/api';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -20,6 +21,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 const SOCKET_URL = 'http://localhost:5000';
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [, setSocket] = useState<Socket | null>(null);
 
@@ -28,18 +30,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Fetch initial notifications from DB
   const fetchNotifications = useCallback(async () => {
     try {
-      const response = await axios.get('/api/notifications');
-      setNotifications(response.data);
+      const response = await api.get('/notifications');
+      setNotifications(response.data.notifications || response.data);
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
   }, []);
 
   useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
     fetchNotifications();
 
     // Initialize Socket.IO connection
-    const newSocket = io(SOCKET_URL);
+    const token = localStorage.getItem('gearguard_token');
+    const newSocket = io(SOCKET_URL, {
+      auth: { token }
+    });
+
+    newSocket.emit('join', user.id);
 
     // Listen for new notifications
     newSocket.on('notification:new', (notification: Notification) => {
@@ -85,11 +97,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       newSocket.disconnect();
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, user]);
 
   const markAsRead = async (id: string) => {
     try {
-      await axios.patch(`/api/notifications/${id}/read`);
+      await api.patch(`/notifications/${id}/read`);
       setNotifications((prev) =>
         prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
@@ -100,7 +112,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const readAll = async () => {
     try {
-      await axios.put('/api/notifications/read-all');
+      await api.patch('/notifications/read-all');
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -109,7 +121,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const deleteNotification = async (id: string) => {
     try {
-      await axios.delete(`/api/notifications/${id}`);
+      await api.delete(`/notifications/${id}`);
       setNotifications((prev) => prev.filter((n) => n._id !== id));
     } catch (error) {
       console.error('Error deleting notification:', error);

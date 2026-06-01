@@ -82,6 +82,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
     equipmentId: '',
     teamId: '',
     assignedToId: '',
+    checklist: [],
   });
 
   const [autoFilled, setAutoFilled] = useState({
@@ -154,6 +155,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
             equipmentId: typeof req.equipmentId === 'object' ? (req.equipmentId as any)._id : req.equipmentId || '',
             teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
             assignedToId: typeof req.assignedToId === 'object' ? (req.assignedToId as any)._id : req.assignedToId || '',
+            checklist: req.checklist || [],
           });
         })
         .catch(err => console.error(err));
@@ -491,6 +493,58 @@ if (editRequestId) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Describe the issue..."
           />
+        </div>
+
+        {/* Checklist */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Checklist (Sub-tasks)
+          </label>
+          <div className="space-y-2">
+            {(formData.checklist || []).map((item, index) => (
+              <div key={index} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/40 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                <input
+                  type="checkbox"
+                  checked={item.isCompleted}
+                  onChange={(e) => {
+                    const newChecklist = [...(formData.checklist || [])];
+                    newChecklist[index].isCompleted = e.target.checked;
+                    setFormData({ ...formData, checklist: newChecklist });
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <input
+                  type="text"
+                  value={item.text}
+                  onChange={(e) => {
+                    const newChecklist = [...(formData.checklist || [])];
+                    newChecklist[index].text = e.target.value;
+                    setFormData({ ...formData, checklist: newChecklist });
+                  }}
+                  className={`flex-1 bg-transparent border-none focus:ring-0 text-sm ${item.isCompleted ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white'}`}
+                  placeholder="Task description..."
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newChecklist = (formData.checklist || []).filter((_, i) => i !== index);
+                    setFormData({ ...formData, checklist: newChecklist });
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-500"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, checklist: [...(formData.checklist || []), { text: '', isCompleted: false }] })}
+              className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 mt-2"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Sub-task
+            </button>
+          </div>
         </div>
 
         {/* Type + Priority */}

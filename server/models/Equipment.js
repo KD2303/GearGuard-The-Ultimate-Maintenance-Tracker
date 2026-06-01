@@ -67,7 +67,14 @@ const EquipmentSchema = new Schema({
   hourlyDowntimeCost: {
     type: Number,
     default: 0
-  }
+  },
+  history: [{
+    eventType: { type: String, enum: ['PURCHASED', 'CREATED', 'STATUS_CHANGE', 'REPAIR_COMPLETED', 'ASSIGNED', 'SCRAPPED'], required: true },
+    description: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    userName: { type: String }
+  }]
 }, { timestamps: true });
 
 EquipmentSchema.virtual('maintenanceTeam', {

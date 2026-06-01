@@ -22,10 +22,11 @@ import {
   Map,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
-import NotificationDropdown from "./NotificationDropdown";
 import LanguageSelector from "./LanguageSelector";
 import { useTranslation } from "react-i18next";
 import { authService } from "../services/authService";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { syncManager } from "../services/syncManager";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -39,10 +40,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
+  const isOnline = useNetworkStatus();
 
   const { user, logout } = useAuth();
 
   useEffect(() => {
+    syncManager.init(); // Initialize the sync manager listener
     const handleClickOutside = (e: MouseEvent) => {
       if (
         settingsRef.current &&
@@ -208,7 +211,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             
             {/* Notifications panel */}
             <NotificationCenter />
-            <NotificationDropdown userId={user?.id || ''} />
 
             {/* Language Selector Selector */}
             <LanguageSelector />
@@ -282,17 +284,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <p className="text-[10px] text-gray-500 dark:text-gray-400">{user?.role}</p>
                   </div>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  title="Logout"
-                  className="rounded-xl border border-white/50 bg-white/30 dark:bg-gray-800 p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 hover:border-red-300 transition-all"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
               </div>
 
           </div>
         </header>
+
+        {/* Offline Banner */}
+        {!isOnline && (
+          <div className="bg-amber-100 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-6 py-2 flex items-center justify-center text-sm font-medium text-amber-800 dark:text-amber-200">
+            <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse mr-2"></span>
+            You are currently offline. Changes will be saved locally and synced when you reconnect.
+          </div>
+        )}
 
         {/* Main Content Area */}
         <main className="flex-1 px-6 py-6 page-container">

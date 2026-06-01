@@ -25,6 +25,7 @@ import {
   Wrench,
   MapPin,
   Calendar,
+  Power,
 } from "lucide-react";
 
 import EquipmentModal from "../components/EquipmentModal";
@@ -75,6 +76,20 @@ const EquipmentList: React.FC = () => {
       "under-maintenance":
         "warning",
     } as const;
+
+    const handleStatusToggle = async (e: React.MouseEvent, item: Equipment) => {
+      e.stopPropagation();
+      if (item.status === 'scrapped' || item.status === 'under-maintenance') {
+        return;
+      }
+      const newStatus = item.status === 'active' ? 'inactive' : 'active';
+      try {
+        await equipmentService.update(item.id, { status: newStatus });
+        loadEquipment();
+      } catch (error) {
+        console.error("Failed to update status", error);
+      }
+    };
 
     const handleExport = () => {
       if (
@@ -233,18 +248,33 @@ const EquipmentList: React.FC = () => {
                       </h3>
                     </div>
 
-                    <Badge
-                      variant={
-                        statusColors[
-                          item
-                            .status
-                        ]
-                      }
-                    >
-                      {
-                        item.status
-                      }
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {(item.status === 'active' || item.status === 'inactive') && (
+                        <button
+                          onClick={(e) => handleStatusToggle(e, item)}
+                          className={`p-1.5 rounded-full transition-colors ${
+                            item.status === 'active' 
+                              ? 'bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400' 
+                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400'
+                          }`}
+                          title={`Toggle to ${item.status === 'active' ? 'inactive' : 'active'}`}
+                        >
+                          <Power className="h-4 w-4" />
+                        </button>
+                      )}
+                      <Badge
+                        variant={
+                          statusColors[
+                            item
+                              .status
+                          ]
+                        }
+                      >
+                        {
+                          item.status
+                        }
+                      </Badge>
+                    </div>
                   </div>
 
                   {/* Info */}

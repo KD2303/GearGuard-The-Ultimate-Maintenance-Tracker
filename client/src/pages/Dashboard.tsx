@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { globalSearch } from '../services/searchService';
 import SearchDropdown from '../components/SearchDropdown';
 import { getHighRiskEquipment } from '../services/predictiveService';
+import RequestModal from '../components/RequestModal';
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -39,6 +40,7 @@ const Dashboard: React.FC = () => {
   );
   const [loading, setLoading] = useState(true);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -307,7 +309,18 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <QuickActionCards />
+      <QuickActionCards onNewTask={() => setIsRequestModalOpen(true)} />
+
+      {isRequestModalOpen && (
+        <RequestModal
+          isOpen={isRequestModalOpen}
+          onClose={() => setIsRequestModalOpen(false)}
+          onSuccess={() => {
+            setIsRequestModalOpen(false);
+            // Optionally could trigger a refresh here if needed
+          }}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -33,7 +33,7 @@ const MaintenanceRequestSchema = new Schema({
   equipmentId: { type: Schema.Types.ObjectId, ref: 'Equipment' },
   teamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   assignedToId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
-  createdById: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
+  createdById: { type: Schema.Types.ObjectId, ref: 'User' },
   partsUsed: [{
     partId: { type: Schema.Types.ObjectId, ref: 'SparePart' },
     quantityUsed: { type: Number, required: true, default: 1 }
@@ -46,8 +46,13 @@ const MaintenanceRequestSchema = new Schema({
     audioDuration: { type: Number },
     timestamp: { type: Date, default: Date.now }
   }],
+  checklist: [{
+    text: { type: String, required: true },
+    isCompleted: { type: Boolean, default: false }
+  }],
   downtimeDurationHours: { type: Number, default: 0 },
-  totalDowntimeCost: { type: Number, default: 0 }
+  totalDowntimeCost: { type: Number, default: 0 },
+  syncId: { type: String, default: null } // UUID from offline device to prevent replay attacks or resolve conflicts
 }, { timestamps: true });
 
 MaintenanceRequestSchema.virtual('equipment', {
@@ -72,7 +77,7 @@ MaintenanceRequestSchema.virtual('assignedTo', {
 });
 
 MaintenanceRequestSchema.virtual('createdBy', {
-  ref: 'TeamMember',
+  ref: 'User',
   localField: 'createdById',
   foreignField: '_id',
   justOne: true

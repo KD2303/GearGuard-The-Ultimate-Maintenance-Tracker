@@ -12,7 +12,18 @@ const UserSchema = new Schema({
     trim: true,
   },
 
-  password: { type: String, required: true },
+  password: { 
+    type: String, 
+    required: function() { return this.provider === 'local'; } 
+  },
+
+  provider: {
+    type: String,
+    enum: ['local', 'google', 'microsoft'],
+    default: 'local'
+  },
+  
+  providerId: { type: String },
 
   role: {
     type: String,

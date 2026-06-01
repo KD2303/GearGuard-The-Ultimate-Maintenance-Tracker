@@ -120,6 +120,13 @@ exports.createEquipment = asyncHandler(async (req, res, next) => {
   if (payload.department) payload.department = payload.department.trim();
   if (payload.notes) payload.notes = payload.notes.trim();
 
+  payload.history = [{
+    eventType: payload.purchaseDate ? 'PURCHASED' : 'CREATED',
+    description: `Equipment registered${payload.purchaseDate ? ' with purchase date' : ''}.`,
+    userId: req.user?._id,
+    userName: req.user?.name || "System"
+  }];
+
   const equipment = await Equipment.create(payload);
 
   const equipmentWithRelations = await Equipment.findById(equipment._id)
@@ -172,11 +179,41 @@ exports.updateEquipment = asyncHandler(async (req, res, next) => {
         }
       }
     };
+  
+  if (!oldDoc) {
+    throw new ErrorHandler("Equipment not found", ERROR_TYPES.NOT_FOUND_ERROR);
+  }
+
+  const historyEvents = [];
+  if (payload.status && payload.status !== oldDoc.status) {
+    historyEvents.push({
+      eventType: payload.status === 'scrapped' ? 'SCRAPPED' : 'STATUS_CHANGE',
+      description: `Status changed from ${oldDoc.status} to ${payload.status}`,
+      userId: req.user?._id,
+      userName: req.user?.name || "System"
+    });
+  }
+  if ((payload.assignedTo !== undefined && payload.assignedTo !== oldDoc.assignedTo) || 
+      (payload.department !== undefined && payload.department !== oldDoc.department)) {
+    const newAssigned = payload.assignedTo !== undefined ? payload.assignedTo : oldDoc.assignedTo;
+    const newDept = payload.department !== undefined ? payload.department : oldDoc.department;
+    historyEvents.push({
+      eventType: 'ASSIGNED',
+      description: `Assignment updated: ${newAssigned || 'Unassigned'} (${newDept || 'No Dept'})`,
+      userId: req.user?._id,
+      userName: req.user?.name || "System"
+    });
+  }
+
+  const updateQuery = { $set: payload };
+  if (historyEvents.length > 0) {
+    updateQuery.$push = { history: { $each: historyEvents } };
   }
 
   const updatedEquipment = await Equipment.findByIdAndUpdate(
     req.params.id,
     { $set: payload, ...pushHistoryQuery },
+    updateQuery,
     { new: true },
   )
     .populate("maintenanceTeam")

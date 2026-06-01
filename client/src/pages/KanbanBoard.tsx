@@ -257,6 +257,21 @@ const RequestCard: React.FC<
         </div>
       )}
 
+      {request.checklist && request.checklist.length > 0 && (
+        <div className="mt-3">
+          <div className="flex justify-between items-center text-xs text-gray-600 dark:text-gray-300 mb-1">
+            <span className="font-medium">Checklist Tasks</span>
+            <span>{request.checklist.filter(c => c.isCompleted).length}/{request.checklist.length} completed</span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+            <div 
+              className="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all" 
+              style={{ width: `${(request.checklist.filter(c => c.isCompleted).length / request.checklist.length) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+
       {request.equipment?.hourlyDowntimeCost ? (
         <div className="text-xs text-red-500 font-bold mt-2 flex items-center bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded w-fit border border-red-100 dark:border-red-800/50 shadow-sm">
           💸 Bleed: ${request.equipment.hourlyDowntimeCost}/hr
