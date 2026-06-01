@@ -19,11 +19,30 @@ export const authService = {
     return response.data;
   },
 
-  logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('gearguard_token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('gearguard_user');
+  logout: async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('gearguard_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('gearguard_user');
+    }
+  },
+
+  logoutAll: async () => {
+    try {
+      await api.post('/auth/logout-all');
+    } catch (error) {
+      console.error('LogoutAll error:', error);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('gearguard_token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('gearguard_user');
+    }
   },
 
   getCurrentUser: () => {

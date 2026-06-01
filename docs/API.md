@@ -5,6 +5,32 @@
 http://localhost:5000/api
 ```
 
+## Authentication Endpoints
+
+### Login
+```http
+POST /api/auth/login
+```
+Returns a short-lived Access Token in the JSON body and a long-lived Refresh Token as an `HttpOnly` cookie.
+
+### Refresh Token
+```http
+POST /api/auth/refresh
+```
+Reads the `HttpOnly` refresh token cookie, validates it, and returns a new Access Token in the JSON body alongside rotating the Refresh Token cookie.
+
+### Logout
+```http
+POST /api/auth/logout
+```
+Invalidates the current session and clears the `HttpOnly` refresh token cookie.
+
+### Logout All Devices
+```http
+POST /api/auth/logout-all
+```
+Invalidates all sessions across all devices for the current user and clears the cookie. Requires a valid Access Token.
+
 ## Equipment Endpoints
 
 ### Get All Equipment

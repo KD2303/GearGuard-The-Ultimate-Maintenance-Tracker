@@ -1,14 +1,20 @@
 const User = require("../models/user");
+const Session = require("../models/Session");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const {
   ErrorHandler,
   ERROR_TYPES,
 } = require("../utils/errorHandler");
 const { asyncHandler } = require("../middleware/errorHandler");
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+const generateAccessToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "15m" });
+};
+
+const hashToken = (token) => {
+  return crypto.createHash("sha256").update(token).digest("hex");
 };
 
 /// REGISTER
@@ -131,23 +137,156 @@ exports.login = asyncHandler(async (req, res, next) => {
   user.lockUntil = undefined;
   await user.save();
 
-  // Create token
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" },
-  );
+  // Generate tokens
+  const accessToken = generateAccessToken(user._id, user.role);
+  const refreshToken = crypto.randomBytes(40).toString("hex");
+  const refreshTokenHash = hashToken(refreshToken);
+
+  // Create session
+  const session = await Session.create({
+    userId: user._id,
+    refreshTokenHash,
+    deviceInfo: req.headers["user-agent"] || "Unknown Device",
+    ipAddress: req.ip || req.connection.remoteAddress,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+  });
+
+  // Attach session ID to refresh token to easily look it up later
+  const finalRefreshToken = `${session._id}.${refreshToken}`;
+
+  // Send HttpOnly cookie
+  res.cookie("gearguard_refresh_token", finalRefreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
 
   res.status(200).json({
     success: true,
     message: "Login successful",
-    token,
+    token: accessToken,
     user: {
       id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
     },
+  });
+});
+
+// REFRESH TOKEN
+exports.refresh = asyncHandler(async (req, res, next) => {
+  const token = req.cookies.gearguard_refresh_token;
+
+  if (!token) {
+    throw new ErrorHandler("No refresh token provided", ERROR_TYPES.AUTHENTICATION_ERROR);
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 2) {
+    throw new ErrorHandler("Invalid token format", ERROR_TYPES.AUTHENTICATION_ERROR);
+  }
+
+  const [sessionId, refreshToken] = parts;
+
+  const session = await Session.findById(sessionId).populate("userId");
+  
+  if (!session || !session.userId) {
+    throw new ErrorHandler("Session not found", ERROR_TYPES.AUTHENTICATION_ERROR);
+  }
+
+  const incomingHash = hashToken(refreshToken);
+
+  // Reuse Detection
+  if (session.usedTokenHashes.includes(incomingHash)) {
+    // SECURITY: The token was already used! Revoke session immediately.
+    session.isValid = false;
+    await session.save();
+    console.warn(`Token reuse detected for user ${session.userId._id}. Session revoked.`);
+    throw new ErrorHandler("Token compromise detected. Session revoked.", ERROR_TYPES.AUTHENTICATION_ERROR);
+  }
+
+  if (!session.isValid) {
+    throw new ErrorHandler("Session has been revoked", ERROR_TYPES.AUTHENTICATION_ERROR);
+  }
+
+  if (session.refreshTokenHash !== incomingHash) {
+    throw new ErrorHandler("Invalid refresh token", ERROR_TYPES.AUTHENTICATION_ERROR);
+  }
+
+  // Token is valid. Rotate it.
+  const newRefreshToken = crypto.randomBytes(40).toString("hex");
+  const newHash = hashToken(newRefreshToken);
+
+  session.usedTokenHashes.push(incomingHash);
+  session.refreshTokenHash = newHash;
+  session.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await session.save();
+
+  const finalNewRefreshToken = `${session._id}.${newRefreshToken}`;
+
+  res.cookie("gearguard_refresh_token", finalNewRefreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  const newAccessToken = generateAccessToken(session.userId._id, session.userId.role);
+
+  res.status(200).json({
+    success: true,
+    token: newAccessToken,
+  });
+});
+
+// LOGOUT
+exports.logout = asyncHandler(async (req, res, next) => {
+  const token = req.cookies.gearguard_refresh_token;
+
+  if (token) {
+    const parts = token.split(".");
+    if (parts.length === 2) {
+      const sessionId = parts[0];
+      await Session.findByIdAndUpdate(sessionId, { isValid: false });
+    }
+  }
+
+  res.clearCookie("gearguard_refresh_token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully",
+  });
+});
+
+// LOGOUT ALL
+exports.logoutAll = asyncHandler(async (req, res, next) => {
+  // We need req.user to know which user to logout. 
+  // Assuming this route is protected by auth middleware.
+  if (!req.user || !req.user._id) {
+    throw new ErrorHandler("Not authenticated", ERROR_TYPES.AUTHENTICATION_ERROR);
+  }
+
+  await Session.updateMany(
+    { userId: req.user._id },
+    { $set: { isValid: false } }
+  );
+
+  res.clearCookie("gearguard_refresh_token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Logged out from all devices",
   });
 });
 
