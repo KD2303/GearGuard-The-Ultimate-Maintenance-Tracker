@@ -1,7 +1,7 @@
 const TelemetryData = require("../models/TelemetryData");
 const AlertRule = require("../models/AlertRule");
 const MaintenanceRequest = require("../models/MaintenanceRequest");
-const NotificationService = require("./NotificationService");
+const NotificationService = require("./services/NotificationService");
 const Equipment = require("../models/Equipment");
 
 class TelemetryService {
