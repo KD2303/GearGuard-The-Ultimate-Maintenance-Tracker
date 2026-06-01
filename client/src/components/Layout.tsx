@@ -284,13 +284,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <p className="text-[10px] text-gray-500 dark:text-gray-400">{user?.role}</p>
                   </div>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  title="Logout"
-                  className="rounded-xl border border-white/50 bg-white/30 dark:bg-gray-800 p-2 text-gray-600 dark:text-gray-300 hover:text-red-500 hover:border-red-300 transition-all"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
               </div>
 
           </div>
