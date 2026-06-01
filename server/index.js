@@ -4,6 +4,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const crypto = require("crypto");
@@ -57,6 +58,19 @@ if (!process.env.MONGO_URI || !process.env.JWT_SECRET) {
 
 // Security Headers
 app.use(helmet());
+
+// CORS Configuration
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  }),
+);
+
+// Body Parsing & Cookies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 const io = new Server(server, {
   cors: {
