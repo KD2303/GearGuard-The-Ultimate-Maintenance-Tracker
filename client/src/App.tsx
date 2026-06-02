@@ -21,6 +21,8 @@ import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import ProcurementDashboard from './pages/ProcurementDashboard';
 import FloorPlan from './pages/FloorPlan';
 import FinancialDashboard from './pages/FinancialDashboard';
+import DowntimeGantt from './pages/DowntimeGantt';
+import ShiftHandoverLogbook from './pages/ShiftHandoverLogbook';
 
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -55,6 +57,7 @@ function AppContent() {
         <Route path="/vehicles" element={<VehicleList />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/shift-handovers" element={<ShiftHandoverLogbook />} />
         <Route path="/predictive" element={<PredictiveDashboard />} />
         <Route path="/procurement" element={<ProcurementDashboard />} />
         <Route path="/settings" element={<SettingsPage />} />

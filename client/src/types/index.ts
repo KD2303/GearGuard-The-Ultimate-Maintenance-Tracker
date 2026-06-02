@@ -281,5 +281,24 @@ export interface AuditLog {
   createdAt: string;
 }
 
+export interface ShiftHandover {
+  _id: string;
+  shiftDate: string;
+  shiftType: 'Morning' | 'Afternoon' | 'Night';
+  submittedBy: { _id: string; name: string; email: string };
+  notes: string;
+  safetyWarnings?: string;
+  ongoingRepairs: Array<{
+    _id: string;
+    requestNumber: string;
+    subject: string;
+    stage: string;
+    priority: string;
+    equipment?: { name: string; status: string };
+  }>;
+  acknowledgedBy: Array<{ _id: string; name: string; email: string }>;
+  createdAt: string;
+}
+
 export * from './activity';
 export * from './inventory';

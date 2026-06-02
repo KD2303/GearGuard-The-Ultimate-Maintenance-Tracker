@@ -174,6 +174,7 @@ const defineRoutes = (router) => {
   router.use("/map", mapRoutes);
   router.use("/suppliers", supplierRoutes);
   router.use("/procurement", procurementRoutes);
+  router.use("/shift-handovers", require("./routes/shiftHandoverRoutes"));
   router.use("/webhooks", webhookRoutes);
   router.use("/schedules", scheduleRoutes);
   router.use("/telemetry", telemetryRoutes);
