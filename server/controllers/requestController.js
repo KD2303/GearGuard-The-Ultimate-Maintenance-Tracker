@@ -692,6 +692,26 @@ exports.deleteRequest = async (req, res) => {
     await NotificationService.notifyRequestChange(io, "request_deleted", request);
 
     if (request.equipmentId) {
+      // Check if there are any remaining open requests for this equipment
+      const openRequestsCount = await MaintenanceRequest.countDocuments({
+        equipmentId: request.equipmentId,
+        stage: { $nin: ['repaired', 'scrap'] }
+      });
+
+      // If no open tickets remain, reset the equipment status to active
+      if (openRequestsCount === 0) {
+        await Equipment.findByIdAndUpdate(request.equipmentId, { status: 'active' });
+        
+        await logActivity({
+          type: 'equipment_updated',
+          title: 'Equipment Status Restored',
+          description: `${getDisplayName(request.equipment)} restored to active after ticket deletion.`,
+          userName: 'System',
+          entityType: 'equipment',
+          entityId: String(request.equipmentId)
+        });
+      }
+
       calculateAndUpdateHealthScore(request.equipmentId).catch(err => 
         console.error('Background health score update failed:', err)
       );
