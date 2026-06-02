@@ -166,19 +166,6 @@ exports.createEquipment = asyncHandler(async (req, res, next) => {
 exports.updateEquipment = asyncHandler(async (req, res, next) => {
   const payload = sanitizeBody(req.body);
   const oldDoc = await Equipment.findById(req.params.id);
-  let pushHistoryQuery = {};
-  if (payload.status && payload.status !== oldDoc.status) {
-    pushHistoryQuery = {
-      $push: {
-        history: {
-          eventType: 'STATUS_CHANGE',
-          description: `Status manually changed from ${oldDoc.status} to ${payload.status}`,
-          date: new Date(),
-          recordedBy: req.user?._id,
-          notes: 'Status updated manually via equipment edit'
-        }
-      }
-    };
   
   if (!oldDoc) {
     throw new ErrorHandler("Equipment not found", ERROR_TYPES.NOT_FOUND_ERROR);
@@ -189,19 +176,21 @@ exports.updateEquipment = asyncHandler(async (req, res, next) => {
     historyEvents.push({
       eventType: payload.status === 'scrapped' ? 'SCRAPPED' : 'STATUS_CHANGE',
       description: `Status changed from ${oldDoc.status} to ${payload.status}`,
-      userId: req.user?._id,
-      userName: req.user?.name || "System"
+      date: new Date(),
+      recordedBy: req.user?._id,
+      notes: 'Status updated manually via equipment edit'
     });
   }
-  if ((payload.assignedTo !== undefined && payload.assignedTo !== oldDoc.assignedTo) || 
+
+  if ((payload.assignedTo !== undefined && payload.assignedTo !== String(oldDoc.assignedTo)) || 
       (payload.department !== undefined && payload.department !== oldDoc.department)) {
     const newAssigned = payload.assignedTo !== undefined ? payload.assignedTo : oldDoc.assignedTo;
     const newDept = payload.department !== undefined ? payload.department : oldDoc.department;
     historyEvents.push({
       eventType: 'ASSIGNED',
       description: `Assignment updated: ${newAssigned || 'Unassigned'} (${newDept || 'No Dept'})`,
-      userId: req.user?._id,
-      userName: req.user?.name || "System"
+      date: new Date(),
+      recordedBy: req.user?._id
     });
   }
 
@@ -212,9 +201,8 @@ exports.updateEquipment = asyncHandler(async (req, res, next) => {
 
   const updatedEquipment = await Equipment.findByIdAndUpdate(
     req.params.id,
-    { $set: payload, ...pushHistoryQuery },
     updateQuery,
-    { new: true },
+    { new: true }
   )
     .populate("maintenanceTeam")
     .populate("defaultTechnician");
@@ -228,7 +216,7 @@ exports.updateEquipment = asyncHandler(async (req, res, next) => {
     entityId: updatedEquipment._id,
     action: 'UPDATE',
     oldDoc,
-    newDoc: { ...oldDoc.toObject(), ...payload },
+    newDoc: updatedEquipment,
     userId: req.user?._id,
     userName: req.user?.name || ""
   });

@@ -152,6 +152,17 @@ exports.getRequestById = async (req, res) => {
   }
 };
 
+const calculateSLA = (priority) => {
+  const now = Date.now();
+  switch (priority) {
+    case 'urgent': return new Date(now + 4 * 60 * 60 * 1000);
+    case 'high': return new Date(now + 24 * 60 * 60 * 1000);
+    case 'medium': return new Date(now + 72 * 60 * 60 * 1000);
+    case 'low': return new Date(now + 168 * 60 * 60 * 1000);
+    default: return new Date(now + 72 * 60 * 60 * 1000);
+  }
+};
+
 // Create request with auto-fill logic
 exports.createRequest = async (req, res) => {
   try {
@@ -185,12 +196,6 @@ exports.createRequest = async (req, res) => {
               notes: 'Status updated automatically on request creation'
             }
           }
-          $push: { history: {
-            eventType: 'STATUS_CHANGE',
-            description: `Status changed to under-maintenance (Request Created)`,
-            userId: req.user?._id,
-            userName: req.user?.name || "System"
-          }}
         });
       }
     }
@@ -199,6 +204,7 @@ const request = await MaintenanceRequest.create({
   ...payload,
   requestNumber,
   createdById: req.user?._id,
+  slaDeadline: calculateSLA(payload.priority || 'medium'),
   attachments:
     req.body.attachments || [],
 });
@@ -377,12 +383,6 @@ exports.updateRequest = async (req, res) => {
                 notes: 'Status updated automatically on request repaired'
               }
             }
-            $push: { history: {
-              eventType: 'REPAIR_COMPLETED',
-              description: `Request marked as repaired. Status changed to active.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
           });
         }
       }
@@ -400,12 +400,6 @@ exports.updateRequest = async (req, res) => {
                 notes: 'Status updated automatically on request scrapped'
               }
             }
-            $push: { history: {
-              eventType: 'SCRAPPED',
-              description: `Request marked as scrap. Status changed to scrapped.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
           });
         }
       }
@@ -448,6 +442,12 @@ exports.updateRequest = async (req, res) => {
       userId: req.user?._id,
       userName: request.createdBy?.name || ""
     });
+
+    if (payload.priority && payload.priority !== request.priority) {
+      payload.slaDeadline = calculateSLA(payload.priority);
+      payload.slaBreached = false;
+      payload.slaNotified = false;
+    }
 
     await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload);
 

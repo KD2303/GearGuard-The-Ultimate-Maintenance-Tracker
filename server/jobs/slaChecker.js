@@ -1,0 +1,61 @@
+const cron = require('node-cron');
+const { MaintenanceRequest } = require('../models');
+const NotificationService = require('../services/notificationService');
+
+const startSlaChecker = (io) => {
+  // Runs every minute
+  cron.schedule('* * * * *', async () => {
+    try {
+      const now = new Date();
+
+      const breachedRequests = await MaintenanceRequest.find({
+        slaDeadline: { $lt: now },
+        stage: { $nin: ['repaired', 'scrap'] },
+        slaNotified: { $ne: true },
+      }).populate('assignedToId', '_id name').populate('createdById', '_id name');
+
+      for (const request of breachedRequests) {
+        request.slaBreached = true;
+        request.slaNotified = true;
+
+        if (request.assignedToId) {
+          await NotificationService.createAndEmit({
+            userId: request.assignedToId._id || request.assignedToId,
+            title: '🚨 SLA Breach!',
+            message: `Maintenance request "${request.subject || request.requestNumber}" has breached its SLA!`,
+            type: 'request_overdue',
+            link: '/kanban',
+            relatedRequestId: request._id,
+          });
+        }
+        
+        // Also notify the creator/manager if different
+        const assigneeStr = String(request.assignedToId?._id || request.assignedToId);
+        const creatorStr = String(request.createdById?._id || request.createdById);
+        
+        if (creatorStr && creatorStr !== assigneeStr) {
+          await NotificationService.createAndEmit({
+            userId: request.createdById._id || request.createdById,
+            title: '🚨 SLA Breach Escalatation',
+            message: `Maintenance request "${request.subject || request.requestNumber}" assigned to ${request.assignedToId?.name || 'Unassigned'} has breached its SLA!`,
+            type: 'request_overdue',
+            link: '/kanban',
+            relatedRequestId: request._id,
+          });
+        }
+
+        await request.save();
+      }
+
+      if (breachedRequests.length > 0) {
+        console.log(`SLA checker: escalated ${breachedRequests.length} breached request(s).`);
+      }
+    } catch (error) {
+      console.error('SLA checker error:', error.message);
+    }
+  });
+
+  console.log('SLA checker cron job started.');
+};
+
+module.exports = { startSlaChecker };

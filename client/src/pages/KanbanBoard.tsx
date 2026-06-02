@@ -46,6 +46,7 @@ import FilterBar from "../components/FilterBar";
 
 import ExportButton from "../components/ExportButton";
 import ClosureCostModal from "../components/ClosureCostModal";
+import SlaTimer from "../components/SlaTimer";
 
 import { exportRequestsExcel } from "../services/exportService";
 
@@ -160,7 +161,9 @@ const RequestCard: React.FC<
           : 1,
       }}
       className={`kanban-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-none border-2 mb-3 cursor-pointer ${
-        isOverdue(
+        request.slaBreached 
+          ? "border-red-500 shadow-red-500/20"
+          : isOverdue(
           request.scheduledDate,
           request.stage
         )
@@ -256,6 +259,8 @@ const RequestCard: React.FC<
           {request.duration}h
         </div>
       )}
+
+      <SlaTimer slaDeadline={request.slaDeadline} slaBreached={request.slaBreached} stage={request.stage} />
 
       {request.checklist && request.checklist.length > 0 && (
         <div className="mt-3">
