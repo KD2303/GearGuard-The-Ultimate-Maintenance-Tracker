@@ -33,6 +33,7 @@ const syncDatabase = async () => {
         PurchaseOrder.createIndexes ? PurchaseOrder.createIndexes() : Promise.resolve(),
         Webhook.createIndexes ? Webhook.createIndexes() : Promise.resolve(),
         PreventiveSchedule.createIndexes ? PreventiveSchedule.createIndexes() : Promise.resolve(),
+        ShiftHandover.createIndexes ? ShiftHandover.createIndexes() : Promise.resolve()
         ShiftHandover.createIndexes ? ShiftHandover.createIndexes() : Promise.resolve(),
         Counter.createIndexes ? Counter.createIndexes() : Promise.resolve()
       ]);
@@ -61,6 +62,7 @@ module.exports = {
   PurchaseOrder,
   Webhook,
   PreventiveSchedule,
+  ShiftHandover
   ShiftHandover,
   Counter
 };

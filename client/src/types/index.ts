@@ -134,6 +134,8 @@ export interface MaintenanceRequest {
     fileType: string;
   }[];
   checklist?: { _id?: string; text: string; isCompleted: boolean }[];
+  slaDeadline?: string;
+  slaBreached?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

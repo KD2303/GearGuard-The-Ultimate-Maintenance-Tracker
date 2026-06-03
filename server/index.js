@@ -16,6 +16,7 @@ const { globalLimiter } = require("./middleware/rateLimiter");
 const { errorMiddleware } = require("./middleware/errorHandler");
 const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
+const { startSlaChecker } = require("./jobs/slaChecker");
 const { syncDatabase } = require("./models");
 const swaggerSpec = require("./config/swagger");
 const passport = require("./config/passport");
@@ -257,6 +258,9 @@ const startServer = async () => {
 
     // Start overdue checker cron job
     startOverdueChecker();
+    
+    // Start SLA tracker cron job
+    startSlaChecker(io);
 
     const { startHealthScoreCron } = require('./cron/healthScoreCron');
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');

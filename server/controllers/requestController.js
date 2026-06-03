@@ -185,12 +185,51 @@ exports.getRequestById = async (req, res) => {
   }
 };
 
+const calculateSLA = (priority) => {
+  const now = Date.now();
+  switch (priority) {
+    case 'urgent': return new Date(now + 4 * 60 * 60 * 1000);
+    case 'high': return new Date(now + 24 * 60 * 60 * 1000);
+    case 'medium': return new Date(now + 72 * 60 * 60 * 1000);
+    case 'low': return new Date(now + 168 * 60 * 60 * 1000);
+    default: return new Date(now + 72 * 60 * 60 * 1000);
+  }
+};
+
 // Create request with auto-fill logic
 exports.createRequest = async (req, res) => {
   try {
     const payload = sanitizeBody(req.body);
     const requestNumber = await generateRequestNumber();
 
+    let equipmentDoc = null;
+    let oldEquipmentStatus = null;
+
+    if (payload.equipmentId) {
+      equipmentDoc = await Equipment.findById(payload.equipmentId)
+        .populate("maintenanceTeam")
+        .populate("defaultTechnician");
+
+      if (equipmentDoc) {
+        oldEquipmentStatus = equipmentDoc.status;
+
+        if (!payload.teamId && equipmentDoc.maintenanceTeamId)
+          payload.teamId = equipmentDoc.maintenanceTeamId;
+        if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
+          payload.assignedToId = equipmentDoc.defaultTechnicianId;
+
+        await Equipment.findByIdAndUpdate(equipmentDoc._id, {
+          $set: { status: "under-maintenance" },
+          $push: {
+            history: {
+              eventType: 'STATUS_CHANGE',
+              description: `Status changed to under-maintenance due to new request ${requestNumber}`,
+              date: new Date(),
+              recordedBy: req.user?._id,
+              notes: 'Status updated automatically on request creation'
+            }
+          }
+        });
     const requestWithRelations = await withTransactionFallback(async (session) => {
       let equipmentDoc = null;
       let oldEquipmentStatus = null;
@@ -230,6 +269,20 @@ exports.createRequest = async (req, res) => {
         }
       }
 
+const request = await MaintenanceRequest.create({
+  ...payload,
+  requestNumber,
+  createdById: req.user?._id,
+  slaDeadline: calculateSLA(payload.priority || 'medium'),
+  attachments:
+    req.body.attachments || [],
+});
+    const requestWithRelations = await MaintenanceRequest.findById(request._id)
+      .populate("equipment")
+      .populate("team")
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email")
+      .populate("partsUsed.partId");
       const request = await MaintenanceRequest.create([{
         ...payload,
         requestNumber,
@@ -377,6 +430,49 @@ exports.updateRequest = async (req, res) => {
     const prevRequest = await MaintenanceRequest.findById(req.params.id);
     if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
+    const request = await MaintenanceRequest.findById(req.params.id)
+      .populate("equipment")
+      .populate("createdBy", "name email");
+
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const prevStage = request.stage;
+    const prevPriority = request.priority;
+
+    // Handle stage side-effects (equipment status updates)
+    if (payload.stage) {
+      if (payload.stage === "repaired") {
+        payload.completedDate = new Date();
+        if (request.equipmentId) {
+          await Equipment.findByIdAndUpdate(request.equipmentId, {
+            $set: { status: "active" },
+            $push: {
+              history: {
+                eventType: 'STATUS_CHANGE',
+                description: `Status changed to active as request ${request.subject || request.requestNumber} was marked repaired`,
+                date: new Date(),
+                recordedBy: req.user?._id,
+                notes: 'Status updated automatically on request repaired'
+              }
+            }
+          });
+        }
+      }
+      if (payload.stage === "scrap") {
+        payload.completedDate = new Date();
+        if (request.equipmentId) {
+          await Equipment.findByIdAndUpdate(request.equipmentId, {
+            $set: { status: "scrapped" },
+            $push: {
+              history: {
+                eventType: 'STATUS_CHANGE',
+                description: `Status changed to scrapped as request ${request.subject || request.requestNumber} was marked scrap`,
+                date: new Date(),
+                recordedBy: req.user?._id,
+                notes: 'Status updated automatically on request scrapped'
+              }
+            }
+          });
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
     
@@ -475,6 +571,14 @@ exports.updateRequest = async (req, res) => {
       userId: req.user?._id,
       userName: request.createdBy?.name || ""
     });
+
+    if (payload.priority && payload.priority !== request.priority) {
+      payload.slaDeadline = calculateSLA(payload.priority);
+      payload.slaBreached = false;
+      payload.slaNotified = false;
+    }
+
+    await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload);
 
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = request.stage === "repaired" || request.stage === "scrap";
