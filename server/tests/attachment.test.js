@@ -15,8 +15,9 @@ const protect = (req, res, next) => {
 const MaintenanceRequest = require('../models/MaintenanceRequest');
 const requestController = require('../controllers/requestController');
 const upload = require('../middleware/upload');
+const magicByteValidator = require('../middleware/magicByteValidator');
 
-app.post('/api/requests/:id/attachments', protect, upload.array('attachments', 5), requestController.uploadAttachments);
+app.post('/api/requests/:id/attachments', protect, upload.array('attachments', 5), magicByteValidator, requestController.uploadAttachments);
 app.get('/api/requests/:id/attachments/:attachmentId', protect, requestController.downloadAttachment);
 app.delete('/api/requests/:id/attachments/:attachmentId', protect, requestController.deleteAttachment);
 
@@ -34,7 +35,8 @@ afterAll(async () => {
 
 describe('Attachment GridFS Tests', () => {
   let requestId;
-  let testFileContent = Buffer.from('test content');
+  // Valid 1x1 PNG magic bytes to pass the magicByteValidator
+  let testFileContent = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 
   beforeEach(async () => {
     // Create a mock request
@@ -84,7 +86,8 @@ describe('Attachment GridFS Tests', () => {
       .responseType('blob');
 
     expect(res.status).toBe(200);
-    expect(res.body.toString()).toBe('test content');
+    const validPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+    expect(res.body).toEqual(validPng);
   });
 
   it('should delete a file from GridFS', async () => {

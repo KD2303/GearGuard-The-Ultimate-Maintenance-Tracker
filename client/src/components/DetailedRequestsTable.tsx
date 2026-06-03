@@ -154,38 +154,38 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
-        return "bg-red-100 text-red-700";
+        return "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border border-red-200/50 dark:border-red-700/50";
 
       case "high":
-        return "bg-orange-100 dark:bg-orange-900/30 text-orange-700";
+        return "bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 border border-orange-200/50 dark:border-orange-700/50";
 
       case "medium":
-        return "bg-yellow-100 text-yellow-700";
+        return "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-200/50 dark:border-yellow-700/50";
 
       case "low":
-        return "bg-green-100 text-green-700";
+        return "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200/50 dark:border-green-700/50";
 
       default:
-        return "bg-gray-100 dark:bg-gray-700 text-gray-700";
+        return "bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50";
     }
   };
 
   const getStageColor = (stage: string) => {
     switch (stage) {
       case "new":
-        return "bg-blue-100 dark:bg-blue-900/30 text-blue-700";
+        return "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-700/50";
 
       case "in-progress":
-        return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700";
+        return "bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 border border-yellow-200/50 dark:border-yellow-700/50";
 
       case "repaired":
-        return "bg-green-100 dark:bg-green-900/30 text-green-700";
+        return "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200/50 dark:border-green-700/50";
 
       case "scrap":
-        return "bg-red-100 dark:bg-red-900/30 text-red-700";
+        return "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 border border-red-200/50 dark:border-red-700/50";
 
       default:
-        return "bg-gray-100 dark:bg-gray-700 text-gray-700";
+        return "bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 border border-gray-200/50 dark:border-gray-600/50";
     }
   };
 
@@ -200,14 +200,14 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 flex justify-center items-center h-[400px]">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-6 flex justify-center items-center h-[400px] transition-colors">
         <Spinner size="md" label="Loading requests..." />
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow transition-colors">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 transition-colors border border-gray-200 dark:border-gray-700">
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -291,18 +291,18 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
             </tr>
           </thead>
 
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {sortedRequests.map((request) => (
               <Fragment key={request.id}>
                 <tr
-                  className="hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors duration-200 cursor-pointer"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200 cursor-pointer"
                   onClick={() =>
                     setExpandedRow(
                       expandedRow === request.id ? null : request.id,
                     )
                   }
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                     {request.createdAt
                       ? new Date(request.createdAt).toLocaleDateString()
                       : "N/A"}
@@ -338,11 +338,11 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
                     </span>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                     {request.equipment?.name || "Unassigned"}
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
                     {request.assignedTo?.name || "Unassigned"}
                   </td>
 
@@ -364,7 +364,7 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
                            e.stopPropagation();
                            onEdit(request.id || request._id || '');
                          }}
-                         className="flex items-center text-indigo-600 hover:text-indigo-900 font-medium transition-colors"
+                         className="flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 font-medium transition-colors"
                          title="Edit Request"
                        >
                          <Edit2 className="w-4 h-4 mr-1" />
@@ -376,7 +376,7 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
                         e.stopPropagation();
                         setExpandedRow(expandedRow === request.id ? null : request.id);
                       }}
-                      className="flex items-center text-blue-600 hover:text-blue-900 font-medium transition-colors"
+                      className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 font-medium transition-colors"
                       title={expandedRow === request.id ? "Collapse Details" : "View Details"}
                     >
                       <Eye className="w-4 h-4 mr-1" />
@@ -386,25 +386,25 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
                 </tr>
 
                 {expandedRow === request.id && (
-                  <tr className="bg-gray-50">
+                  <tr className="bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
                     <td colSpan={8} className="px-6 py-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                          <div className="text-xs font-medium text-gray-500">
+                          <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
                             Description
                           </div>
 
-                          <div className="text-sm text-gray-900 mt-1">
+                          <div className="text-sm text-gray-900 dark:text-gray-200 mt-1">
                             {request.description || "No description"}
                           </div>
                         </div>
 
                         <div>
-                          <div className="text-xs font-medium text-gray-500">
+                          <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
                             Scheduled Date
                           </div>
 
-                          <div className="text-sm text-gray-900 mt-1 flex items-center">
+                          <div className="text-sm text-gray-900 dark:text-gray-200 mt-1 flex items-center">
                             {request.scheduledDate
                               ? new Date(
                                   request.scheduledDate,
@@ -419,21 +419,21 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
                         </div>
 
                         <div>
-                          <div className="text-xs font-medium text-gray-500">
+                          <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
                             Team
                           </div>
 
-                          <div className="text-sm text-gray-900 mt-1">
+                          <div className="text-sm text-gray-900 dark:text-gray-200 mt-1">
                             {request.team?.name || "Unassigned"}
                           </div>
                         </div>
 
                         <div>
-                          <div className="text-xs font-medium text-gray-500">
+                          <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
                             Duration
                           </div>
 
-                          <div className="text-sm text-gray-900 mt-1">
+                          <div className="text-sm text-gray-900 dark:text-gray-200 mt-1">
                             {request.duration
                               ? `${request.duration} hrs`
                               : "TBD"}
@@ -456,8 +456,8 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
         </table>
 
         {sortedRequests.length === 0 && (
-          <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-gray-400" />
+          <div className="text-center py-12 bg-white dark:bg-gray-800">
+            <FileText className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
 
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
               No requests found
@@ -471,7 +471,7 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
       </div>
 
       {!loading && totalItems > 0 && (
-        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
           <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
             <span>Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalItems)} of {totalItems} results</span>
             <span className="mx-4">|</span>
@@ -482,7 +482,7 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
                 setLimit(Number(e.target.value));
                 setPage(1);
               }}
-              className="ml-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-1 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              className="ml-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-200 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-1 transition-colors"
             >
               <option value={10}>10</option>
               <option value={20}>20</option>

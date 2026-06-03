@@ -38,7 +38,7 @@ const RequestsPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Maintenance Requests</h2>
-          <p className=" dark:text-gray-400 mt-1">Manage all maintenance requests and their status</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage all maintenance requests and their status</p>
         </div>
         <Button variant="primary" onClick={() => { setEditRequestId(undefined); setIsModalOpen(true); }}>
           <Plus className="w-4 h-4 mr-2" />

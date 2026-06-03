@@ -41,6 +41,15 @@ export interface Equipment {
   mapCoordinates?: { x: number; y: number };
   hourlyDowntimeCost?: number;
   history?: EquipmentHistoryEvent[];
+  documents?: {
+    _id?: string;
+    title: string;
+    fileUrl: string;
+    fileType?: string;
+    docCategory: 'Manual' | 'Schematic' | 'Safety' | 'Warranty' | 'Other';
+    uploadedAt?: string;
+    uploadedBy?: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
 }

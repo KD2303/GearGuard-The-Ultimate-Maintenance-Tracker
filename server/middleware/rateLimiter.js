@@ -27,8 +27,10 @@ const createLimiter = (keyPrefix, points, duration) => {
 };
 
 const getLimit = (prodLimit) => {
-  if (process.env.NODE_ENV === 'test') return prodLimit;
-  return process.env.NODE_ENV === 'production' ? prodLimit : 100000;
+  if (process.env.BYPASS_RATE_LIMIT === 'true') {
+    return 100000;
+  }
+  return prodLimit;
 };
 
 // 1. Global Limiter: 200 requests per IP per 15 minutes

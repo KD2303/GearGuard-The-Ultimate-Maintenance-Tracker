@@ -45,23 +45,23 @@ const FilterBar = ({ filters, setFilters, resultCount }: FilterBarProps) => {
   const activeFilterCount = Object.values(filters).filter(v => v !== '').length;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-6 shadow-sm dark:shadow-gray-900/50 transition-colors">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">Filters</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Filters</span>
           {activeFilterCount > 0 && (
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium border border-blue-200/50 dark:border-blue-700/50">
               {activeFilterCount} active
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">{resultCount} results</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{resultCount} results</span>
           {activeFilterCount > 0 && (
             <button
               id="filter-clear-all"
               onClick={handleClear}
-              className="text-xs text-red-500 border border-red-200 px-3 py-1 rounded-lg hover:bg-red-50 transition"
+              className="text-xs text-red-500 dark:text-red-400 border border-red-200 dark:border-red-700 px-3 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition"
             >
               Clear all
             </button>
@@ -77,14 +77,14 @@ const FilterBar = ({ filters, setFilters, resultCount }: FilterBarProps) => {
           placeholder="Search by no., equipment, subject..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="col-span-2 md:col-span-4 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="col-span-2 md:col-span-4 w-full px-3 py-2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 transition-colors"
         />
 
         <select
           id="filter-priority"
           value={filters.priority}
           onChange={(e) => handleChange('priority', e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="px-3 py-2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 transition-colors"
         >
           <option value="">All Priorities</option>
           <option value="low">Low</option>
@@ -97,7 +97,7 @@ const FilterBar = ({ filters, setFilters, resultCount }: FilterBarProps) => {
           id="filter-stage"
           value={filters.stage}
           onChange={(e) => handleChange('stage', e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="px-3 py-2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 transition-colors"
         >
           <option value="">All Stages</option>
           <option value="new">New</option>
@@ -110,7 +110,7 @@ const FilterBar = ({ filters, setFilters, resultCount }: FilterBarProps) => {
           id="filter-type"
           value={filters.type}
           onChange={(e) => handleChange('type', e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="px-3 py-2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 transition-colors"
         >
           <option value="">All Types</option>
           <option value="corrective">Corrective</option>
@@ -121,7 +121,7 @@ const FilterBar = ({ filters, setFilters, resultCount }: FilterBarProps) => {
           id="filter-technician"
           value={filters.assignedToId}
           onChange={(e) => handleChange('assignedToId', e.target.value)}
-          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="px-3 py-2 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 transition-colors"
         >
           <option value="">All Technicians</option>
           {members.map((m) => (
