@@ -70,4 +70,46 @@ describe('Supplier Controller Pagination', () => {
     expect(res.body.pagination.page).toBe(2);
     expect(res.body.pagination.limit).toBe(10);
   });
+  it('should ignore arbitrary fields on createSupplier to prevent mass assignment', async () => {
+    const res = await request(app)
+      .post('/api/v1/suppliers')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Safe Supplier',
+        contactEmail: 'safe@example.com',
+        isAdmin: true,
+        role: 'Admin'
+      });
+      
+    expect(res.status).toBe(201);
+    expect(res.body.name).toBe('Safe Supplier');
+    expect(res.body.isAdmin).toBeUndefined();
+    expect(res.body.role).toBeUndefined();
+
+    const savedSupplier = await Supplier.findById(res.body._id).lean();
+    expect(savedSupplier.isAdmin).toBeUndefined();
+    expect(savedSupplier.role).toBeUndefined();
+  });
+
+  it('should ignore arbitrary fields on updateSupplier to prevent mass assignment', async () => {
+    const supplierToUpdate = await Supplier.findOne({ name: 'Supplier 01' });
+    
+    const res = await request(app)
+      .put(`/api/v1/suppliers/${supplierToUpdate._id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Updated Supplier 01',
+        isAdmin: true,
+        role: 'Admin'
+      });
+      
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('Updated Supplier 01');
+    expect(res.body.isAdmin).toBeUndefined();
+    expect(res.body.role).toBeUndefined();
+
+    const savedSupplier = await Supplier.findById(res.body._id).lean();
+    expect(savedSupplier.isAdmin).toBeUndefined();
+    expect(savedSupplier.role).toBeUndefined();
+  });
 });

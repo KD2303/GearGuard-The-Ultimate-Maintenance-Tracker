@@ -26,14 +26,27 @@ exports.getSuppliers = asyncHandler(async (req, res, next) => {
 
 // Create a supplier
 exports.createSupplier = asyncHandler(async (req, res, next) => {
-  const supplier = await Supplier.create(req.body);
+  const { name, contactEmail, phone, leadTimeDays, notes } = req.body;
+  const supplierData = { name, contactEmail, phone, leadTimeDays, notes };
+  
+  const supplier = await Supplier.create(supplierData);
   res.status(201).json(supplier);
 });
 
 // Update a supplier
 exports.updateSupplier = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
-  const supplier = await Supplier.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+  
+  const allowedFields = ['name', 'contactEmail', 'phone', 'leadTimeDays', 'notes'];
+  const updateData = {};
+  
+  allowedFields.forEach(field => {
+    if (req.body[field] !== undefined) {
+      updateData[field] = req.body[field];
+    }
+  });
+
+  const supplier = await Supplier.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
   
   if (!supplier) {
     throw new ErrorHandler("Supplier not found", ERROR_TYPES.NOT_FOUND_ERROR);
