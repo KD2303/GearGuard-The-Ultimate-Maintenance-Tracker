@@ -20,6 +20,8 @@ import {
   LogOut,
   Package,
   Map,
+  Moon,
+  Sun,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
 import LanguageSelector from "./LanguageSelector";
@@ -219,10 +221,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-sm shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200"
               title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+              aria-label={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
             >
-              {theme === "light" ? "🌙" : "☀️"}
+              {theme === "light" ? (
+                <Moon className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              ) : (
+                <Sun className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              )}
             </button>
 
             {/* User Settings Gear */}
@@ -234,9 +241,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     ? "border-indigo-300 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-600/10"
                     : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:border-slate-300"
                 }`}
+                aria-label="Settings menu"
               >
                 <Settings
-                  className={`h-5 w-5 ${settingsOpen ? "rotate-90" : ""}`}
+                  className={`h-5 w-5 transition-transform duration-200 ${settingsOpen ? "rotate-90" : ""}`}
                 />
               </button>
 
@@ -247,8 +255,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       navigate("/settings");
                       setSettingsOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    className="flex w-full items-center px-4 py-2 text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                   >
+                    <Settings className="h-4 w-4 mr-2" />
                     {t("layout.settings") || "Settings"}
                   </button>
 
@@ -257,8 +266,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       navigate("/admin");
                       setSettingsOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    className="flex w-full items-center px-4 py-2 text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                   >
+                    <Shield className="h-4 w-4 mr-2" />
                     {t("nav.admin") || "Admin"}
                   </button>
 
@@ -270,7 +280,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       await logoutAll();
                       navigate('/');
                     }}
-                    className="flex w-full items-center px-4 py-2 text-sm font-bold text-left text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                    className="flex w-full items-center px-4 py-2 text-sm font-bold text-left text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
                     Logout All Devices
@@ -278,7 +288,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
                   <button
                     onClick={handleLogout}
-                    className="flex w-full items-center px-4 py-2 text-sm font-bold text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    className="flex w-full items-center px-4 py-2 text-sm font-bold text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                   >
                     <LogOut className="h-4 w-4 mr-2" />
                     {t("nav.logout") || "Log Out"}
@@ -286,6 +296,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
               )}
             </div>
+
+            {/* Logout Button (Visible) */}
+            <button
+              onClick={handleLogout}
+              className="hidden md:flex items-center space-x-2 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-red-600 dark:text-red-400 shadow-sm hover:bg-red-50 dark:hover:bg-red-950/30 transition-all duration-200"
+              title={t("nav.logout") || "Log Out"}
+              aria-label="Log out"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden lg:inline">{t("nav.logout") || "Log Out"}</span>
+            </button>
               {/* User Avatar */}
               <div className="hidden lg:flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
