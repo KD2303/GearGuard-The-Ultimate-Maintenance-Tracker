@@ -3,46 +3,46 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/Button';
 import { Shield, Lock, Mail, AlertCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
   const navigate = useNavigate();
   const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
+
     try {
       await login({ email, password });
-      toast.success('Logged in successfully!');
+      showSuccessToast('Login successful! Welcome back.');
       navigate('/');
-    } catch (error: any) {
-      const errData = error.response?.data;
-      const errMsg = errData?.msg || 
-                    (typeof errData?.error === 'string' ? errData.error : errData?.error?.message) || 
-                    'Login failed';
-      toast.error(errMsg);
+    } catch (err: unknown) {
+      const apiError = showErrorToast(err);
+      setError(apiError.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 transition-colors">
+      <div className="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 transition-colors">
         <div>
           <div className="flex justify-center">
-            <div className="bg-primary-100 p-3 rounded-xl">
-              <Shield className="h-10 w-10 text-primary-600" />
+            <div className="bg-primary-100 dark:bg-primary-900/40 p-3 rounded-xl transition-colors">
+              <Shield className="h-10 w-10 text-primary-600 dark:text-primary-400" />
             </div>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
             GearGuard Login
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             Secure Maintenance Tracking System
           </p>
         </div>
@@ -50,50 +50,62 @@ const LoginPage: React.FC = () => {
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="email-address" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email-address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  <Mail className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                 </div>
                 <input
                   id="email-address"
                   name="email"
                   type="email"
                   required
-                  className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm bg-gray-50 transition-all"
+                  className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm bg-gray-50 dark:bg-gray-700 transition-all"
                   placeholder="admin@gearguard.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
                 />
               </div>
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+                  <Lock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                 </div>
                 <input
                   id="password"
                   name="password"
                   type="password"
                   required
-                  className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm bg-gray-50 transition-all"
+                  className="appearance-none relative block w-full px-3 py-3 pl-10 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm bg-gray-50 dark:bg-gray-700 transition-all"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-blue-50 p-4 rounded-lg flex items-start space-x-3 border border-blue-100">
-            <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5" />
-            <div className="text-sm text-blue-700">
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg flex items-start space-x-3 border border-red-200 dark:border-red-800/50 animate-shake">
+              <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-red-700 dark:text-red-300">
+                <p className="font-semibold">Login Failed</p>
+                <p>{error}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-start space-x-3 border border-blue-100 dark:border-blue-800/50">
+            <AlertCircle className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-700 dark:text-blue-300">
               <p className="font-semibold">Demo Credentials:</p>
               <p>Email: admin@gearguard.com</p>
               <p>Password: admin123</p>
@@ -113,17 +125,17 @@ const LoginPage: React.FC = () => {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Or continue with</span>
               </div>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <a
                 href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/auth/google`}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <span className="sr-only">Sign in with Google</span>
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -135,7 +147,7 @@ const LoginPage: React.FC = () => {
               </a>
               <a
                 href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/auth/microsoft`}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <span className="sr-only">Sign in with Microsoft</span>
                 <svg className="w-5 h-5" viewBox="0 0 21 21">

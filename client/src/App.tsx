@@ -77,7 +77,33 @@ function App() {
           reverseOrder={false}
           toastOptions={{
             duration: 4000,
-            style: { fontSize: '14px' },
+            style: { 
+              fontSize: '14px',
+              maxWidth: '500px',
+            },
+            // Default styles for light mode
+            success: {
+              style: {
+                background: '#D1FAE5',
+                color: '#065F46',
+                border: '1px solid #6EE7B7',
+              },
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#FFFFFF',
+              },
+            },
+            error: {
+              style: {
+                background: '#FEE2E2',
+                color: '#991B1B',
+                border: '1px solid #FCA5A5',
+              },
+              iconTheme: {
+                primary: '#DC2626',
+                secondary: '#FFFFFF',
+              },
+            },
           }}
         />
       </NotificationProvider>
