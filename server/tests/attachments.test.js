@@ -73,8 +73,9 @@ describe('Attachments API', () => {
   });
 
   it('should upload an attachment successfully if authorized', async () => {
-    const testFilePath = path.join(__dirname, 'testfile.pdf');
-    fs.writeFileSync(testFilePath, 'dummy content');
+    const testFilePath = path.join(__dirname, 'testfile.png');
+    const validPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+    fs.writeFileSync(testFilePath, validPng);
 
     const res = await request(app)
       .post(`/api/v1/requests/${reqId}/attachments`)
@@ -85,7 +86,25 @@ describe('Attachments API', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.length).toBe(1);
-    expect(res.body[0].filename).toContain('testfile.pdf');
+    expect(res.body[0].filename).toContain('testfile.png');
+  });
+
+  it('should block MIME spoofing uploads', async () => {
+    const spoofedFilePath = path.join(__dirname, 'spoofed.png');
+    // Content is plain text, not a valid PNG
+    fs.writeFileSync(spoofedFilePath, 'this is a malicious script');
+
+    const res = await request(app)
+      .post(`/api/v1/requests/${reqId}/attachments`)
+      .set('Authorization', `Bearer ${token}`)
+      // It claims to be image/png but content is text
+      .attach('attachments', spoofedFilePath, { contentType: 'image/png' });
+
+    fs.unlinkSync(spoofedFilePath);
+
+    // Should return 400 Bad Request due to magic byte mismatch
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/Invalid file type detected/i);
   });
 
   it('should list attachments', async () => {
@@ -108,8 +127,9 @@ describe('Attachments API', () => {
     const jwt = require('jsonwebtoken');
     const otherToken = jwt.sign({ id: otherUser._id, role: otherUser.role }, process.env.JWT_SECRET);
 
-    const testFilePath = path.join(__dirname, 'testfile.pdf');
-    fs.writeFileSync(testFilePath, 'dummy content');
+    const testFilePath = path.join(__dirname, 'testfile.png');
+    const validPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+    fs.writeFileSync(testFilePath, validPng);
 
     const res = await request(app)
       .post(`/api/v1/requests/${reqId}/attachments`)
