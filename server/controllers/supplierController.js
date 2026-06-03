@@ -4,8 +4,24 @@ const { asyncHandler } = require('../middleware/errorHandler');
 
 // Get all suppliers
 exports.getSuppliers = asyncHandler(async (req, res, next) => {
-  const suppliers = await Supplier.find().sort({ name: 1 });
-  res.status(200).json(suppliers);
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
+
+  const [suppliers, total] = await Promise.all([
+    Supplier.find().sort({ name: 1 }).skip(skip).limit(limit),
+    Supplier.countDocuments()
+  ]);
+
+  res.status(200).json({
+    suppliers,
+    pagination: {
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit)
+    }
+  });
 });
 
 // Create a supplier
