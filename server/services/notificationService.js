@@ -1,18 +1,7 @@
 const { Notification, Webhook } = require("../models");
-const nodemailer = require("nodemailer");
 const axios = require("axios");
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const { scheduleEmailNotification } = require("../queue/emailQueue");
+
 if (
   !process.env.SMTP_HOST ||
   !process.env.SMTP_PORT ||
@@ -98,27 +87,33 @@ class NotificationService {
     }
   }
   /**
-   * Send Email Notification
+   * Send Email Notification via Queue
+   *
+   * Queues the email for delivery with automatic retry on transient failures.
+   * Uses exponential backoff to avoid overwhelming SMTP service during outages.
+   *
+   * @param {string} to - Recipient email address
+   * @param {string} subject - Email subject line
+   * @param {string} html - HTML email body
+   * @returns {Promise} Job promise from email queue
    */
   static async sendEmail(to, subject, html) {
     try {
       if (!to) {
-        console.error("Recipient email missing");
-        return;
+        throw new Error("Recipient email address is required");
       }
 
-      const info = await transporter.sendMail({
-        from: process.env.EMAIL_FROM,
-        to,
-        subject,
-        html,
-      });
+      if (!subject || !html) {
+        throw new Error("Email subject and body are required");
+      }
 
-      console.log("✅ Email sent:", info.messageId);
+      const job = await scheduleEmailNotification(to, subject, html);
+      console.log(`[Notification] Email queued for ${to} (Job #${job.id})`);
 
-      return info;
+      return job;
     } catch (error) {
-      console.error("❌ Email sending failed:", error);
+      console.error(`[Notification] Failed to queue email: ${error.message}`);
+      throw error;
     }
   }
 

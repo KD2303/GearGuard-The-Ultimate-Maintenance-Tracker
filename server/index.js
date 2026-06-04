@@ -20,6 +20,7 @@ const { startSlaChecker } = require("./jobs/slaChecker");
 const { syncDatabase } = require("./models");
 const swaggerSpec = require("./config/swagger");
 const passport = require("./config/passport");
+const { emailQueue } = require("./queue/emailQueue");
 
 // Route imports
 const authRoutes = require("./routes/auth");
@@ -256,9 +257,12 @@ const startServer = async () => {
       }
     }
 
+    // Initialize email queue for reliable notification delivery
+    console.log("✓ Email queue initialized (5 retry attempts, exponential backoff)");
+
     // Start overdue checker cron job
     startOverdueChecker();
-    
+
     // Start SLA tracker cron job
     startSlaChecker(io);
 
@@ -284,6 +288,14 @@ const startServer = async () => {
 // Graceful shutdown
 const shutdown = () => {
   console.log("Gracefully shutting down server...");
+
+  // Close email queue and process remaining jobs
+  emailQueue.close().then(() => {
+    console.log("Email queue closed. Pending jobs will be reprocessed on next startup.");
+  }).catch(err => {
+    console.error("Error closing email queue:", err.message);
+  });
+
   server.close(() => {
     console.log("HTTP server closed.");
     mongoose.connection.close(false).then(() => {
@@ -291,7 +303,7 @@ const shutdown = () => {
       process.exit(0);
     });
   });
-  
+
   setTimeout(() => {
     console.error("Could not close connections in time, forcefully shutting down");
     process.exit(1);
