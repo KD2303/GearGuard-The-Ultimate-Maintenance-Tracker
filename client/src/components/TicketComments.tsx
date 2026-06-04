@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MaintenanceRequest } from '../types';
 import { requestService } from '../services/requestService';
-import { uploadService } from '../services/uploadService';
 import { Send, User, Mic, Square, Trash2, Loader2 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 
@@ -10,7 +9,7 @@ interface TicketCommentsProps {
   currentUser: { _id?: string; id?: string; name: string } | null;
 }
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5001';
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
 
 // Custom sleek, glassmorphic Audio Player component
 const AudioPlayer: React.FC<{ src: string; duration?: number; isMe?: boolean }> = ({ src, duration, isMe }) => {
@@ -316,7 +315,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
       if (audioBlob) {
         setIsUploading(true);
         const file = new File([audioBlob], `voice-comment-${Date.now()}.webm`, { type: 'audio/webm' });
-        const uploadResult = await uploadService.uploadAttachments([file]);
+        const uploadResult = await requestService.uploadAttachments(requestId, [file]);
         if (uploadResult && uploadResult[0]) {
           uploadedAudioUrl = uploadResult[0].fileUrl;
           duration = recordingDuration;

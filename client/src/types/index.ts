@@ -1,5 +1,13 @@
 import { SparePart, PartUsedInput } from './inventory';
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 export interface Equipment {
   _id?: string;
   id: string;
@@ -33,6 +41,15 @@ export interface Equipment {
   mapCoordinates?: { x: number; y: number };
   hourlyDowntimeCost?: number;
   history?: EquipmentHistoryEvent[];
+  documents?: {
+    _id?: string;
+    title: string;
+    fileUrl: string;
+    fileType?: string;
+    docCategory: 'Manual' | 'Schematic' | 'Safety' | 'Warranty' | 'Other';
+    uploadedAt?: string;
+    uploadedBy?: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -112,7 +129,14 @@ export interface MaintenanceRequest {
   downtimeDurationHours?: number;
   totalDowntimeCost?: number;
   checkedOutTools?: { toolId: string | Tool; checkedOutAt: string }[];
+  attachments?: {
+    filename: string;
+    fileUrl: string;
+    fileType: string;
+  }[];
   checklist?: { _id?: string; text: string; isCompleted: boolean }[];
+  slaDeadline?: string;
+  slaBreached?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -212,14 +236,18 @@ export interface EquipmentFinancials {
 }
 
 export interface RequestFilters {
-  stage: string;
-  type: string;
-  priority: string;
-  teamId: string;
-  assignedToId: string;
-  startDate: string;
-  endDate: string;
-  search: string;
+  stage?: string;
+  type?: string;
+  priority?: string;
+  teamId?: string;
+  assignedToId?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export const defaultFilters: RequestFilters = {
@@ -231,6 +259,10 @@ export const defaultFilters: RequestFilters = {
   startDate: '',
   endDate: '',
   search: '',
+  page: 1,
+  limit: 20,
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
 };
 
 export interface SearchEquipmentResult {
@@ -291,6 +323,23 @@ export interface Tool {
   status: 'Available' | 'Checked Out' | 'In Repair' | 'Lost';
   createdAt?: string;
   updatedAt?: string;
+export interface ShiftHandover {
+  _id: string;
+  shiftDate: string;
+  shiftType: 'Morning' | 'Afternoon' | 'Night';
+  submittedBy: { _id: string; name: string; email: string };
+  notes: string;
+  safetyWarnings?: string;
+  ongoingRepairs: Array<{
+    _id: string;
+    requestNumber: string;
+    subject: string;
+    stage: string;
+    priority: string;
+    equipment?: { name: string; status: string };
+  }>;
+  acknowledgedBy: Array<{ _id: string; name: string; email: string }>;
+  createdAt: string;
 }
 
 export * from './activity';

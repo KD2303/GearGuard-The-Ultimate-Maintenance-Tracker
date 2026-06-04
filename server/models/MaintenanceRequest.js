@@ -23,6 +23,9 @@ const MaintenanceRequestSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  slaDeadline: { type: Date },
+  slaBreached: { type: Boolean, default: false },
+  slaNotified: { type: Boolean, default: false },
   attachments: [
   {
     filename: { type: String },
@@ -97,6 +100,8 @@ MaintenanceRequestSchema.index({ type: 1 });
 MaintenanceRequestSchema.index({ assignedToId: 1 });
 MaintenanceRequestSchema.index({ teamId: 1 });
 MaintenanceRequestSchema.index({ scheduledDate: 1 });
+MaintenanceRequestSchema.index({ slaDeadline: 1 });
+MaintenanceRequestSchema.index({ slaBreached: 1 });
 MaintenanceRequestSchema.index({ subject: 'text', requestNumber: 'text', description: 'text' });
 
 module.exports = mongoose.model('MaintenanceRequest', MaintenanceRequestSchema);

@@ -4,6 +4,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const crypto = require("crypto");
@@ -15,6 +16,7 @@ const { globalLimiter } = require("./middleware/rateLimiter");
 const { errorMiddleware } = require("./middleware/errorHandler");
 const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
+const { startSlaChecker } = require("./jobs/slaChecker");
 const { syncDatabase } = require("./models");
 const swaggerSpec = require("./config/swagger");
 const passport = require("./config/passport");
@@ -28,7 +30,6 @@ const memberRoutes = require("./routes/members");
 const requestRoutes = require("./routes/requests");
 const notificationRoutes = require("./routes/notifications");
 const adminRoutes = require("./routes/admin");
-const uploadRoutes = require("./routes/uploadRoutes");
 const searchRoutes = require("./routes/search");
 const inventoryRoutes = require("./routes/inventory");
 const analyticsRoutes = require("./routes/analytics");
@@ -59,6 +60,19 @@ if (!process.env.MONGO_URI || !process.env.JWT_SECRET) {
 
 // Security Headers
 app.use(helmet());
+
+// CORS Configuration
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  }),
+);
+
+// Body Parsing & Cookies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 const io = new Server(server, {
   cors: {
@@ -168,13 +182,13 @@ const defineRoutes = (router) => {
   router.use("/analytics", analyticsRoutes);
   router.use("/predictive", predictiveRoutes);
   router.use("/inventory", inventoryRoutes);
-  router.use("/upload", uploadRoutes);
   router.use("/export", require("./routes/export"));
   router.use("/purchase-orders", purchaseOrderRoutes);
   router.use("/audit", auditRoutes);
   router.use("/map", mapRoutes);
   router.use("/suppliers", supplierRoutes);
   router.use("/procurement", procurementRoutes);
+  router.use("/shift-handovers", require("./routes/shiftHandoverRoutes"));
   router.use("/webhooks", webhookRoutes);
   router.use("/schedules", scheduleRoutes);
   router.use("/telemetry", telemetryRoutes);
@@ -246,6 +260,9 @@ const startServer = async () => {
 
     // Start overdue checker cron job
     startOverdueChecker();
+    
+    // Start SLA tracker cron job
+    startSlaChecker(io);
 
     const { startHealthScoreCron } = require('./cron/healthScoreCron');
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');

@@ -22,6 +22,16 @@ export interface Supplier {
   notes?: string;
 }
 
+export interface PaginatedSuppliers {
+  suppliers: Supplier[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
 export interface PurchaseOrderItem {
   partId: any;
   quantityNeeded: number;
@@ -62,8 +72,8 @@ export const procurementService = {
     return response.data.purchaseOrder;
   },
 
-  getSuppliers: async (): Promise<Supplier[]> => {
-    const response = await api.get('/suppliers');
+  getSuppliers: async (page: number = 1, limit: number = 20): Promise<PaginatedSuppliers> => {
+    const response = await api.get('/suppliers', { params: { page, limit } });
     return response.data;
   }
 };

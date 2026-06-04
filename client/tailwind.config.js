@@ -22,14 +22,20 @@ export default {
           900: '#0c4a6e',
         }
       },
-      keyframes: {
+      animation: {
         criticalPulse: {
           '0%, 100%': { transform: 'scale(1)', filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.6))' },
           '50%': { transform: 'scale(1.05)', filter: 'drop-shadow(0 0 16px rgba(239, 68, 68, 1))' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '10%, 30%, 50%, 70%, 90%': { transform: 'translateX(-4px)' },
+          '20%, 40%, 60%, 80%': { transform: 'translateX(4px)' },
         }
       },
       animation: {
         'critical-pulse': 'criticalPulse 1.5s ease-in-out infinite',
+        'shake': 'shake 0.5s ease-in-out',
       }
     },
   },

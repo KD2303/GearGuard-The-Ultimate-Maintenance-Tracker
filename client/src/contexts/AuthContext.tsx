@@ -13,7 +13,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
   loginWithToken: (token: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -31,13 +32,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(data.user);
   };
 
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await authService.logout();
+    setUser(null);
+  };
+
+  const logoutAll = async () => {
+    await authService.logoutAll();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, loginWithToken, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, loginWithToken, logout, logoutAll }}>
       {children}
     </AuthContext.Provider>
   );

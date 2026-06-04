@@ -20,6 +20,8 @@ import {
   LogOut,
   Package,
   Map,
+  Moon,
+  Sun,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
 import LanguageSelector from "./LanguageSelector";
@@ -35,14 +37,16 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation();
   const isOnline = useNetworkStatus();
 
-  const { user, logout } = useAuth();
+  const { user, logout, logoutAll } = useAuth();
 
   useEffect(() => {
     syncManager.init(); // Initialize the sync manager listener
@@ -52,6 +56,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         !settingsRef.current.contains(e.target as Node)
       ) {
         setSettingsOpen(false);
+      }
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(e.target as Node)
+      ) {
+        setProfileOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -65,7 +75,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/admin', icon: Shield, label: t('nav.admin'), gradient: 'from-rose-500 to-red-600 shadow-rose-500/20', roles: ['Admin', 'Manager'] },
     { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600 shadow-purple-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-rose-600 shadow-pink-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/shift-handovers', icon: Activity, label: 'Shift Logbook', gradient: 'from-amber-400 to-orange-500 shadow-amber-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/calendar', icon: Calendar, label: t('nav.calendar'), gradient: 'from-cyan-500 to-blue-600 shadow-cyan-500/20', roles: ['Admin', 'Manager', 'Technician'] },
+    { to: '/downtime', icon: Activity, label: 'Downtime Schedule', gradient: 'from-blue-400 to-indigo-500 shadow-blue-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/equipment', icon: Box, label: t('nav.equipment'), gradient: 'from-green-500 to-emerald-600 shadow-green-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/floor-plan', icon: Map, label: 'Floor Plan', gradient: 'from-sky-500 to-indigo-500 shadow-sky-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/inventory', icon: Package, label: t('nav.inventory') || 'Inventory', gradient: 'from-teal-500 to-emerald-600 shadow-teal-500/20', roles: ['Admin', 'Manager', 'Technician'] },
@@ -93,8 +105,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         .slice(0, 2)
     : "GU";
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -219,10 +231,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-sm shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-200"
               title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+              aria-label={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
             >
-              {theme === "light" ? "🌙" : "☀️"}
+              {theme === "light" ? (
+                <Moon className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              ) : (
+                <Sun className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              )}
             </button>
 
             {/* User Settings Gear */}
@@ -234,9 +251,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     ? "border-indigo-300 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-600/10"
                     : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:border-slate-300"
                 }`}
+                aria-label="Settings menu"
               >
                 <Settings
-                  className={`h-5 w-5 ${settingsOpen ? "rotate-90" : ""}`}
+                  className={`h-5 w-5 transition-transform duration-200 ${settingsOpen ? "rotate-90" : ""}`}
                 />
               </button>
 
@@ -247,8 +265,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       navigate("/settings");
                       setSettingsOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    className="flex w-full items-center px-4 py-2 text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                   >
+                    <Settings className="h-4 w-4 mr-2" />
                     {t("layout.settings") || "Settings"}
                   </button>
 
@@ -257,35 +276,106 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       navigate("/admin");
                       setSettingsOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    className="flex w-full items-center px-4 py-2 text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                   >
+                    <Shield className="h-4 w-4 mr-2" />
                     {t("nav.admin") || "Admin"}
-                  </button>
-
-                  <div className="h-px bg-slate-200 dark:bg-slate-700 my-1"></div>
-
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center px-4 py-2 text-sm font-bold text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {t("nav.logout") || "Log Out"}
                   </button>
                 </div>
               )}
             </div>
-              {/* User Avatar */}
-              <div className="hidden lg:flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-9 h-9 rounded-xl border border-white/50 bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-semibold shadow-lg ring-1 ring-white/40">
-                    {userInitials}
+
+            {/* User Profile Dropdown */}
+            <div className="relative" ref={profileRef}>
+              <button
+                onClick={() => setProfileOpen(!profileOpen)}
+                className={`flex items-center space-x-2 rounded-xl border p-1.5 pr-3 shadow-sm transition-all duration-200 ${
+                  profileOpen
+                    ? "border-indigo-300 bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg shadow-indigo-600/10"
+                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 hover:shadow-md"
+                }`}
+                aria-label="User profile menu"
+              >
+                <div className={`w-8 h-8 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md ring-2 ${
+                  profileOpen ? "ring-white/40" : "ring-transparent"
+                }`}>
+                  {userInitials}
+                </div>
+                <div className="hidden lg:block text-left">
+                  <p className={`text-xs font-semibold leading-tight transition-colors ${
+                    profileOpen ? "text-white" : "text-slate-800 dark:text-slate-200"
+                  }`}>
+                    {user?.name}
+                  </p>
+                  <p className={`text-[10px] leading-tight transition-colors ${
+                    profileOpen ? "text-white/80" : "text-slate-500 dark:text-slate-400"
+                  }`}>
+                    {user?.role}
+                  </p>
+                </div>
+              </button>
+
+              {profileOpen && (
+                <div className="absolute right-0 mt-2 w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl z-50 overflow-hidden">
+                  {/* Profile Header */}
+                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-xl font-bold shadow-lg ring-2 ring-white/40">
+                        {userInitials}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-white leading-tight">
+                          {user?.name}
+                        </p>
+                        <p className="text-xs text-white/80 font-semibold mt-0.5">
+                          {user?.email}
+                        </p>
+                        <div className="mt-1.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-sm text-[10px] font-bold text-white uppercase tracking-wider">
+                            {user?.role}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="hidden xl:block">
-                    <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 leading-tight">{user?.name}</p>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{user?.role}</p>
+
+                  {/* Profile Actions */}
+                  <div className="p-2">
+                    <button
+                      onClick={() => {
+                        navigate("/settings");
+                        setProfileOpen(false);
+                      }}
+                      className="flex w-full items-center px-4 py-2.5 rounded-xl text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <Settings className="h-4 w-4 mr-3 text-slate-500" />
+                      {t("layout.settings") || "Settings"}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        navigate("/admin");
+                        setProfileOpen(false);
+                      }}
+                      className="flex w-full items-center px-4 py-2.5 rounded-xl text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <Shield className="h-4 w-4 mr-3 text-slate-500" />
+                      {t("nav.admin") || "Admin"}
+                    </button>
+
+                    <div className="h-px bg-slate-200 dark:bg-slate-700 my-2"></div>
+
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center px-4 py-2.5 rounded-xl text-sm font-bold text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4 mr-3" />
+                      {t("nav.logout") || "Log Out"}
+                    </button>
                   </div>
                 </div>
-              </div>
+              )}
+            </div>
 
           </div>
         </header>
