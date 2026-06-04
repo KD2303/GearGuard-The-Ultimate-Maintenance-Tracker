@@ -1,18 +1,7 @@
 const { Notification, Webhook } = require("../models");
-const nodemailer = require("nodemailer");
 const axios = require("axios");
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+const { scheduleEmailNotification } = require("../queue/emailQueue");
+
 if (
   !process.env.SMTP_HOST ||
   !process.env.SMTP_PORT ||
@@ -98,7 +87,9 @@ class NotificationService {
     }
   }
   /**
-   * Send Email Notification
+   * Send Email Notification with retry logic via queue
+   * CRITICAL: All alerts are queued with exponential backoff
+   * Prevents silent email failures when SMTP service is temporarily unavailable
    */
   static async sendEmail(to, subject, html) {
     try {
@@ -107,18 +98,13 @@ class NotificationService {
         return;
       }
 
-      const info = await transporter.sendMail({
-        from: process.env.EMAIL_FROM,
-        to,
-        subject,
-        html,
-      });
+      const job = await scheduleEmailNotification(to, subject, html);
+      console.log(`[Email] Scheduled email notification: job ${job.id} to ${to}`);
 
-      console.log("✅ Email sent:", info.messageId);
-
-      return info;
+      return job;
     } catch (error) {
-      console.error("❌ Email sending failed:", error);
+      console.error("Failed to queue email notification:", error.message);
+      throw error;
     }
   }
 
