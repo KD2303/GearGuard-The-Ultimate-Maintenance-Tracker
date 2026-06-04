@@ -111,6 +111,7 @@ export interface MaintenanceRequest {
   }[];
   downtimeDurationHours?: number;
   totalDowntimeCost?: number;
+  checkedOutTools?: { toolId: string | Tool; checkedOutAt: string }[];
   checklist?: { _id?: string; text: string; isCompleted: boolean }[];
   createdAt?: string;
   updatedAt?: string;
@@ -279,6 +280,17 @@ export interface AuditLog {
   action: 'CREATE' | 'UPDATE' | 'DELETE';
   changes: AuditChange[];
   createdAt: string;
+}
+
+export interface Tool {
+  _id?: string;
+  id: string;
+  name: string;
+  serialNumber: string;
+  purchaseCost?: number;
+  status: 'Available' | 'Checked Out' | 'In Repair' | 'Lost';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export * from './activity';
