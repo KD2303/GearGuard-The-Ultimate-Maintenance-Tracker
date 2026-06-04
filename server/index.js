@@ -14,6 +14,7 @@ const swaggerUi = require("swagger-ui-express");
 
 const { globalLimiter } = require("./middleware/rateLimiter");
 const { errorMiddleware } = require("./middleware/errorHandler");
+const { csrfProtection } = require("./middleware/csrfProtection");
 const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
 const { startSlaChecker } = require("./jobs/slaChecker");
@@ -154,6 +155,9 @@ app.use(passport.initialize());
 
 // Apply global rate limiter to all routes
 app.use(globalLimiter);
+
+// CSRF defense-in-depth: validate Origin/Referer on state-changing requests
+app.use(csrfProtection);
 
 // Serve uploaded attachments statically
 const path = require("path");
