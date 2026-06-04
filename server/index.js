@@ -15,6 +15,7 @@ const swaggerUi = require("swagger-ui-express");
 const { globalLimiter } = require("./middleware/rateLimiter");
 const { errorMiddleware } = require("./middleware/errorHandler");
 const { auditMiddleware } = require("./middleware/auditLogger");
+const { setupCSRFMiddleware } = require("./middleware/csrf");
 const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
 const { startSlaChecker } = require("./jobs/slaChecker");
@@ -159,6 +160,9 @@ app.use(globalLimiter);
 
 // Apply audit logging for security-critical operations
 app.use(auditMiddleware);
+
+// Setup CSRF protection
+setupCSRFMiddleware(app);
 
 // Serve uploaded attachments statically
 const path = require("path");
