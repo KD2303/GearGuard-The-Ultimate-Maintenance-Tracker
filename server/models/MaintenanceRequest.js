@@ -32,6 +32,8 @@ const MaintenanceRequestSchema = new Schema({
     default: false,
   },
   slaDeadline: { type: Date },
+  slaBreachProbability: { type: Number, default: 0, min: 0, max: 100 },
+  preBreachWarningSent: { type: Boolean, default: false },
   slaBreached: { type: Boolean, default: false },
   slaNotified: { type: Boolean, default: false },
   attachments: [
@@ -111,6 +113,7 @@ MaintenanceRequestSchema.index({ assignedToId: 1 });
 MaintenanceRequestSchema.index({ teamId: 1 });
 MaintenanceRequestSchema.index({ scheduledDate: 1 });
 MaintenanceRequestSchema.index({ slaDeadline: 1 });
+MaintenanceRequestSchema.index({ slaBreachProbability: -1 });
 MaintenanceRequestSchema.index({ slaBreached: 1 });
 MaintenanceRequestSchema.index({ subject: 'text', requestNumber: 'text', description: 'text' });
 

@@ -1185,12 +1185,11 @@ exports.deleteComment = async (req, res) => {
   }
 };
 
-exports.smartAssignRequest = async (req, res) => {
-  try {
-    const request = await MaintenanceRequest.findById(req.params.id);
-    if (!request) {
-      return res.status(404).json({ error: "Request not found" });
-    }
+exports.smartAssignInternal = async (requestId, io) => {
+  const request = await MaintenanceRequest.findById(requestId);
+  if (!request) {
+    throw new Error("Request not found");
+  }
 
     let targetSpecialization = null;
     let teamIds = [];
@@ -1221,15 +1220,15 @@ exports.smartAssignRequest = async (req, res) => {
       teamIds = Array.from(new Set([...teamIds, ...matchingTeamIds]));
     }
 
-    if (teamIds.length === 0) {
-      return res.status(400).json({ error: "Could not determine required specialization or team for this request. Please assign a team manually." });
-    }
+  if (teamIds.length === 0) {
+    throw new Error("Could not determine required specialization or team for this request. Please assign a team manually.");
+  }
 
-    // 2. Find All Active Technicians in these Teams
-    const technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
-    if (technicians.length === 0) {
-      return res.status(404).json({ error: "No active technicians found for the required specialization. Please assign manually." });
-    }
+  // 2. Find All Active Technicians in these Teams
+  const technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+  if (technicians.length === 0) {
+    throw new Error("No active technicians found for the required specialization. Please assign manually.");
+  }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
     const activeRequests = await MaintenanceRequest.find({
@@ -1262,13 +1261,11 @@ exports.smartAssignRequest = async (req, res) => {
       }
     }
 
-    // 5. Apply capacity protection limit (MAX_WORKLOAD = 5)
-    const MAX_WORKLOAD = 5;
-    if (minWorkload >= MAX_WORKLOAD) {
-      return res.status(400).json({ 
-        error: `All qualified technicians for specialization "${targetSpecialization || 'this team'}" are at maximum workload capacity (${MAX_WORKLOAD}+ active tickets). Please assign manually.` 
-      });
-    }
+  // 5. Apply capacity protection limit (MAX_WORKLOAD = 5)
+  const MAX_WORKLOAD = 5;
+  if (minWorkload >= MAX_WORKLOAD) {
+    throw new Error(`All qualified technicians for specialization "${targetSpecialization || 'this team'}" are at maximum workload capacity (${MAX_WORKLOAD}+ active tickets). Please assign manually.`);
+  }
 
     // Preserve old document for logging
     const oldRequest = await MaintenanceRequest.findById(request._id);
@@ -1291,40 +1288,47 @@ exports.smartAssignRequest = async (req, res) => {
       relatedRequestId: request._id,
     });
 
-    // 8. Log Audit Records
-    await auditLog({
-      entityType: 'MaintenanceRequest',
-      entityId: request._id,
-      action: 'UPDATE',
-      oldDoc: oldRequest,
-      newDoc: request.toObject(),
-      userId: req.user?._id,
-      userName: "System Auto-Assigner"
-    });
+  // 8. Log Audit Records
+  await auditLog({
+    entityType: 'MaintenanceRequest',
+    entityId: request._id,
+    action: 'UPDATE',
+    oldDoc: oldRequest,
+    newDoc: request.toObject(),
+    userId: null,
+    userName: "System Auto-Assigner"
+  });
 
-    // 9. Emit Socket.io update
-    const io = req.app.get("socketio");
-    const updatedRequest = await MaintenanceRequest.findById(request._id)
-      .populate('equipment')
-      .populate('team')
-      .populate('assignedTo');
+  // 9. Emit Socket.io update
+  const updatedRequest = await MaintenanceRequest.findById(request._id)
+    .populate('equipment')
+    .populate('team')
+    .populate('assignedTo');
 
-    await NotificationService.notifyRequestChange(
-      io, 
-      "request_updated", 
-      updatedRequest, 
-      `Automatically assigned to ${bestTechnician.name}`
+  await NotificationService.notifyRequestChange(
+    io, 
+    "request_updated", 
+    updatedRequest, 
+    `Automatically assigned to ${bestTechnician.name}`
+  );
+
+  if (request.equipmentId) {
+    calculateAndUpdateHealthScore(request.equipmentId).catch(err => 
+      console.error('Background health score update failed:', err)
     );
+  }
 
-    if (request.equipmentId) {
-      calculateAndUpdateHealthScore(request.equipmentId).catch(err => 
-        console.error('Background health score update failed:', err)
-      );
-    }
+  return updatedRequest;
+};
 
+exports.smartAssignRequest = async (req, res) => {
+  try {
+    const io = req.app.get("socketio");
+    const updatedRequest = await exports.smartAssignInternal(req.params.id, io);
     res.status(200).json(updatedRequest);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const status = error.message.includes('not found') ? 404 : 400;
+    res.status(status).json({ error: error.message });
   }
 };
 
