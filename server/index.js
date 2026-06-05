@@ -272,9 +272,11 @@ const startServer = async () => {
 
     const { startHealthScoreCron } = require('./cron/healthScoreCron');
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');
+    const webhookDispatcher = require('./jobs/webhookDispatcher');
     
     startHealthScoreCron();
     startPreventiveSchedulerCron(io);
+    webhookDispatcher.start();
 
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`\n🚀 GearGuard Server Running!`);
@@ -289,9 +291,11 @@ const startServer = async () => {
   }
 };
 
-// Graceful shutdown
 const shutdown = () => {
   console.log("Gracefully shutting down server...");
+  const webhookDispatcher = require('./jobs/webhookDispatcher');
+  webhookDispatcher.stop();
+  
   server.close(() => {
     console.log("HTTP server closed.");
     mongoose.connection.close(false).then(() => {

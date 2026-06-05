@@ -16,6 +16,7 @@ const ShiftHandover = require('./ShiftHandover');
 const Counter = require('./Counter');
 const Task = require('./Task');
 const KeyRotationJob = require('./KeyRotationJob');
+const WebhookEvent = require('./WebhookEvent');
 
 const syncDatabase = async () => {
   try {
@@ -40,7 +41,8 @@ const syncDatabase = async () => {
         ShiftHandover.createIndexes ? ShiftHandover.createIndexes() : Promise.resolve(),
         Counter.createIndexes ? Counter.createIndexes() : Promise.resolve(),
         Task.createIndexes ? Task.createIndexes() : Promise.resolve(),
-        KeyRotationJob.createIndexes ? KeyRotationJob.createIndexes() : Promise.resolve()
+        KeyRotationJob.createIndexes ? KeyRotationJob.createIndexes() : Promise.resolve(),
+        WebhookEvent.createIndexes ? WebhookEvent.createIndexes() : Promise.resolve()
       ]);
     } catch (idxErr) {
       // ignore index creation errors
@@ -71,5 +73,6 @@ module.exports = {
   ShiftHandover,
   Counter,
   Task,
-  KeyRotationJob
+  KeyRotationJob,
+  WebhookEvent
 };
