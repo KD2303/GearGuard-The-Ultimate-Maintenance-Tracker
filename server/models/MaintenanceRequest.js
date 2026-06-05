@@ -57,6 +57,10 @@ const MaintenanceRequestSchema = new Schema({
     audioDuration: { type: Number },
     timestamp: { type: Date, default: Date.now }
   }],
+  checkedOutTools: [{
+    toolId: { type: Schema.Types.ObjectId, ref: 'Tool', required: true },
+    checkedOutAt: { type: Date, default: Date.now }
+  }],
   checklist: [{
     text: { type: String, required: true },
     isCompleted: { type: Boolean, default: false }

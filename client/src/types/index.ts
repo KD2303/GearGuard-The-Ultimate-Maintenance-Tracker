@@ -128,6 +128,7 @@ export interface MaintenanceRequest {
   }[];
   downtimeDurationHours?: number;
   totalDowntimeCost?: number;
+  checkedOutTools?: { toolId: string | Tool; checkedOutAt: string }[];
   attachments?: {
     filename: string;
     fileUrl: string;
@@ -313,6 +314,15 @@ export interface AuditLog {
   createdAt: string;
 }
 
+export interface Tool {
+  _id?: string;
+  id: string;
+  name: string;
+  serialNumber: string;
+  purchaseCost?: number;
+  status: 'Available' | 'Checked Out' | 'In Repair' | 'Lost';
+  createdAt?: string;
+  updatedAt?: string;
 export interface ShiftHandover {
   _id: string;
   shiftDate: string;

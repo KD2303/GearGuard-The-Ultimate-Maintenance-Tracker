@@ -10,6 +10,7 @@ import { Plus, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import TicketComments from './TicketComments';
+import RequestToolsTab from './RequestToolsTab';
 import { MaintenanceRequest } from '../types';
 import ImageUploadZone from './ImageUploadZone';
 import ImageGallery from './ImageGallery';
@@ -33,7 +34,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   editRequestId,
 }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'tools'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
@@ -417,6 +418,18 @@ const RequestModal: React.FC<RequestModalProps> = ({
             onClick={() => setActiveTab('comments')}
           >
             Comments
+          </button>
+          <button
+            type="button"
+            className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'tools' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+            onClick={() => setActiveTab('tools')}
+          >
+            Tools
+            {existingRequest?.checkedOutTools && existingRequest.checkedOutTools.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded-full text-xs">
+                {existingRequest.checkedOutTools.length}
+              </span>
+            )}
           </button>
         </div>
       )}
@@ -876,6 +889,21 @@ const RequestModal: React.FC<RequestModalProps> = ({
 
       {activeTab === 'comments' && existingRequest && (
         <TicketComments request={existingRequest} currentUser={user} />
+      )}
+
+      {activeTab === 'tools' && existingRequest && (
+        <RequestToolsTab 
+          requestRecord={existingRequest} 
+          onUpdate={() => {
+            // refresh data
+            requestService.getById(existingRequest._id || existingRequest.id)
+              .then(req => {
+                setExistingRequest(req);
+                onSuccess(); // bubble up
+              })
+              .catch(console.error);
+          }} 
+        />
       )}
     </Modal>
   );

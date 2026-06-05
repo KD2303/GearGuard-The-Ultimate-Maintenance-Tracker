@@ -21,6 +21,7 @@ import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import ProcurementDashboard from './pages/ProcurementDashboard';
 import FloorPlan from './pages/FloorPlan';
 import FinancialDashboard from './pages/FinancialDashboard';
+import ToolCrib from './pages/ToolCrib';
 import DowntimeGantt from './pages/DowntimeGantt';
 import ShiftHandoverLogbook from './pages/ShiftHandoverLogbook';
 
@@ -62,6 +63,7 @@ function AppContent() {
         <Route path="/predictive" element={<PredictiveDashboard />} />
         <Route path="/procurement" element={<ProcurementDashboard />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/tool-crib" element={<ToolCrib />} />
       </Routes>
     </Layout>
   );

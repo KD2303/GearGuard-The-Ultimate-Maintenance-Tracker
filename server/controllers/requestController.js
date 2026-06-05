@@ -4,6 +4,7 @@ const {
   MaintenanceTeam,
   TeamMember,
   SparePart,
+  Tool,
 } = require("../models");
 const { logActivity } = require("../utils/logActivity");
 const { auditLog } = require("../utils/auditLogger");
@@ -700,6 +701,12 @@ exports.updateRequestStage = async (req, res) => {
       userId: req.user?._id,
       userName: request.createdBy?.name || ""
     });
+
+    if (stage === "repaired" || stage === "scrap") {
+      if (request.checkedOutTools && request.checkedOutTools.length > 0) {
+        return res.status(400).json({ error: "Cannot close ticket. All tools must be returned first." });
+      }
+    }
 
     const updateData = { stage };
     if (partsCost !== undefined) updateData.partsCost = partsCost;
@@ -1420,6 +1427,29 @@ exports.addPartToRequest = async (req, res) => {
   }
 };
 
+exports.checkoutTool = async (req, res) => {
+  try {
+    const { toolId } = req.body;
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const tool = await Tool.findById(toolId);
+    if (!tool) return res.status(404).json({ error: "Tool not found" });
+
+    if (tool.status !== 'Available') {
+      return res.status(400).json({ error: "Tool is not available for checkout" });
+    }
+
+    tool.status = 'Checked Out';
+    await tool.save();
+
+    request.checkedOutTools.push({ toolId: tool._id, checkedOutAt: new Date() });
+    await request.save();
+
+    const updatedReq = await MaintenanceRequest.findById(request._id)
+      .populate('checkedOutTools.toolId');
+
+    res.status(200).json(updatedReq);
 const isAuthorizedForRequest = (request, user) => {
   if (user.role === 'Admin' || user.role === 'Manager') return true;
   if (request.assignedToId && request.assignedToId.toString() === user._id.toString()) return true;
@@ -1491,6 +1521,25 @@ exports.listAttachments = async (req, res) => {
   }
 };
 
+exports.returnTool = async (req, res) => {
+  try {
+    const { toolId } = req.body;
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const tool = await Tool.findById(toolId);
+    if (!tool) return res.status(404).json({ error: "Tool not found" });
+
+    request.checkedOutTools = request.checkedOutTools.filter(t => t.toolId.toString() !== toolId);
+    await request.save();
+
+    tool.status = 'Available';
+    await tool.save();
+
+    const updatedReq = await MaintenanceRequest.findById(request._id)
+      .populate('checkedOutTools.toolId');
+
+    res.status(200).json(updatedReq);
 exports.downloadAttachment = async (req, res) => {
   try {
     const request = await MaintenanceRequest.findById(req.params.id);
