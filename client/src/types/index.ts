@@ -136,6 +136,8 @@ export interface MaintenanceRequest {
   }[];
   checklist?: { _id?: string; text: string; isCompleted: boolean }[];
   slaDeadline?: string;
+  slaBreachProbability?: number;
+  preBreachWarningSent?: boolean;
   slaBreached?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -323,6 +325,8 @@ export interface Tool {
   status: 'Available' | 'Checked Out' | 'In Repair' | 'Lost';
   createdAt?: string;
   updatedAt?: string;
+}
+
 export interface ShiftHandover {
   _id: string;
   shiftDate: string;

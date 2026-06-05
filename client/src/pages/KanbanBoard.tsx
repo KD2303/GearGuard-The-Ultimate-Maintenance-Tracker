@@ -164,6 +164,8 @@ const RequestCard: React.FC<
       className={`kanban-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-none border-2 mb-3 cursor-pointer ${
         request.slaBreached 
           ? "border-red-500 shadow-red-500/20"
+          : (request.slaBreachProbability && request.slaBreachProbability >= 85 && request.stage !== "repaired" && request.stage !== "scrap")
+          ? "border-orange-500 shadow-orange-500/20 bg-orange-50 dark:bg-orange-900/10 animate-pulse-border"
           : isOverdue(
           request.scheduledDate,
           request.stage
@@ -262,6 +264,12 @@ const RequestCard: React.FC<
       )}
 
       <SlaTimer slaDeadline={request.slaDeadline} slaBreached={request.slaBreached} stage={request.stage} />
+
+      {(request.slaBreachProbability && request.slaBreachProbability >= 85 && !request.slaBreached && request.stage !== "repaired" && request.stage !== "scrap") ? (
+        <div className="text-xs text-orange-600 dark:text-orange-400 font-bold mt-2 flex items-center bg-orange-100 dark:bg-orange-900/30 px-2 py-1 rounded w-fit border border-orange-200 dark:border-orange-800/50 shadow-sm">
+          ⚠️ High SLA Risk ({request.slaBreachProbability}%)
+        </div>
+      ) : null}
 
       {request.checklist && request.checklist.length > 0 && (
         <div className="mt-3">
