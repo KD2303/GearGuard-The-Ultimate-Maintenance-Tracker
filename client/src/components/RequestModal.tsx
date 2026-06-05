@@ -5,14 +5,16 @@ import { CreateMaintenanceRequestDto, Equipment, MaintenanceTeam, TeamMember, Sp
 import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
-import { uploadService } from '../services/uploadService';
 import { inventoryService } from '../services/inventoryService';
 import { Plus, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import TicketComments from './TicketComments';
+import RequestToolsTab from './RequestToolsTab';
 import { MaintenanceRequest } from '../types';
 import { ShieldCheck, CheckCircle } from 'lucide-react';
+import ImageUploadZone from './ImageUploadZone';
+import ImageGallery from './ImageGallery';
 interface RequestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -34,6 +36,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'tools'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
@@ -327,41 +330,48 @@ const RequestModal: React.FC<RequestModalProps> = ({
     setLoading(true);
 
     try {
-      // FUTURE:
-      // Upload attachments here
+      if (editRequestId) {
+        await requestService.update(editRequestId, {
+          ...formData,
+        });
 
-      let uploadedAttachments = [];
+        if (attachments.length > 0) {
+          await requestService.uploadAttachments(editRequestId, attachments);
+        }
+      } else {
+        const newRequest = await requestService.create({
+          ...formData,
+          partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
+        });
 
-if (attachments.length > 0) {
-  uploadedAttachments =
-    await uploadService.uploadAttachments(
-      attachments
-    );
-}
-
-if (editRequestId) {
-  await requestService.update(editRequestId, {
-    ...formData,
-    // Add logic if attachments are updated in edit mode
-  });
-} else {
-  await requestService.create({
-    ...formData,
-    attachments: uploadedAttachments,
-    partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
-  });
-}
+        if (attachments.length > 0 && newRequest._id) {
+          await requestService.uploadAttachments(newRequest._id, attachments);
+        }
+      }
 
       onSuccess();
     } catch (error) {
       console.error(
-        'Failed to create request:',
+        'Failed to create/update request:',
         error
       );
 
-      alert('Failed to create request');
+      alert('Failed to save request');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!editRequestId) return;
+    try {
+      await requestService.deleteAttachment(editRequestId, attachmentId);
+      setExistingRequest(prev => prev ? {
+        ...prev,
+        attachments: prev.attachments?.filter(a => (a as any)._id !== attachmentId)
+      } : prev);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -425,6 +435,18 @@ if (editRequestId) {
               )}
             </button>
           )}
+          <button
+            type="button"
+            className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'tools' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+            onClick={() => setActiveTab('tools')}
+          >
+            Tools
+            {existingRequest?.checkedOutTools && existingRequest.checkedOutTools.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded-full text-xs">
+                {existingRequest.checkedOutTools.length}
+              </span>
+            )}
+          </button>
         </div>
       )}
 
@@ -806,49 +828,31 @@ if (editRequestId) {
 
         {/* Attachments */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">
             Attachments
           </label>
 
-          <input
-            type="file"
-            multiple
-            accept=".png,.jpg,.jpeg,.pdf"
-            onChange={handleFileChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          />
-
-          <p className="text-xs text-gray-500 mt-1">
-            Upload up to 5
-            images/PDFs (max 5MB
-            each)
-          </p>
-
-          {attachments.length >
-            0 && (
-            <div className="mt-3 space-y-2">
-              {attachments.map(
-                (file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between px-3 py-2 bg-gray-100 rounded-md"
-                  >
-                    <span className="text-sm truncate text-gray-900 dark:text-white">
-                      {file.name}
-                    </span>
-
-                    <span className="text-xs text-gray-500">
-                      {(
-                        file.size /
-                        1024
-                      ).toFixed(1)}{' '}
-                      KB
-                    </span>
-                  </div>
-                )
-              )}
+          {existingRequest?.attachments && existingRequest.attachments.length > 0 && (
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-800">
+              <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Existing Attachments</h4>
+              <ImageGallery 
+                attachments={existingRequest.attachments} 
+                onDelete={handleDeleteAttachment} 
+              />
             </div>
           )}
+
+          <div className="mt-2">
+            <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">
+              Upload New Attachments
+            </h4>
+            <ImageUploadZone 
+              files={attachments} 
+              onChange={setAttachments} 
+              maxFiles={5} 
+              maxSizeMB={5} 
+            />
+          </div>
         </div>
 
         {/* Scheduled Date */}
@@ -891,8 +895,8 @@ if (editRequestId) {
             disabled={loading}
           >
             {loading
-              ? 'Creating...'
-              : 'Create Request'}
+              ? 'Saving...'
+              : (editRequestId ? 'Save Changes' : 'Create Request')}
           </Button>
         </div>
       </form>
@@ -954,6 +958,19 @@ if (editRequestId) {
             </div>
           )}
         </div>
+      {activeTab === 'tools' && existingRequest && (
+        <RequestToolsTab 
+          requestRecord={existingRequest} 
+          onUpdate={() => {
+            // refresh data
+            requestService.getById(existingRequest._id || existingRequest.id)
+              .then(req => {
+                setExistingRequest(req);
+                onSuccess(); // bubble up
+              })
+              .catch(console.error);
+          }} 
+        />
       )}
     </Modal>
   );

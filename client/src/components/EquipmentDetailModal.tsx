@@ -16,6 +16,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { QrCode } from 'lucide-react';
 import TelemetryChart from './telemetry/TelemetryChart';
 import AlertRulesConfig from './telemetry/AlertRulesConfig';
+import EquipmentDocumentsTab from './EquipmentDocumentsTab';
+import { FileText } from 'lucide-react';
 
 interface EquipmentDetailModalProps {
   equipment: Equipment;
@@ -76,9 +78,33 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
   const openRequests = maintenanceHistory.filter((req) => req.stage !== 'repaired' && req.stage !== 'scrap');
 
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents'>('overview');
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={equipment.name} size="xl">
-      <div className="space-y-6">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6 space-x-4 px-2">
+        <button 
+          onClick={() => setActiveTab('overview')} 
+          className={`pb-2 px-2 text-sm font-medium flex items-center transition-colors ${activeTab === 'overview' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+        >
+          <Wrench className="h-4 w-4 mr-2" />
+          Overview & History
+        </button>
+        <button 
+          onClick={() => setActiveTab('documents')} 
+          className={`pb-2 px-2 text-sm font-medium flex items-center transition-colors ${activeTab === 'documents' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+        >
+          <FileText className="h-4 w-4 mr-2" />
+          Documents & Manuals
+          {equipment.documents && equipment.documents.length > 0 && (
+            <span className="ml-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded-full text-xs">
+              {equipment.documents.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      <div className={activeTab === 'overview' ? 'space-y-6' : 'hidden'}>
         {/* Equipment Details */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
@@ -283,8 +309,13 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             <EquipmentHistoryTimeline history={equipment.history || []} />
           </div>
         </div>
+      </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div className={activeTab === 'documents' ? 'py-2' : 'hidden'}>
+        <EquipmentDocumentsTab equipment={equipment} onUpdate={onUpdate || (() => {})} />
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700 mt-6">
           <div style={{ display: 'none' }}>
             <QRCodeCanvas
               id="qr-gen"
@@ -314,7 +345,6 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           </Button>
           <Button variant="secondary" onClick={onClose}>Close</Button>
         </div>
-      </div>
       {isRequestModalOpen && (
         <RequestModal
           isOpen={isRequestModalOpen}

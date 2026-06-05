@@ -16,6 +16,12 @@ router.route('/')
 router.route('/test')
   .post(webhookController.testWebhook);
 
+router.route('/dlq/failed')
+  .get(webhookController.getDlq);
+
+router.route('/dlq/:id/replay')
+  .post(webhookController.replayDlqEvent);
+
 router.route('/:id')
   .put(webhookController.updateWebhook)
   .delete(webhookController.deleteWebhook);

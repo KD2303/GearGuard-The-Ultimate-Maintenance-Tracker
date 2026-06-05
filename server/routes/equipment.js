@@ -3,6 +3,11 @@ const router = express.Router();
 
 const protect = require('../middleware/auth');
 const { authorizeRoles } = require("../middleware/role");
+const { validate } = require('../middleware/validation');
+const {
+  createEquipmentRules,
+  updateEquipmentRules,
+} = require('../validators/equipmentValidator');
 
 const equipmentController = require('../controllers/equipmentController');
 
@@ -25,6 +30,8 @@ router.get('/:id/maintenance', equipmentController.getEquipmentMaintenanceHistor
 router.post(
   '/',
   authorizeRoles("Admin", "Manager"),
+  createEquipmentRules,
+  validate,
   equipmentController.createEquipment
 );
 
@@ -32,6 +39,8 @@ router.post(
 router.put(
   '/:id',
   authorizeRoles("Admin", "Manager"),
+  updateEquipmentRules,
+  validate,
   equipmentController.updateEquipment
 );
 

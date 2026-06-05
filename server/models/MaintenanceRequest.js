@@ -1,5 +1,6 @@
 const { mongoose } = require('../config/database');
 const { Schema } = mongoose;
+const { encryptField, decryptField } = require('../utils/fieldEncryption');
 
 const MaintenanceRequestSchema = new Schema({
   requestNumber: { type: String, required: true, unique: true },
@@ -14,7 +15,14 @@ const MaintenanceRequestSchema = new Schema({
   cost: { type: Number },
   partsCost: { type: Number, default: 0 },
   laborCost: { type: Number, default: 0 },
-  notes: { type: String },
+  // notes holds sensitive repair findings and cost commentary. It is encrypted
+  // at rest with AES-256-GCM via transparent get and set functions. It is not
+  // part of any text index, so encryption does not affect search.
+  notes: {
+    type: String,
+    set: encryptField,
+    get: decryptField,
+  },
   overdueNotified: {
     type: Boolean,
     default: false,
@@ -23,6 +31,11 @@ const MaintenanceRequestSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  slaDeadline: { type: Date },
+  slaBreachProbability: { type: Number, default: 0, min: 0, max: 100 },
+  preBreachWarningSent: { type: Boolean, default: false },
+  slaBreached: { type: Boolean, default: false },
+  slaNotified: { type: Boolean, default: false },
   attachments: [
   {
     filename: { type: String },
@@ -45,6 +58,10 @@ const MaintenanceRequestSchema = new Schema({
     audioUrl: { type: String },
     audioDuration: { type: Number },
     timestamp: { type: Date, default: Date.now }
+  }],
+  checkedOutTools: [{
+    toolId: { type: Schema.Types.ObjectId, ref: 'Tool', required: true },
+    checkedOutAt: { type: Date, default: Date.now }
   }],
   checklist: [{
     text: { type: String, required: true },
@@ -93,8 +110,10 @@ MaintenanceRequestSchema.virtual('createdBy', {
   justOne: true
 });
 
-MaintenanceRequestSchema.set('toObject', { virtuals: true });
-MaintenanceRequestSchema.set('toJSON', { virtuals: true });
+// getters: true ensures the decrypt getter on notes runs when a document is
+// serialized to an object or to JSON for API responses.
+MaintenanceRequestSchema.set('toObject', { virtuals: true, getters: true });
+MaintenanceRequestSchema.set('toJSON', { virtuals: true, getters: true });
 
 // Indexes for optimized filtered queries
 MaintenanceRequestSchema.index({ stage: 1 });
@@ -103,6 +122,9 @@ MaintenanceRequestSchema.index({ type: 1 });
 MaintenanceRequestSchema.index({ assignedToId: 1 });
 MaintenanceRequestSchema.index({ teamId: 1 });
 MaintenanceRequestSchema.index({ scheduledDate: 1 });
+MaintenanceRequestSchema.index({ slaDeadline: 1 });
+MaintenanceRequestSchema.index({ slaBreachProbability: -1 });
+MaintenanceRequestSchema.index({ slaBreached: 1 });
 MaintenanceRequestSchema.index({ subject: 'text', requestNumber: 'text', description: 'text' });
 
 module.exports = mongoose.model('MaintenanceRequest', MaintenanceRequestSchema);

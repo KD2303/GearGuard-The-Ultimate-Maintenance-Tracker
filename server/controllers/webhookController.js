@@ -1,4 +1,5 @@
-const { Webhook } = require('../models');
+const { Webhook, WebhookEvent } = require('../models');
+const { queueWebhookEvent } = require('../services/webhookService');
 const axios = require('axios');
 
 exports.getWebhooks = async (req, res) => {
@@ -84,17 +85,25 @@ exports.testWebhook = async (req, res) => {
     let payload = {};
     const messageText = '🚨 *Test Alert*: This is a test message from GearGuard Webhook Integration Engine.';
 
-    if (provider === 'Slack') {
+    if (provider === 'Slack' || provider === 'Teams') {
       payload = { text: messageText };
     } else if (provider === 'Discord') {
       payload = { content: messageText };
-    } else if (provider === 'Teams') {
-      payload = { text: messageText };
     }
 
-    await axios.post(url, payload, { timeout: 5000 });
+    // Rather than directly posting, let's use the new queue to test the dispatcher!
+    // We pass 'test_event' to explicitly queue it just for this webhook.
+    const newWebhookEvent = await WebhookEvent.create({
+      webhookId: null, // Test event, no active subscriber needed
+      provider,
+      url,
+      payload,
+      status: 'pending',
+      attempts: 0,
+      errorLog: []
+    });
 
-    res.status(200).json({ success: true, message: 'Test webhook sent successfully' });
+    res.status(200).json({ success: true, message: 'Test webhook queued successfully via dispatcher', data: newWebhookEvent });
   } catch (error) {
     console.error('Webhook test failed:', error.message);
     res.status(500).json({ 
@@ -102,5 +111,40 @@ exports.testWebhook = async (req, res) => {
       error: 'Failed to send test webhook', 
       details: error.message 
     });
+  }
+};
+
+exports.getDlq = async (req, res) => {
+  try {
+    const failedEvents = await WebhookEvent.find({ status: 'failed' }).sort({ updatedAt: -1 });
+    res.status(200).json({ success: true, data: failedEvents });
+  } catch (error) {
+    console.error('Failed to get DLQ:', error);
+    res.status(500).json({ success: false, error: 'Server Error fetching DLQ' });
+  }
+};
+
+exports.replayDlqEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await WebhookEvent.findById(id);
+
+    if (!event) {
+      return res.status(404).json({ success: false, error: 'Event not found' });
+    }
+
+    if (event.status !== 'failed') {
+      return res.status(400).json({ success: false, error: 'Only failed events can be replayed' });
+    }
+
+    event.status = 'pending';
+    event.attempts = 0;
+    event.errorLog = [];
+    await event.save();
+
+    res.status(200).json({ success: true, message: 'Event requeued successfully', data: event });
+  } catch (error) {
+    console.error('Failed to replay event:', error);
+    res.status(500).json({ success: false, error: 'Server Error replaying event' });
   }
 };

@@ -74,6 +74,13 @@ const EquipmentSchema = new Schema({
   },
   lotoChecklist: [{
     type: String
+  documents: [{
+    title: { type: String, required: true },
+    fileUrl: { type: String, required: true },
+    fileType: { type: String },
+    docCategory: { type: String, enum: ['Manual', 'Schematic', 'Safety', 'Warranty', 'Other'], default: 'Manual' },
+    uploadedAt: { type: Date, default: Date.now },
+    uploadedBy: { type: String }
   }],
   history: [{
     eventType: { type: String, enum: ['PURCHASED', 'CREATED', 'STATUS_CHANGE', 'REPAIR_COMPLETED', 'ASSIGNED', 'SCRAPPED'], required: true },

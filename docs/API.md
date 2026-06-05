@@ -5,6 +5,32 @@
 http://localhost:5000/api
 ```
 
+## Authentication Endpoints
+
+### Login
+```http
+POST /api/auth/login
+```
+Returns a short-lived Access Token in the JSON body and a long-lived Refresh Token as an `HttpOnly` cookie.
+
+### Refresh Token
+```http
+POST /api/auth/refresh
+```
+Reads the `HttpOnly` refresh token cookie, validates it, and returns a new Access Token in the JSON body alongside rotating the Refresh Token cookie.
+
+### Logout
+```http
+POST /api/auth/logout
+```
+Invalidates the current session and clears the `HttpOnly` refresh token cookie.
+
+### Logout All Devices
+```http
+POST /api/auth/logout-all
+```
+Invalidates all sessions across all devices for the current user and clears the cookie. Requires a valid Access Token.
+
 ## Equipment Endpoints
 
 ### Get All Equipment
@@ -141,13 +167,37 @@ DELETE /api/members/:id
 
 ### Get All Requests
 ```http
-GET /api/requests?stage=new&type=corrective&teamId=uuid
+GET /api/requests?stage=new&type=corrective&teamId=uuid&page=1&limit=20&sortBy=createdAt&sortOrder=desc
 ```
 
 **Query Parameters:**
 - `stage`: Filter by stage (new, in-progress, repaired, scrap)
 - `type`: Filter by type (corrective, preventive)
 - `teamId`: Filter by team
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 20)
+- `sortBy`: Field to sort by (e.g. `createdAt`, `priority`, `stage`)
+- `sortOrder`: `asc` or `desc` (default: `desc`)
+
+**Response:**
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "requestNumber": "REQ-202410-0001",
+      "subject": "Leaking Oil",
+      "stage": "new",
+      "priority": "high",
+      "type": "corrective"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "totalItems": 45,
+  "totalPages": 3
+}
+```
 
 ### Get Request by ID
 ```http

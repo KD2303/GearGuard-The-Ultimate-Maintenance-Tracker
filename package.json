@@ -17,6 +17,7 @@
   "dependencies": {
     "axios": "^1.16.1",
     "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "exceljs": "^4.4.0",
@@ -24,6 +25,7 @@
     "express-rate-limit": "^7.5.1",
     "express-session": "^1.19.0",
     "express-validator": "^7.3.2",
+    "file-type": "^16.5.4",
     "form-data": "^4.0.5",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
@@ -38,6 +40,8 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-microsoft": "^2.1.0",
     "pdfkit": "^0.18.0",
+    "rate-limiter-flexible": "^11.1.0",
+    "redis": "^6.0.0",
     "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"

@@ -21,6 +21,9 @@ import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
 import ProcurementDashboard from './pages/ProcurementDashboard';
 import FloorPlan from './pages/FloorPlan';
 import FinancialDashboard from './pages/FinancialDashboard';
+import ToolCrib from './pages/ToolCrib';
+import DowntimeGantt from './pages/DowntimeGantt';
+import ShiftHandoverLogbook from './pages/ShiftHandoverLogbook';
 
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -48,6 +51,7 @@ function AppContent() {
         <Route path="/requests-all" element={<RequestsPage />} />
         <Route path="/activity" element={<ActivityPage />} />
         <Route path="/calendar" element={<CalendarView />} />
+        <Route path="/downtime" element={<DowntimeGantt />} />
         <Route path="/floor-plan" element={<FloorPlan />} />
         <Route path="/equipment" element={<EquipmentList />} />
         <Route path="/inventory" element={<InventoryList />} />
@@ -55,9 +59,11 @@ function AppContent() {
         <Route path="/vehicles" element={<VehicleList />} />
         <Route path="/teams" element={<TeamsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/shift-handovers" element={<ShiftHandoverLogbook />} />
         <Route path="/predictive" element={<PredictiveDashboard />} />
         <Route path="/procurement" element={<ProcurementDashboard />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/tool-crib" element={<ToolCrib />} />
       </Routes>
     </Layout>
   );
@@ -75,7 +81,33 @@ function App() {
           reverseOrder={false}
           toastOptions={{
             duration: 4000,
-            style: { fontSize: '14px' },
+            style: { 
+              fontSize: '14px',
+              maxWidth: '500px',
+            },
+            // Default styles for light mode
+            success: {
+              style: {
+                background: '#D1FAE5',
+                color: '#065F46',
+                border: '1px solid #6EE7B7',
+              },
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#FFFFFF',
+              },
+            },
+            error: {
+              style: {
+                background: '#FEE2E2',
+                color: '#991B1B',
+                border: '1px solid #FCA5A5',
+              },
+              iconTheme: {
+                primary: '#DC2626',
+                secondary: '#FFFFFF',
+              },
+            },
           }}
         />
       </NotificationProvider>
