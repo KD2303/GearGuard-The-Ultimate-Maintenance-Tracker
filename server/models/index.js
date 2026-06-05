@@ -14,6 +14,7 @@ const PreventiveSchedule = require('./PreventiveSchedule');
 const Tool = require('./Tool');
 const ShiftHandover = require('./ShiftHandover');
 const Counter = require('./Counter');
+const Task = require('./Task');
 
 const syncDatabase = async () => {
   try {
@@ -37,7 +38,8 @@ const syncDatabase = async () => {
         Tool.createIndexes ? Tool.createIndexes() : Promise.resolve()
         ShiftHandover.createIndexes ? ShiftHandover.createIndexes() : Promise.resolve()
         ShiftHandover.createIndexes ? ShiftHandover.createIndexes() : Promise.resolve(),
-        Counter.createIndexes ? Counter.createIndexes() : Promise.resolve()
+        Counter.createIndexes ? Counter.createIndexes() : Promise.resolve(),
+        Task.createIndexes ? Task.createIndexes() : Promise.resolve()
       ]);
     } catch (idxErr) {
       // ignore index creation errors
@@ -67,5 +69,6 @@ module.exports = {
   Tool
   ShiftHandover
   ShiftHandover,
-  Counter
+  Counter,
+  Task
 };

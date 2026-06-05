@@ -1,5 +1,6 @@
 const { mongoose } = require('../config/database');
 const { Schema } = mongoose;
+const { encryptField, decryptField } = require('../utils/fieldEncryption');
 
 const MaintenanceRequestSchema = new Schema({
   requestNumber: { type: String, required: true, unique: true },
@@ -14,7 +15,14 @@ const MaintenanceRequestSchema = new Schema({
   cost: { type: Number },
   partsCost: { type: Number, default: 0 },
   laborCost: { type: Number, default: 0 },
-  notes: { type: String },
+  // notes holds sensitive repair findings and cost commentary. It is encrypted
+  // at rest with AES-256-GCM via transparent get and set functions. It is not
+  // part of any text index, so encryption does not affect search.
+  notes: {
+    type: String,
+    set: encryptField,
+    get: decryptField,
+  },
   overdueNotified: {
     type: Boolean,
     default: false,
@@ -90,8 +98,10 @@ MaintenanceRequestSchema.virtual('createdBy', {
   justOne: true
 });
 
-MaintenanceRequestSchema.set('toObject', { virtuals: true });
-MaintenanceRequestSchema.set('toJSON', { virtuals: true });
+// getters: true ensures the decrypt getter on notes runs when a document is
+// serialized to an object or to JSON for API responses.
+MaintenanceRequestSchema.set('toObject', { virtuals: true, getters: true });
+MaintenanceRequestSchema.set('toJSON', { virtuals: true, getters: true });
 
 // Indexes for optimized filtered queries
 MaintenanceRequestSchema.index({ stage: 1 });

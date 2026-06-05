@@ -1,6 +1,7 @@
 const { PurchaseOrder, SparePart } = require('../models');
 const { ErrorHandler, ERROR_TYPES } = require('../utils/errorHandler');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { auditLog } = require('../utils/auditLogger');
 
 // Get all purchase orders
 exports.getPurchaseOrders = asyncHandler(async (req, res, next) => {
@@ -16,6 +17,15 @@ exports.getPurchaseOrders = asyncHandler(async (req, res, next) => {
 exports.createPurchaseOrder = asyncHandler(async (req, res, next) => {
   const poNumber = 'PO-' + Math.floor(100000 + Math.random() * 900000);
   const po = await PurchaseOrder.create({ ...req.body, poNumber });
+
+  await auditLog({
+    entityType: 'PurchaseOrder',
+    entityId: po._id,
+    action: 'CREATE',
+    userId: req.user?._id,
+    userName: req.user?.name || '',
+  });
+
   res.status(201).json(po);
 });
 
@@ -29,6 +39,10 @@ exports.updatePurchaseOrderStatus = asyncHandler(async (req, res, next) => {
   if (!['draft', 'sent', 'received', 'cancelled'].includes(status)) {
     throw new ErrorHandler("Invalid status provided", ERROR_TYPES.VALIDATION_ERROR);
   }
+
+  // Capture the current status before the transaction for the audit diff.
+  const existingPO = await PurchaseOrder.findById(id).select('status');
+  const previousStatus = existingPO ? existingPO.status : null;
 
   const updatedPO = await withTransactionFallback(async (session) => {
     const po = await PurchaseOrder.findById(id).session(session);
@@ -60,6 +74,18 @@ exports.updatePurchaseOrderStatus = asyncHandler(async (req, res, next) => {
     return await PurchaseOrder.findById(id).session(session);
   });
 
+  // Record the status transition. Approving or receiving a PO is a financially
+  // significant action that commits spend and adjusts inventory.
+  await auditLog({
+    entityType: 'PurchaseOrder',
+    entityId: updatedPO._id,
+    action: 'UPDATE',
+    oldDoc: { status: previousStatus },
+    newDoc: { status },
+    userId: req.user?._id,
+    userName: req.user?.name || '',
+  });
+
   res.status(200).json({
     success: true,
     message: `Purchase Order status updated to ${status}`,
@@ -71,10 +97,18 @@ exports.updatePurchaseOrderStatus = asyncHandler(async (req, res, next) => {
 exports.deletePurchaseOrder = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const po = await PurchaseOrder.findByIdAndDelete(id);
-  
+
   if (!po) {
     throw new ErrorHandler("Purchase Order not found", ERROR_TYPES.NOT_FOUND_ERROR);
   }
+
+  await auditLog({
+    entityType: 'PurchaseOrder',
+    entityId: po._id,
+    action: 'DELETE',
+    userId: req.user?._id,
+    userName: req.user?.name || '',
+  });
 
   res.status(200).json({
     success: true,

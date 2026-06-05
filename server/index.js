@@ -14,6 +14,7 @@ const swaggerUi = require("swagger-ui-express");
 
 const { globalLimiter } = require("./middleware/rateLimiter");
 const { errorMiddleware } = require("./middleware/errorHandler");
+const { csrfProtection } = require("./middleware/csrfProtection");
 const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
 const { startSlaChecker } = require("./jobs/slaChecker");
@@ -44,6 +45,7 @@ const scheduleRoutes = require("./routes/scheduleRoutes");
 const telemetryRoutes = require("./routes/telemetry");
 const syncRoutes = require("./routes/sync");
 const toolRoutes = require("./routes/toolRoutes");
+const taskRoutes = require("./routes/tasks");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -156,6 +158,9 @@ app.use(passport.initialize());
 // Apply global rate limiter to all routes
 app.use(globalLimiter);
 
+// CSRF defense-in-depth: validate Origin/Referer on state-changing requests
+app.use(csrfProtection);
+
 // Serve uploaded attachments statically
 const path = require("path");
 const fs = require("fs");
@@ -194,6 +199,7 @@ const defineRoutes = (router) => {
   router.use("/telemetry", telemetryRoutes);
   router.use("/sync", syncRoutes);
   router.use("/tools", toolRoutes);
+  router.use("/tasks", taskRoutes);
 };
 
 const v1Router = express.Router();
