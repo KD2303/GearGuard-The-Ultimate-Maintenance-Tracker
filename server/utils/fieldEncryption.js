@@ -2,53 +2,61 @@ const crypto = require('crypto');
 
 /**
  * Transparent field-level encryption for sensitive Mongoose string fields.
- *
- * Maintenance notes contain repair findings, safety observations and cost
- * commentary that were stored in plaintext. A database snapshot or backup leak
- * exposed all of it. This module provides AES-256-GCM authenticated encryption
- * that can be attached to a schema path via get and set functions, so the
- * controllers and the rest of the app continue to read and write plain strings.
- *
- * Encrypted values are tagged with a versioned prefix so that:
- *  - decrypt can tell an encrypted value from a legacy plaintext value, which
- *    keeps existing documents readable during a gradual migration;
- *  - the format can evolve in future without ambiguity.
- *
- * Format: enc:v1:<iv_hex>:<authTag_hex>:<ciphertext_hex>
+ * Supports Key Rotation by looking up the key based on the prefix version.
  */
 
 const ALGORITHM = 'aes-256-gcm';
-const PREFIX = 'enc:v1:';
-const IV_BYTES = 12; // 96-bit nonce recommended for GCM
 
-let cachedKey = null;
+// Configuration State
+let keyRegistry = null;
+let primaryVersion = 'v1';
 
 /**
- * Derive a stable 32-byte key. A dedicated key is preferred; if it is not set
- * the function falls back to deriving one from JWT_SECRET so the feature still
- * works in development. Returns null when no secret material is available, in
- * which case encryption is skipped and values pass through unchanged.
+ * Initialize and retrieve the key registry.
  */
-function getKey() {
-  if (cachedKey) return cachedKey;
+function getKeys() {
+  if (keyRegistry) return keyRegistry;
+  
+  keyRegistry = {};
 
-  const explicit = process.env.MAINTENANCE_LOG_ENCRYPTION_KEY;
-  if (explicit && explicit.length >= 64) {
-    cachedKey = Buffer.from(explicit.slice(0, 64), 'hex');
-    return cachedKey;
+  const keysEnv = process.env.MAINTENANCE_LOG_ENCRYPTION_KEYS;
+  if (keysEnv) {
+    try {
+      const parsed = JSON.parse(keysEnv);
+      for (const [v, hex] of Object.entries(parsed)) {
+        if (hex && hex.length >= 64) {
+          keyRegistry[v] = Buffer.from(hex.slice(0, 64), 'hex');
+        }
+      }
+    } catch (e) {
+      console.error('[fieldEncryption] Failed to parse MAINTENANCE_LOG_ENCRYPTION_KEYS as JSON');
+    }
   }
 
-  const fallbackSecret = process.env.JWT_SECRET;
-  if (fallbackSecret) {
-    cachedKey = crypto.createHash('sha256').update(fallbackSecret).digest();
-    return cachedKey;
+  // Fallback for local development or legacy configuration
+  if (Object.keys(keyRegistry).length === 0) {
+    const explicit = process.env.MAINTENANCE_LOG_ENCRYPTION_KEY;
+    if (explicit && explicit.length >= 64) {
+      keyRegistry['v1'] = Buffer.from(explicit.slice(0, 64), 'hex');
+    } else {
+      const fallbackSecret = process.env.JWT_SECRET;
+      if (fallbackSecret) {
+        keyRegistry['v1'] = crypto.createHash('sha256').update(fallbackSecret).digest();
+      }
+    }
   }
 
-  return null;
+  primaryVersion = process.env.PRIMARY_ENCRYPTION_VERSION || 'v1';
+  if (!keyRegistry[primaryVersion]) {
+    // Default to the first available key if primary is not found
+    primaryVersion = Object.keys(keyRegistry)[0] || 'v1';
+  }
+
+  return keyRegistry;
 }
 
 function isEncrypted(value) {
-  return typeof value === 'string' && value.startsWith(PREFIX);
+  return typeof value === 'string' && value.startsWith('enc:v');
 }
 
 function encryptField(plaintext) {
@@ -56,16 +64,28 @@ function encryptField(plaintext) {
     return plaintext;
   }
 
-  // Avoid double encryption if a value is written back unchanged.
-  if (isEncrypted(plaintext)) {
-    return plaintext;
-  }
-
-  const key = getKey();
+  const keys = getKeys();
+  const key = keys[primaryVersion];
   if (!key) {
     return plaintext;
   }
 
+  // If already encrypted with the target primary version, return it unchanged.
+  if (isEncrypted(plaintext)) {
+    if (plaintext.startsWith(`enc:${primaryVersion}:`)) {
+      return plaintext;
+    }
+    // If it's encrypted but NOT with the primary version, we must decrypt it first before re-encrypting.
+    // However, Mongoose getters should have already decrypted it if accessed via normal means.
+    // If we somehow get a raw encrypted string of another version here, we decrypt it.
+    plaintext = decryptField(plaintext);
+    if (isEncrypted(plaintext)) {
+      // Decryption failed, we should NOT re-encrypt a broken ciphertext. Return as is.
+      return plaintext;
+    }
+  }
+
+  const IV_BYTES = 12;
   const iv = crypto.randomBytes(IV_BYTES);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
@@ -75,22 +95,27 @@ function encryptField(plaintext) {
   ]);
   const authTag = cipher.getAuthTag();
 
-  return `${PREFIX}${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
+  return `enc:${primaryVersion}:${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
 }
 
 function decryptField(value) {
   if (!isEncrypted(value)) {
-    // Legacy plaintext or empty value: return as is.
-    return value;
+    return value; // Legacy plaintext or empty value
   }
 
-  const key = getKey();
-  if (!key) {
-    return value;
-  }
-
+  const keys = getKeys();
   try {
-    const [, , ivHex, authTagHex, dataHex] = value.split(':');
+    // Format: enc:vX:<iv>:<authTag>:<data>
+    const parts = value.split(':');
+    if (parts.length !== 5) return value; // Invalid format
+
+    const [, version, ivHex, authTagHex, dataHex] = parts;
+    const key = keys[version];
+    if (!key) {
+      console.warn(`[fieldEncryption] Key version '${version}' not found in registry. Returning ciphertext.`);
+      return value;
+    }
+
     const iv = Buffer.from(ivHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
     const data = Buffer.from(dataHex, 'hex');
@@ -106,9 +131,11 @@ function decryptField(value) {
   }
 }
 
+// Ensure the registry is loaded immediately on module require if available
+getKeys();
+
 module.exports = {
   encryptField,
   decryptField,
   isEncrypted,
-  PREFIX,
 };

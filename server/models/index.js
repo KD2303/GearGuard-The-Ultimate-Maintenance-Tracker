@@ -15,6 +15,7 @@ const Tool = require('./Tool');
 const ShiftHandover = require('./ShiftHandover');
 const Counter = require('./Counter');
 const Task = require('./Task');
+const KeyRotationJob = require('./KeyRotationJob');
 
 const syncDatabase = async () => {
   try {
@@ -35,11 +36,11 @@ const syncDatabase = async () => {
         PurchaseOrder.createIndexes ? PurchaseOrder.createIndexes() : Promise.resolve(),
         Webhook.createIndexes ? Webhook.createIndexes() : Promise.resolve(),
         PreventiveSchedule.createIndexes ? PreventiveSchedule.createIndexes() : Promise.resolve(),
-        Tool.createIndexes ? Tool.createIndexes() : Promise.resolve()
-        ShiftHandover.createIndexes ? ShiftHandover.createIndexes() : Promise.resolve()
+        Tool.createIndexes ? Tool.createIndexes() : Promise.resolve(),
         ShiftHandover.createIndexes ? ShiftHandover.createIndexes() : Promise.resolve(),
         Counter.createIndexes ? Counter.createIndexes() : Promise.resolve(),
-        Task.createIndexes ? Task.createIndexes() : Promise.resolve()
+        Task.createIndexes ? Task.createIndexes() : Promise.resolve(),
+        KeyRotationJob.createIndexes ? KeyRotationJob.createIndexes() : Promise.resolve()
       ]);
     } catch (idxErr) {
       // ignore index creation errors
@@ -66,9 +67,9 @@ module.exports = {
   PurchaseOrder,
   Webhook,
   PreventiveSchedule,
-  Tool
-  ShiftHandover
+  Tool,
   ShiftHandover,
   Counter,
-  Task
+  Task,
+  KeyRotationJob
 };
