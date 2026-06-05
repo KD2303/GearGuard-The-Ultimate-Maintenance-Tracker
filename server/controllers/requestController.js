@@ -203,6 +203,31 @@ exports.createRequest = async (req, res) => {
     const payload = sanitizeBody(req.body);
     const requestNumber = await generateRequestNumber();
 
+    let equipmentDoc = null;
+    let oldEquipmentStatus = null;
+
+    if (payload.equipmentId) {
+      equipmentDoc = await Equipment.findById(payload.equipmentId)
+        .populate("maintenanceTeam")
+        .populate("defaultTechnician");
+
+      if (equipmentDoc) {
+        oldEquipmentStatus = equipmentDoc.status;
+
+        if (!payload.teamId && equipmentDoc.maintenanceTeamId)
+          payload.teamId = equipmentDoc.maintenanceTeamId;
+        if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
+          payload.assignedToId = equipmentDoc.defaultTechnicianId;
+
+        await Equipment.findByIdAndUpdate(equipmentDoc._id, {
+          $set: { status: "under-maintenance" },
+          $push: { history: {
+            eventType: 'STATUS_CHANGE',
+            description: `Status changed to under-maintenance (Request Created)`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          }}
+        });
     const requestWithRelations = await withTransactionFallback(async (session) => {
       let equipmentDoc = null;
       let oldEquipmentStatus = null;
@@ -388,6 +413,43 @@ exports.updateRequest = async (req, res) => {
     const prevRequest = await MaintenanceRequest.findById(req.params.id);
     if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
+    const request = await MaintenanceRequest.findById(req.params.id)
+      .populate("equipment")
+      .populate("createdBy", "name email");
+
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const prevStage = request.stage;
+    const prevPriority = request.priority;
+
+    // Handle stage side-effects (equipment status updates)
+    if (payload.stage) {
+      if (payload.stage === "repaired") {
+        payload.completedDate = new Date();
+        if (request.equipmentId) {
+          await Equipment.findByIdAndUpdate(request.equipmentId, {
+            $set: { status: "active" },
+            $push: { history: {
+              eventType: 'REPAIR_COMPLETED',
+              description: `Request marked as repaired. Status changed to active.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
+          });
+        }
+      }
+      if (payload.stage === "scrap") {
+        payload.completedDate = new Date();
+        if (request.equipmentId) {
+          await Equipment.findByIdAndUpdate(request.equipmentId, {
+            $set: { status: "scrapped" },
+            $push: { history: {
+              eventType: 'SCRAPPED',
+              description: `Request marked as scrap. Status changed to scrapped.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
+          });
     // Non-transactional block removed
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
@@ -617,6 +679,9 @@ exports.updateRequestStage = async (req, res) => {
       userName: request.createdBy?.name || ""
     });
 
+    if (stage === "in-progress" && request.equipment?.lotoRequired) {
+      if (!request.lotoAudit || !request.lotoAudit.isCompleted) {
+        return res.status(400).json({ error: "LOTO Safety Audit is required before starting work on this equipment." });
     if (stage === "repaired" || stage === "scrap") {
       if (request.checkedOutTools && request.checkedOutTools.length > 0) {
         return res.status(400).json({ error: "Cannot close ticket. All tools must be returned first." });
@@ -1346,6 +1411,26 @@ exports.addPartToRequest = async (req, res) => {
   }
 };
 
+exports.submitLOTO = async (req, res) => {
+  try {
+    const { checklistResponses, proofImageUrl } = req.body;
+    const request = await MaintenanceRequest.findById(req.params.id).populate('equipment');
+    
+    if (!request) return res.status(404).json({ error: "Request not found" });
+    if (!request.equipment?.lotoRequired) {
+      return res.status(400).json({ error: "LOTO is not required for this equipment." });
+    }
+
+    request.lotoAudit = {
+      isCompleted: true,
+      completedAt: new Date(),
+      completedBy: req.user?._id,
+      proofImageUrl,
+      checklistResponses
+    };
+
+    await request.save();
+    res.status(200).json(request);
 exports.checkoutTool = async (req, res) => {
   try {
     const { toolId } = req.body;

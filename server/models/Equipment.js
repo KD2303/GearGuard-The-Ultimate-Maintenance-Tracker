@@ -68,6 +68,12 @@ const EquipmentSchema = new Schema({
     type: Number,
     default: 0
   },
+  lotoRequired: {
+    type: Boolean,
+    default: false
+  },
+  lotoChecklist: [{
+    type: String
   documents: [{
     title: { type: String, required: true },
     fileUrl: { type: String, required: true },

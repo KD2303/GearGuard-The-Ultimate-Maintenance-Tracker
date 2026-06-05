@@ -37,6 +37,8 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
     purchasePrice: 0,
     expectedLifespanYears: 5,
     salvageValue: 0,
+    lotoRequired: false,
+    lotoChecklist: [],
   });
 
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
@@ -104,6 +106,8 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
         purchasePrice: formData.purchasePrice || 0,
         expectedLifespanYears: formData.expectedLifespanYears || 5,
         salvageValue: formData.salvageValue || 0,
+        lotoRequired: formData.lotoRequired,
+        lotoChecklist: formData.lotoChecklist?.filter(item => item.trim() !== "") || [],
       };
 
       await equipmentService.create(payload);
@@ -465,6 +469,61 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
             className="input-dark"
             placeholder="e.g. 150"
           />
+        </div>
+
+        <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
+          <div className="flex items-center mb-3">
+            <input
+              type="checkbox"
+              id="lotoRequired"
+              checked={formData.lotoRequired}
+              onChange={(e) => setFormData({ ...formData, lotoRequired: e.target.checked })}
+              className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+            />
+            <label htmlFor="lotoRequired" className="ml-2 block text-sm font-bold text-red-800 dark:text-red-400">
+              Lockout/Tagout (LOTO) Safety Audit Required
+            </label>
+          </div>
+          
+          {formData.lotoRequired && (
+            <div className="mt-3 pl-6 space-y-2">
+              <label className="block text-xs font-semibold text-red-700 dark:text-red-300">
+                Safety Checklist Steps
+              </label>
+              {(formData.lotoChecklist || []).map((step, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={step}
+                    onChange={(e) => {
+                      const newChecklist = [...(formData.lotoChecklist || [])];
+                      newChecklist[idx] = e.target.value;
+                      setFormData({ ...formData, lotoChecklist: newChecklist });
+                    }}
+                    placeholder={`e.g. "Main power disconnected"`}
+                    className="flex-1 px-3 py-1.5 border border-red-200 dark:border-red-900/50 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 bg-white dark:bg-gray-800 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newChecklist = (formData.lotoChecklist || []).filter((_, i) => i !== idx);
+                      setFormData({ ...formData, lotoChecklist: newChecklist });
+                    }}
+                    className="text-red-500 hover:text-red-700 text-sm font-medium px-2"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, lotoChecklist: [...(formData.lotoChecklist || []), ""] })}
+                className="text-xs font-bold text-red-600 hover:text-red-700 mt-2"
+              >
+                + Add Checklist Step
+              </button>
+            </div>
+          )}
         </div>
 
         <div>

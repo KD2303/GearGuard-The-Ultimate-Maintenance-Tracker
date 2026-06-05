@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import TicketComments from './TicketComments';
 import RequestToolsTab from './RequestToolsTab';
 import { MaintenanceRequest } from '../types';
+import { ShieldCheck, CheckCircle } from 'lucide-react';
 import ImageUploadZone from './ImageUploadZone';
 import ImageGallery from './ImageGallery';
 interface RequestModalProps {
@@ -34,6 +35,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   editRequestId,
 }) => {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto'>('details');
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'tools'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
@@ -419,6 +421,20 @@ const RequestModal: React.FC<RequestModalProps> = ({
           >
             Comments
           </button>
+          
+          {existingRequest?.equipment?.lotoRequired && (
+            <button
+              type="button"
+              className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'loto' ? 'border-red-500 text-red-600 dark:text-red-400 dark:border-red-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'} flex items-center`}
+              onClick={() => setActiveTab('loto')}
+            >
+              <ShieldCheck className="h-4 w-4 mr-1.5" />
+              Safety Audit
+              {existingRequest.lotoAudit?.isCompleted && (
+                <CheckCircle className="h-3 w-3 ml-1.5 text-green-500" />
+              )}
+            </button>
+          )}
           <button
             type="button"
             className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'tools' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
@@ -891,6 +907,57 @@ const RequestModal: React.FC<RequestModalProps> = ({
         <TicketComments request={existingRequest} currentUser={user} />
       )}
 
+      {activeTab === 'loto' && existingRequest && (
+        <div className="space-y-6">
+          {!existingRequest.lotoAudit?.isCompleted ? (
+            <div className="p-6 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/50 rounded-xl text-center">
+              <ShieldCheck className="h-12 w-12 text-yellow-500 mx-auto mb-3 opacity-50" />
+              <h3 className="text-lg font-bold text-yellow-800 dark:text-yellow-400 mb-2">Safety Audit Pending</h3>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                This equipment requires a mandatory Lockout/Tagout (LOTO) procedure. The audit will be prompted when moving the ticket to "In Progress".
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 border border-green-200 dark:border-green-900/50 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-green-50 dark:bg-green-900/20 px-4 py-3 border-b border-green-200 dark:border-green-900/50 flex justify-between items-center">
+                <h3 className="font-bold text-green-800 dark:text-green-400 flex items-center">
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  LOTO Safety Audit Completed
+                </h3>
+                <span className="text-xs font-medium text-green-700 dark:text-green-500">
+                  {new Date(existingRequest.lotoAudit.completedAt!).toLocaleString()}
+                </span>
+              </div>
+              
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Checklist Steps Verified</h4>
+                  <ul className="space-y-2">
+                    {existingRequest.lotoAudit.checklistResponses?.map((resp, idx) => (
+                      <li key={idx} className="flex items-start text-sm text-gray-600 dark:text-gray-300">
+                        <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                        {resp.step}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                {existingRequest.lotoAudit.proofImageUrl && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Proof of Lockout</h4>
+                    <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 aspect-video relative flex items-center justify-center">
+                      <img 
+                        src={existingRequest.lotoAudit.proofImageUrl.startsWith('http') ? existingRequest.lotoAudit.proofImageUrl : `http://localhost:5000${existingRequest.lotoAudit.proofImageUrl}`} 
+                        alt="LOTO Proof" 
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       {activeTab === 'tools' && existingRequest && (
         <RequestToolsTab 
           requestRecord={existingRequest} 

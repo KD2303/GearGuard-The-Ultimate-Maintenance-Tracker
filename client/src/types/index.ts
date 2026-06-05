@@ -40,6 +40,8 @@ export interface Equipment {
   healthScoreBreakdown?: { factor: string; deduction: number }[];
   mapCoordinates?: { x: number; y: number };
   hourlyDowntimeCost?: number;
+  lotoRequired?: boolean;
+  lotoChecklist?: string[];
   history?: EquipmentHistoryEvent[];
   documents?: {
     _id?: string;
@@ -128,6 +130,13 @@ export interface MaintenanceRequest {
   }[];
   downtimeDurationHours?: number;
   totalDowntimeCost?: number;
+  lotoAudit?: {
+    isCompleted: boolean;
+    completedAt?: string;
+    completedBy?: string;
+    proofImageUrl?: string;
+    checklistResponses?: { step: string; checked: boolean }[];
+  };
   checkedOutTools?: { toolId: string | Tool; checkedOutAt: string }[];
   attachments?: {
     filename: string;
@@ -166,6 +175,8 @@ export interface CreateEquipmentDto {
   defaultTechnicianId?: string;
   mapCoordinates?: { x: number; y: number };
   hourlyDowntimeCost?: number;
+  lotoRequired?: boolean;
+  lotoChecklist?: string[];
 }
 
 export interface CreateMaintenanceRequestDto {

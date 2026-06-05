@@ -67,6 +67,16 @@ const MaintenanceRequestSchema = new Schema({
     text: { type: String, required: true },
     isCompleted: { type: Boolean, default: false }
   }],
+  lotoAudit: {
+    isCompleted: { type: Boolean, default: false },
+    completedAt: { type: Date },
+    completedBy: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
+    proofImageUrl: { type: String },
+    checklistResponses: [{
+      step: { type: String },
+      checked: { type: Boolean }
+    }]
+  },
   downtimeDurationHours: { type: Number, default: 0 },
   totalDowntimeCost: { type: Number, default: 0 },
   syncId: { type: String, default: null } // UUID from offline device to prevent replay attacks or resolve conflicts
