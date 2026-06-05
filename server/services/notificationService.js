@@ -1,6 +1,7 @@
 const { Notification, Webhook } = require("../models");
 const nodemailer = require("nodemailer");
 const axios = require("axios");
+const { retryWithBackoff } = require("../utils/retryWithBackoff");
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
@@ -98,27 +99,50 @@ class NotificationService {
     }
   }
   /**
-   * Send Email Notification
+   * Send Email Notification with automatic retry on transient failures.
+   *
+   * A single failed send during a brief SMTP outage previously dropped the
+   * alert silently. Sends are now retried with exponential backoff so transient
+   * failures recover on their own. Attempt count and base delay are
+   * configurable via EMAIL_MAX_RETRIES and EMAIL_RETRY_BASE_MS.
    */
   static async sendEmail(to, subject, html) {
-    try {
-      if (!to) {
-        console.error("Recipient email missing");
-        return;
-      }
+    if (!to) {
+      console.error("Recipient email missing");
+      return;
+    }
 
-      const info = await transporter.sendMail({
-        from: process.env.EMAIL_FROM,
-        to,
-        subject,
-        html,
-      });
+    const maxAttempts = parseInt(process.env.EMAIL_MAX_RETRIES, 10) || 4;
+    const baseDelayMs = parseInt(process.env.EMAIL_RETRY_BASE_MS, 10) || 500;
+
+    try {
+      const info = await retryWithBackoff(
+        () =>
+          transporter.sendMail({
+            from: process.env.EMAIL_FROM,
+            to,
+            subject,
+            html,
+          }),
+        {
+          maxAttempts,
+          baseDelayMs,
+          onRetry: (error, attempt, delay) => {
+            console.warn(
+              `[Email] Attempt ${attempt} to ${to} failed (${error.message}). Retrying in ${delay}ms.`
+            );
+          },
+        }
+      );
 
       console.log("✅ Email sent:", info.messageId);
-
       return info;
     } catch (error) {
-      console.error("❌ Email sending failed:", error);
+      // All retries exhausted. Log with full context so the alert is not lost
+      // silently and can be investigated or resent.
+      console.error(
+        `[Email] Delivery FAILED after ${maxAttempts} attempts. to="${to}" subject="${subject}" error="${error.message}"`
+      );
     }
   }
 
