@@ -225,6 +225,30 @@ exports.createRequest = async (req, res) => {
           if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
             payload.assignedToId = equipmentDoc.defaultTechnicianId;
 
+          // Geospatial Technician Dispatch Routing
+          if (payload.priority === 'urgent' && equipmentDoc.geoLocation && equipmentDoc.geoLocation.coordinates) {
+            const eqCoords = equipmentDoc.geoLocation.coordinates;
+            // Only search if coordinates are not [0,0]
+            if (eqCoords[0] !== 0 || eqCoords[1] !== 0) {
+              const nearestTech = await TeamMember.findOne({
+                isActive: true,
+                geoLocation: {
+                  $near: {
+                    $geometry: { type: 'Point', coordinates: eqCoords }
+                  }
+                }
+              }).session(session);
+
+              if (nearestTech) {
+                payload.assignedToId = nearestTech._id;
+                payload.teamId = nearestTech.teamId || payload.teamId;
+                
+                // Add a note to the ticket that it was auto-routed
+                payload.description = `[SYSTEM AUTO-ROUTED] Assigned to closest technician ${nearestTech.name}.\n\n` + (payload.description || '');
+              }
+            }
+          }
+
           await Equipment.findByIdAndUpdate(
             equipmentDoc._id,
             {
