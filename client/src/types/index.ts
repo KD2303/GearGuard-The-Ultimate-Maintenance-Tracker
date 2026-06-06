@@ -144,6 +144,13 @@ export interface MaintenanceRequest {
   };
   rootCause?: string;
   rcaNodeId?: string;
+  vendorEscalation?: {
+    isEscalated: boolean;
+    vendorEmail?: string;
+    vendorCompany?: string;
+    message?: string;
+    tokenExpiresAt?: string;
+  };
   checkedOutTools?: { toolId: string | Tool; checkedOutAt: string }[];
   attachments?: {
     filename: string;
