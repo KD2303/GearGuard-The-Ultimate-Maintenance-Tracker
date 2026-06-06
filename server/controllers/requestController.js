@@ -421,6 +421,31 @@ exports.updateRequest = async (req, res) => {
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
     
+    // NEW LOTO CHECK
+    if (payload.stage === "in-progress" && prevStage !== "in-progress") {
+      const prevRequestWithEq = await MaintenanceRequest.findById(req.params.id).populate('equipment');
+      if (prevRequestWithEq && prevRequestWithEq.equipment?.lotoRequired) {
+        if (!prevRequestWithEq.lotoAudit || !prevRequestWithEq.lotoAudit.isCompleted) {
+          return res.status(400).json({ error: "LOTO Safety Audit is required before starting work on this equipment." });
+        }
+        
+        const Tool = require('../models/Tool');
+        let lotoToolFound = false;
+        if (prevRequestWithEq.checkedOutTools && prevRequestWithEq.checkedOutTools.length > 0) {
+          for (const t of prevRequestWithEq.checkedOutTools) {
+            const tool = await Tool.findById(t.toolId);
+            if (tool && tool.isLoto) {
+              lotoToolFound = true;
+              break;
+            }
+          }
+        }
+        if (!lotoToolFound) {
+          return res.status(403).json({ error: "Safety Violation: You must check out a LOTO lock from the Tool Crib before beginning work on this equipment." });
+        }
+      }
+    }
+    
     const request = await withTransactionFallback(async (session) => {
       // Handle stage side-effects (equipment status updates)
       if (payload.stage) {
@@ -649,6 +674,21 @@ exports.updateRequestStage = async (req, res) => {
     if (stage === "in-progress" && request.equipment?.lotoRequired) {
       if (!request.lotoAudit || !request.lotoAudit.isCompleted) {
         return res.status(400).json({ error: "LOTO Safety Audit is required before starting work on this equipment." });
+      }
+      
+      const Tool = require('../models/Tool');
+      let lotoToolFound = false;
+      if (request.checkedOutTools && request.checkedOutTools.length > 0) {
+        for (const t of request.checkedOutTools) {
+          const tool = await Tool.findById(t.toolId);
+          if (tool && tool.isLoto) {
+            lotoToolFound = true;
+            break;
+          }
+        }
+      }
+      if (!lotoToolFound) {
+        return res.status(403).json({ error: "Safety Violation: You must check out a LOTO lock from the Tool Crib before beginning work on this equipment." });
       }
     }
     
@@ -1554,8 +1594,16 @@ exports.returnTool = async (req, res) => {
   let lock;
   try {
     const { toolId } = req.body;
-    const request = await MaintenanceRequest.findById(req.params.id);
+    const request = await MaintenanceRequest.findById(req.params.id).populate('equipment');
     if (!request) return res.status(404).json({ error: "Request not found" });
+
+    const Tool = require('../models/Tool');
+    const toolToCheck = await Tool.findById(toolId);
+    if (toolToCheck && toolToCheck.isLoto) {
+      if (request.stage === "in-progress" && request.equipment && request.equipment.lotoRequired) {
+        return res.status(403).json({ error: "Safety Violation: You cannot return a LOTO lock while the high-risk ticket is still in-progress. Change the ticket stage first." });
+      }
+    }
 
     // Acquire lock for this specific tool for 5 seconds
     lock = await redlock.acquire([`tools:checkout:${toolId}`], 5000);
