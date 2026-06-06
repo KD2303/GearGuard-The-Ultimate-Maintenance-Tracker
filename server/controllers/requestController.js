@@ -54,6 +54,23 @@ const decrementInventory = async (io, partsUsed) => {
   }
 };
 
+const releaseReservations = async (requiredParts) => {
+  if (!requiredParts || !Array.isArray(requiredParts) || requiredParts.length === 0) return;
+  for (const item of requiredParts) {
+    const partId = item.partId?._id || item.partId;
+    if (!partId) continue;
+    try {
+      await SparePart.findByIdAndUpdate(
+        partId,
+        { $inc: { quantityReserved: -item.quantityNeeded } },
+        { new: true }
+      );
+    } catch (err) {
+      console.error(`Failed to release reservation for part ${partId}:`, err);
+    }
+  }
+};
+
 // Remove empty-string ObjectId/date fields so Mongoose validation doesn't fail
 const sanitizeBody = (body) => {
   const cleaned = { ...body };
@@ -202,34 +219,6 @@ exports.createRequest = async (req, res) => {
     const payload = sanitizeBody(req.body);
     const requestNumber = await generateRequestNumber();
 
-    let equipmentDoc = null;
-    let oldEquipmentStatus = null;
-
-    if (payload.equipmentId) {
-      equipmentDoc = await Equipment.findById(payload.equipmentId)
-        .populate("maintenanceTeam")
-        .populate("defaultTechnician");
-
-      if (equipmentDoc) {
-        oldEquipmentStatus = equipmentDoc.status;
-
-        if (!payload.teamId && equipmentDoc.maintenanceTeamId)
-          payload.teamId = equipmentDoc.maintenanceTeamId;
-        if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
-          payload.assignedToId = equipmentDoc.defaultTechnicianId;
-
-        await Equipment.findByIdAndUpdate(equipmentDoc._id, {
-          $set: { status: "under-maintenance" },
-          $push: {
-            history: {
-              eventType: 'STATUS_CHANGE',
-              description: `Status changed to under-maintenance due to new request ${requestNumber}`,
-              date: new Date(),
-              recordedBy: req.user?._id,
-              notes: 'Status updated automatically on request creation'
-            }
-          }
-        });
     const requestWithRelations = await withTransactionFallback(async (session) => {
       let equipmentDoc = null;
       let oldEquipmentStatus = null;
@@ -269,25 +258,29 @@ exports.createRequest = async (req, res) => {
         }
       }
 
-const request = await MaintenanceRequest.create({
-  ...payload,
-  requestNumber,
-  createdById: req.user?._id,
-  slaDeadline: calculateSLA(payload.priority || 'medium'),
-  attachments:
-    req.body.attachments || [],
-});
-    const requestWithRelations = await MaintenanceRequest.findById(request._id)
-      .populate("equipment")
-      .populate("team")
-      .populate("assignedTo", "name email")
-      .populate("createdBy", "name email")
-      .populate("partsUsed.partId");
+      let isBlocked = false;
+      if (payload.requiredParts && payload.requiredParts.length > 0) {
+        for (const reqPart of payload.requiredParts) {
+          const partDoc = await SparePart.findById(reqPart.partId).session(session);
+          if (partDoc) {
+             const availableStock = partDoc.quantityInStock - partDoc.quantityReserved;
+             if (availableStock < reqPart.quantityNeeded) {
+               isBlocked = true;
+             }
+             await SparePart.findByIdAndUpdate(reqPart.partId, {
+               $inc: { quantityReserved: reqPart.quantityNeeded }
+             }, { session });
+          }
+        }
+      }
+
       const request = await MaintenanceRequest.create([{
         ...payload,
         requestNumber,
         createdById: req.user?._id,
+        slaDeadline: calculateSLA(payload.priority || 'medium'),
         attachments: req.body.attachments || [],
+        isBlockedAwaitingParts: isBlocked
       }], { session });
 
       return await MaintenanceRequest.findById(request[0]._id)
@@ -296,7 +289,8 @@ const request = await MaintenanceRequest.create({
         .populate("team")
         .populate("assignedTo", "name email")
         .populate("createdBy", "name email")
-        .populate("partsUsed.partId");
+        .populate("partsUsed.partId")
+        .populate("requiredParts.partId");
     });
 
     const userName = requestWithRelations?.createdBy?.name || "";
@@ -438,6 +432,10 @@ exports.updateRequest = async (req, res) => {
 
     const prevStage = request.stage;
     const prevPriority = request.priority;
+
+    if (payload.stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
+       return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
+    }
 
     // Handle stage side-effects (equipment status updates)
     if (payload.stage) {
@@ -586,6 +584,7 @@ exports.updateRequest = async (req, res) => {
     if (shouldProcessCompletion) {
       const io = req.app.get("socketio");
       await decrementInventory(io, request.partsUsed);
+      await releaseReservations(request.requiredParts);
       await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
     }
 
@@ -691,6 +690,10 @@ exports.updateRequestStage = async (req, res) => {
 
     const prevStage = request.stage;
 
+    if (stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
+       return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
+    }
+
     await auditLog({
       entityType: 'MaintenanceRequest',
       entityId: request._id,
@@ -746,6 +749,8 @@ exports.updateRequestStage = async (req, res) => {
     if (shouldProcessCompletion) {
       const io = req.app.get("socketio");
       await decrementInventory(io, request.partsUsed);
+      await releaseReservations(request.requiredParts);
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
     }
 
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
@@ -856,7 +861,7 @@ exports.deleteRequest = async (req, res) => {
           { session }
         );
       }
-      
+      await releaseReservations(request.requiredParts);
       await MaintenanceRequest.findByIdAndDelete(req.params.id, { session });
     });
 

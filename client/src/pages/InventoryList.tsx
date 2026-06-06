@@ -317,9 +317,10 @@ const InventoryList: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700/60 text-sm">
                 {parts.map((part) => {
-                  const isLowStock = part.quantityInStock <= part.minReorderThreshold;
+                  const availableStock = part.quantityInStock - (part.quantityReserved || 0);
+                  const isLowStock = availableStock <= part.minReorderThreshold;
                   // Calculate stock progress percentage (cap at 100)
-                  const percent = Math.min(100, (part.quantityInStock / (part.minReorderThreshold * 2 || 10)) * 100);
+                  const percent = Math.min(100, (availableStock / (part.minReorderThreshold * 2 || 10)) * 100);
 
                   return (
                     <tr 
@@ -366,11 +367,18 @@ const InventoryList: React.FC = () => {
                       {/* Stock Level Bar */}
                       <td className="px-6 py-4.5">
                         <div className="w-48">
-                          <div className="flex justify-between items-center text-xs font-semibold mb-1">
-                            <span className={isLowStock ? "text-rose-600 dark:text-rose-400 font-bold" : "text-slate-700 dark:text-slate-300"}>
-                              {part.quantityInStock} in stock
-                            </span>
-                            <span className="text-slate-400">
+                          <div className="flex justify-between items-start text-xs font-semibold mb-1">
+                            <div className="flex flex-col">
+                              <span className={isLowStock ? "text-rose-600 dark:text-rose-400 font-bold" : "text-slate-700 dark:text-slate-300"}>
+                                {availableStock} available
+                              </span>
+                              {!!part.quantityReserved && part.quantityReserved > 0 && (
+                                <span className="text-[10px] text-amber-600 dark:text-amber-500 font-medium bg-amber-50 dark:bg-amber-900/30 px-1.5 py-0.5 rounded mt-0.5 border border-amber-200/50 dark:border-amber-700/30">
+                                  {part.quantityReserved} reserved
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-slate-400 mt-0.5">
                               Min: {part.minReorderThreshold}
                             </span>
                           </div>

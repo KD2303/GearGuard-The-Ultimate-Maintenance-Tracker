@@ -95,6 +95,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [spareParts, setSpareParts] = useState<SparePart[]>([]);
   const [selectedParts, setSelectedParts] = useState<{ partId: string; quantityUsed: number }[]>([]);
+  const [requiredParts, setRequiredParts] = useState<{ partId: string; quantityNeeded: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const [predictions, setPredictions] = useState<SparePart[]>([]);
   const [loadingPredictions, setLoadingPredictions] = useState(false);
@@ -339,6 +340,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
         const newRequest = await requestService.create({
           ...formData,
           partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
+          requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
         });
 
         if (attachments.length > 0 && newRequest._id) {
@@ -385,6 +387,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   const handleClose = () => {
     setAttachments([]);
     setSelectedParts([]);
+    setRequiredParts([]);
 
     setAutoFilled({
       category: '',
@@ -735,6 +738,65 @@ const RequestModal: React.FC<RequestModalProps> = ({
 
         {/* Spare Parts Used */}
         <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+
+        {/* Required Parts (BOM Kit) - Only show when creating */}
+        {!editRequestId && (
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-4">
+            <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">
+              Required Parts (Advance Kit Reservation)
+            </label>
+            <p className="text-xs text-slate-500 mb-3">Parts selected here will be automatically reserved from inventory upon creation.</p>
+            <div className="space-y-3">
+              {requiredParts.map((item, index) => (
+                <div key={index} className="flex gap-3 items-center bg-teal-50 dark:bg-teal-900/20 p-3 rounded-xl border border-teal-100 dark:border-teal-800/30">
+                  <select
+                    value={item.partId}
+                    onChange={(e) => {
+                      const newParts = [...requiredParts];
+                      newParts[index].partId = e.target.value;
+                      setRequiredParts(newParts);
+                    }}
+                    className="flex-1 px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-950 dark:text-white focus:outline-none"
+                  >
+                    <option value="">Select a spare part...</option>
+                    {spareParts.map((part) => (
+                      <option key={part._id || part.id} value={part._id || part.id}>
+                        {part.name} (Stock: {part.quantityInStock})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    value={item.quantityNeeded || ""}
+                    onChange={(e) => {
+                      const newParts = [...requiredParts];
+                      newParts[index].quantityNeeded = parseInt(e.target.value) || 0;
+                      setRequiredParts(newParts);
+                    }}
+                    className="w-20 px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-950 dark:text-white focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRequiredParts(requiredParts.filter((_, i) => i !== index))}
+                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setRequiredParts([...requiredParts, { partId: "", quantityNeeded: 1 }])}
+                className="flex items-center text-xs font-bold text-teal-600 hover:text-teal-700 dark:text-teal-400 dark:hover:text-teal-300 gap-1 mt-1"
+              >
+                <Plus className="h-4 w-4" />
+                Add Required Part to Kit
+              </button>
+            </div>
+          </div>
+        )}
           <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">
             Spare Parts Used
           </label>

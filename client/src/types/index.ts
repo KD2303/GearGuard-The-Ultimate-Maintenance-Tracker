@@ -117,6 +117,8 @@ export interface MaintenanceRequest {
   createdById?: string;
   createdBy?: TeamMember;
   partsUsed?: { partId: string | SparePart; quantityUsed: number }[];
+  requiredParts?: { partId: string | SparePart; quantityNeeded: number }[];
+  isBlockedAwaitingParts?: boolean;
   comments?: {
     _id?: string;
     authorId: string;
@@ -181,6 +183,7 @@ export interface CreateMaintenanceRequestDto {
     fileType: string;
   }[];
   partsUsed?: PartUsedInput[];
+  requiredParts?: { partId: string; quantityNeeded: number }[];
   checklist?: { text: string; isCompleted: boolean }[];
 }
 
