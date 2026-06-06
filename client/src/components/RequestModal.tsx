@@ -86,6 +86,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
     teamId: '',
     assignedToId: '',
     checklist: [],
+    requiredSkills: [],
   });
 
   const [autoFilled, setAutoFilled] = useState({
@@ -188,6 +189,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
             teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
             assignedToId: typeof req.assignedToId === 'object' ? (req.assignedToId as any)._id : req.assignedToId || '',
             checklist: req.checklist || [],
+            requiredSkills: req.requiredSkills || [],
           });
         })
         .catch(err => {
@@ -285,6 +287,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
         assignedToId:
           techObj?._id ||
           prev.assignedToId,
+        requiredSkills: eq.requiredSkills && eq.requiredSkills.length > 0 ? eq.requiredSkills : prev.requiredSkills,
       }));
     } catch (error) {
       console.error(
@@ -786,13 +789,40 @@ const RequestModal: React.FC<RequestModalProps> = ({
             <option value="">Select technician...</option>
             {members.map((member) => {
               const memberId = member._id ?? member.id;
+              
+              let certificationStatus = "";
+              if (formData.requiredSkills && formData.requiredSkills.length > 0) {
+                const techCerts = member.certifications || [];
+                const hasSkills = formData.requiredSkills.every(skill => techCerts.includes(skill));
+                certificationStatus = hasSkills ? " [✓ Certified]" : " [⚠ Lacks Skills]";
+              }
+              
               return (
                 <option key={memberId} value={String(memberId)}>
-                  {member.name} {member.role && `(${member.role})`}
+                  {member.name} {member.role && `(${member.role})`}{certificationStatus}
                 </option>
               );
             })}
           </select>
+
+          {/* Required Skills */}
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
+              Required Skills
+            </label>
+            <input
+              type="text"
+              value={formData.requiredSkills?.join(', ') || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  requiredSkills: e.target.value.split(',').map(s => s.trim()).filter(Boolean),
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="e.g., High Voltage, Hydraulics Level 2 (Auto-filled from equipment)"
+            />
+          </div>
 
           {!formData.assignedToId && editRequestId && (
             <button

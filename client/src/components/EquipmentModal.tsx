@@ -39,6 +39,7 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
     salvageValue: 0,
     lotoRequired: false,
     lotoChecklist: [],
+    requiredSkills: [],
   });
 
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
@@ -452,6 +453,21 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
                 </option>
               ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+            Required Skills (comma-separated)
+          </label>
+          <input
+            type="text"
+            value={formData.requiredSkills?.join(', ') || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, requiredSkills: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })
+            }
+            className="input-dark"
+            placeholder="e.g., High Voltage, Hydraulics Level 2"
+          />
         </div>
 
         <div>

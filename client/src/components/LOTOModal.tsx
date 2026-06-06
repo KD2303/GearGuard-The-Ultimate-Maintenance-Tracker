@@ -50,7 +50,7 @@ const LOTOModal: React.FC<LOTOModalProps> = ({
       setIsSubmitting(true);
       
       // Upload photo
-      const attachments = await requestService.uploadAttachments(requestRecord.id || requestRecord._id, [file]);
+      const attachments = await requestService.uploadAttachments(requestRecord.id || requestRecord._id || "", [file]);
       const proofImageUrl = attachments[0].fileUrl;
 
       // Submit LOTO form

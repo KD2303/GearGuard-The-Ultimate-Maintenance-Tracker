@@ -26,6 +26,7 @@ export interface Equipment {
   model?: string;
   status: 'active' | 'inactive' | 'scrapped' | 'under-maintenance';
   licensePlate?: string;
+  requiredSkills?: string[];
   currentMileage?: number;
   fuelType?: 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'CNG';
   notes?: string;
@@ -87,6 +88,7 @@ export interface TeamMember {
   avatar?: string;
   points?: number;
   badges?: string[];
+  certifications?: string[];
   isActive: boolean;
   teamId?: string;
   team?: MaintenanceTeam;
@@ -103,6 +105,7 @@ export interface MaintenanceRequest {
   type: 'corrective' | 'preventive';
   stage: 'new' | 'in-progress' | 'repaired' | 'scrap';
   priority: 'low' | 'medium' | 'high' | 'urgent';
+  requiredSkills?: string[];
   scheduledDate?: string;
   completedDate?: string;
   duration?: number;
@@ -139,6 +142,8 @@ export interface MaintenanceRequest {
     proofImageUrl?: string;
     checklistResponses?: { step: string; checked: boolean }[];
   };
+  rootCause?: string;
+  rcaNodeId?: string;
   checkedOutTools?: { toolId: string | Tool; checkedOutAt: string }[];
   attachments?: {
     filename: string;
@@ -173,6 +178,7 @@ export interface CreateEquipmentDto {
   currentMileage?: number;
   fuelType?: string;
   notes?: string;
+  requiredSkills?: string[];
   maintenanceTeamId?: string;
   defaultTechnicianId?: string;
   mapCoordinates?: { x: number; y: number };
@@ -186,6 +192,7 @@ export interface CreateMaintenanceRequestDto {
   description?: string;
   type: 'corrective' | 'preventive';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
+  requiredSkills?: string[];
   scheduledDate?: string;
   equipmentId?: string;
   teamId?: string;
