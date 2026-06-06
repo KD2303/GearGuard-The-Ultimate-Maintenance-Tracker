@@ -1,5 +1,13 @@
 const Webhook = require('../models/Webhook');
 const WebhookEvent = require('../models/WebhookEvent');
+const { Queue } = require('bullmq');
+const IORedis = require('ioredis');
+
+const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null
+});
+
+const webhookQueue = new Queue('webhookQueue', { connection });
 
 /**
  * Queue a webhook event for asynchronous dispatch.
@@ -30,9 +38,27 @@ exports.queueWebhookEvent = async (eventName, payload) => {
       errorLog: []
     }));
 
-    // Bulk insert into the queue
-    await WebhookEvent.insertMany(eventsToInsert);
-    console.log(`[WebhookService] Queued ${eventsToInsert.length} event(s) for trigger: ${eventName}`);
+    // Bulk insert into the MongoDB queue (acts as the DLQ / audit log)
+    const insertedEvents = await WebhookEvent.insertMany(eventsToInsert);
+
+    // Push jobs to BullMQ for robust processing
+    for (const event of insertedEvents) {
+      await webhookQueue.add('dispatchWebhook', {
+        eventId: event._id,
+        provider: event.provider,
+        url: event.url,
+        payload: event.payload
+      }, {
+        attempts: 5,
+        backoff: {
+          type: 'exponential',
+          delay: 1000 // 1s, 2s, 4s, 8s, 16s
+        },
+        removeOnComplete: true
+      });
+    }
+
+    console.log(`[WebhookService] Queued ${insertedEvents.length} event(s) to BullMQ for trigger: ${eventName}`);
   } catch (error) {
     console.error('[WebhookService] Failed to queue webhook event:', error);
   }
