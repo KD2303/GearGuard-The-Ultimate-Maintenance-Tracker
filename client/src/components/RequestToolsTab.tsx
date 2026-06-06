@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MaintenanceRequest, Tool } from '../types';
-import { request } from '../utils/api';
+import { request } from '../services/api';
 import toast from 'react-hot-toast';
 import Button from './Button';
 import Badge from './Badge';

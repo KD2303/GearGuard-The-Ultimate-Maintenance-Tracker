@@ -35,8 +35,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   editRequestId,
 }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto'>('details');
-  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'tools'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools' | 'vendor'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
@@ -187,6 +186,43 @@ const RequestModal: React.FC<RequestModalProps> = ({
       setPredictions(prev => prev.map(p => p._id === partId ? { ...p, quantityInStock: p.quantityInStock - 1 } : p));
     } catch (error: any) {
       toast.error('Failed to reserve part: ' + (error.response?.data?.error || error.message));
+    }
+  };
+
+  const handleVendorEscalate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editRequestId) return;
+    const form = e.target as HTMLFormElement;
+    const vendorCompany = (form.elements.namedItem('vendorCompany') as HTMLInputElement).value;
+    const vendorEmail = (form.elements.namedItem('vendorEmail') as HTMLInputElement).value;
+    const vendorMessage = (form.elements.namedItem('vendorMessage') as HTMLTextAreaElement).value;
+
+    try {
+      // Direct axios call or add to requestService
+      const axios = require('axios');
+      const res = await axios.post(`http://localhost:5001/api/requests/${editRequestId}/escalate`, {
+        vendorCompany,
+        vendorEmail,
+        message: vendorMessage
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      toast.success(
+        <div>
+          <p>Link generated!</p>
+          <a href={res.data.magicLink} target="_blank" rel="noreferrer" className="underline text-blue-200 break-all">{res.data.magicLink}</a>
+        </div>,
+        { duration: 10000 }
+      );
+      
+      // Refresh request
+      const updatedReq = await requestService.getById(editRequestId);
+      setExistingRequest(updatedReq);
+    } catch (err: any) {
+      toast.error('Failed to escalate: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -447,6 +483,15 @@ const RequestModal: React.FC<RequestModalProps> = ({
               </span>
             )}
           </button>
+          {user?.role !== 'Technician' && (
+            <button
+              type="button"
+              className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'vendor' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+              onClick={() => setActiveTab('vendor')}
+            >
+              Vendor
+            </button>
+          )}
         </div>
       )}
 
@@ -958,6 +1003,45 @@ const RequestModal: React.FC<RequestModalProps> = ({
             </div>
           )}
         </div>
+      )}
+      {activeTab === 'vendor' && existingRequest && (
+        <div className="space-y-6">
+          {!existingRequest.vendorEscalation?.isEscalated ? (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Escalate to External Vendor</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Generate a secure, time-boxed magic link to allow an external contractor to view this ticket and add service notes without logging in.
+              </p>
+              <form onSubmit={handleVendorEscalate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor Company</label>
+                  <input type="text" name="vendorCompany" id="vendorCompany" required className="mt-1 w-full px-3 py-2 border rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor Email</label>
+                  <input type="email" name="vendorEmail" id="vendorEmail" required className="mt-1 w-full px-3 py-2 border rounded-md" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Message to Vendor</label>
+                  <textarea name="vendorMessage" id="vendorMessage" rows={3} className="mt-1 w-full px-3 py-2 border rounded-md"></textarea>
+                </div>
+                <Button type="submit" variant="primary">Generate Magic Link</Button>
+              </form>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-green-200 dark:border-green-900/50">
+              <div className="flex items-center mb-4">
+                <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Escalated to Vendor</h3>
+              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Company:</strong> {existingRequest.vendorEscalation.vendorCompany}</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Email:</strong> {existingRequest.vendorEscalation.vendorEmail}</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mt-2"><strong>Expires:</strong> {existingRequest.vendorEscalation.tokenExpiresAt ? new Date(existingRequest.vendorEscalation.tokenExpiresAt).toLocaleString() : 'Unknown'}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'tools' && existingRequest && (
         <RequestToolsTab 
           requestRecord={existingRequest} 

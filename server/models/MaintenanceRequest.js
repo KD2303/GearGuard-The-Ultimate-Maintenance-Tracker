@@ -79,7 +79,15 @@ const MaintenanceRequestSchema = new Schema({
   },
   downtimeDurationHours: { type: Number, default: 0 },
   totalDowntimeCost: { type: Number, default: 0 },
-  syncId: { type: String, default: null } // UUID from offline device to prevent replay attacks or resolve conflicts
+  syncId: { type: String, default: null }, // UUID from offline device to prevent replay attacks or resolve conflicts
+  vendorEscalation: {
+    isEscalated: { type: Boolean, default: false },
+    vendorEmail: { type: String },
+    vendorCompany: { type: String },
+    message: { type: String },
+    magicToken: { type: String, select: false },
+    tokenExpiresAt: { type: Date }
+  }
 }, { timestamps: true });
 
 MaintenanceRequestSchema.virtual('equipment', {

@@ -6,7 +6,7 @@ import Spinner from '../components/Spinner';
 import Badge from '../components/Badge';
 import { Tool } from '../types';
 import toast from 'react-hot-toast';
-import { request } from '../utils/api';
+import { request } from '../services/api';
 import { io } from 'socket.io-client';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';

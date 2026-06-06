@@ -137,6 +137,13 @@ export interface MaintenanceRequest {
     proofImageUrl?: string;
     checklistResponses?: { step: string; checked: boolean }[];
   };
+  vendorEscalation?: {
+    isEscalated: boolean;
+    vendorEmail?: string;
+    vendorCompany?: string;
+    message?: string;
+    tokenExpiresAt?: string;
+  };
   checkedOutTools?: { toolId: string | Tool; checkedOutAt: string }[];
   attachments?: {
     filename: string;

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import OAuthCallback from './pages/OAuthCallback';
+import VendorTicketView from './pages/VendorTicketView';
 
 import Dashboard from './pages/Dashboard';
 import KanbanBoard from './pages/KanbanBoard';
@@ -74,7 +75,10 @@ function App() {
     <AuthProvider>
       <NotificationProvider>
         <Router>
-          <AppContent />
+          <Routes>
+            <Route path="/vendor/ticket/:token" element={<VendorTicketView />} />
+            <Route path="*" element={<AppContent />} />
+          </Routes>
         </Router>
         <Toaster
           position="top-right"
