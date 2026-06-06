@@ -5,11 +5,6 @@ const shiftHandoverController = require('../controllers/shiftHandoverController'
 
 // All routes require authentication
 router.use(protect);
-const auth = require('../middleware/auth');
-const shiftHandoverController = require('../controllers/shiftHandoverController');
-
-// All routes require authentication
-router.use(auth);
 
 router.get('/', shiftHandoverController.getAllHandovers);
 router.post('/', shiftHandoverController.createHandover);

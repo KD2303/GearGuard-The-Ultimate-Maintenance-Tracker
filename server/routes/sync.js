@@ -29,9 +29,15 @@ router.post('/batch', auth, async (req, res, next) => {
             continue;
           }
 
-          // Conflict resolution logic:
-          // Example: Last Write Wins, or check if existingRequest has been modified since the offline action was created.
-          // For now, we apply the update directly.
+          // Conflict resolution logic: Last Write Wins
+          // action.timestamp is when the offline edit was made.
+          // existingRequest.updatedAt is when the document was last modified on the server.
+          if (action.timestamp && existingRequest.updatedAt && new Date(action.timestamp) < existingRequest.updatedAt) {
+            console.warn(`[Sync] Conflict detected for Request ${requestId}. Rejecting offline action.`);
+            results.push({ id: action.id, status: 'rejected', reason: 'Conflict: Server data is newer' });
+            continue;
+          }
+
           await MaintenanceRequest.findByIdAndUpdate(requestId, updateData, { new: true });
           
           results.push({ id: action.id, status: 'success' });

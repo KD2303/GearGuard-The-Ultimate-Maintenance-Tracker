@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MaintenanceRequest, Tool } from '../types';
-import { request } from '../utils/api';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 import Button from './Button';
 import Badge from './Badge';
@@ -20,6 +20,13 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
   const [loading, setLoading] = useState(true);
   const [selectedToolId, setSelectedToolId] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [lockedTools, setLockedTools] = useState<Set<string>>(new Set());
+
+  // Use a ref to hold onUpdate so it doesn't trigger effect re-runs
+  const onUpdateRef = React.useRef(onUpdate);
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
 
   useEffect(() => {
     fetchAvailableTools();
@@ -30,22 +37,37 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
 
     socket.on('tools_changed', () => {
       fetchAvailableTools();
-      onUpdate(); // Re-fetch the request record to reflect checkout/returns across clients if they affect this ticket
+      onUpdateRef.current(); // Re-fetch the request record to reflect checkout/returns across clients
+    });
+
+    socket.on('tool_locked', ({ toolId }: { toolId: string }) => {
+      setLockedTools(prev => {
+        const next = new Set(prev);
+        next.add(toolId);
+        return next;
+      });
+    });
+
+    socket.on('tool_unlocked', ({ toolId }: { toolId: string }) => {
+      setLockedTools(prev => {
+        const next = new Set(prev);
+        next.delete(toolId);
+        return next;
+      });
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [requestRecord]);
+  }, []); // Run only once on mount
 
   const fetchAvailableTools = async () => {
     try {
       setLoading(true);
-      const res = await request('/api/tools');
-      if (res.success) {
+      const res = await api.get('/tools');
+      if (res.data) {
         // Filter out tools that are not 'Available'
-        const available = res.data.filter((t: Tool) => t.status === 'Available');
-        setAvailableTools(available);
+        setAvailableTools(res.data.filter((t: Tool) => t.status === 'Available'));
       }
     } catch (error: any) {
       toast.error('Failed to load tools: ' + error.message);
@@ -58,10 +80,8 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
     if (!selectedToolId) return;
     try {
       setProcessing(true);
-      const res = await request(`/api/requests/${requestRecord._id || requestRecord.id}/tools/checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toolId: selectedToolId })
+      const res = await api.post(`/requests/${requestRecord._id || requestRecord.id}/tools/checkout`, {
+        toolId: selectedToolId
       });
       toast.success('Tool checked out successfully');
       setSelectedToolId('');
@@ -75,10 +95,8 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
 
   const handleReturnTool = async (toolId: string) => {
     try {
-      const res = await request(`/api/requests/${requestRecord._id || requestRecord.id}/tools/return`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toolId })
+      const res = await api.post(`/requests/${requestRecord._id || requestRecord.id}/tools/return`, {
+        toolId
       });
       toast.success('Tool returned successfully');
       onUpdate();
@@ -140,15 +158,18 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
             className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select an available tool...</option>
-            {availableTools.map(tool => (
-              <option key={tool._id} value={tool._id}>
-                {tool.name} ({tool.serialNumber})
-              </option>
-            ))}
+            {availableTools.map(tool => {
+              const isLocked = lockedTools.has(tool._id || tool.id || '');
+              return (
+                <option key={tool._id} value={tool._id} disabled={isLocked}>
+                  {tool.name} ({tool.serialNumber}) {isLocked ? '🔒 (Locking...)' : ''}
+                </option>
+              );
+            })}
           </select>
           <Button 
             onClick={handleCheckoutTool} 
-            disabled={!selectedToolId || processing}
+            disabled={!selectedToolId || processing || lockedTools.has(selectedToolId)}
           >
             {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Checkout'}
           </Button>

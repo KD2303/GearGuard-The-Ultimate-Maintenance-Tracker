@@ -6,7 +6,7 @@ import Spinner from '../components/Spinner';
 import Badge from '../components/Badge';
 import { Tool } from '../types';
 import toast from 'react-hot-toast';
-import { request } from '../utils/api';
+import api from '../services/api';
 import { io } from 'socket.io-client';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
@@ -22,6 +22,7 @@ const ToolCrib: React.FC = () => {
   const [name, setName] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [purchaseCost, setPurchaseCost] = useState<number>(0);
+  const [lockedTools, setLockedTools] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchTools();
@@ -34,6 +35,22 @@ const ToolCrib: React.FC = () => {
       fetchTools();
     });
 
+    socket.on('tool_locked', ({ toolId }: { toolId: string }) => {
+      setLockedTools(prev => {
+        const next = new Set(prev);
+        next.add(toolId);
+        return next;
+      });
+    });
+
+    socket.on('tool_unlocked', ({ toolId }: { toolId: string }) => {
+      setLockedTools(prev => {
+        const next = new Set(prev);
+        next.delete(toolId);
+        return next;
+      });
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -42,8 +59,8 @@ const ToolCrib: React.FC = () => {
   const fetchTools = async () => {
     try {
       setLoading(true);
-      const res = await request('/api/tools');
-      if (res.success) {
+      const res = await api.get('/tools');
+      if (res.data) {
         setTools(res.data);
       }
     } catch (error: any) {
@@ -56,13 +73,13 @@ const ToolCrib: React.FC = () => {
   const handleCreateTool = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await request('/api/tools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, serialNumber, purchaseCost })
+      const res = await api.post('/tools', {
+        name,
+        serialNumber,
+        purchaseCost
       });
-      if (res.success) {
-        toast.success('Tool created successfully');
+      if (res.data) {
+        toast.success(t('tools.addSuccess'));
         setIsModalOpen(false);
         fetchTools();
         setName('');
@@ -151,7 +168,11 @@ const ToolCrib: React.FC = () => {
                       {tool.serialNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <Badge variant={getStatusColor(tool.status)}>{tool.status}</Badge>
+                      {lockedTools.has(tool._id || '') ? (
+                         <Badge variant="warning">Locking...</Badge>
+                      ) : (
+                         <Badge variant={getStatusColor(tool.status)}>{tool.status}</Badge>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       ${tool.purchaseCost?.toLocaleString() || '0'}

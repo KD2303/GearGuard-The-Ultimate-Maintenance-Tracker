@@ -13,6 +13,8 @@
     "axios": "^1.15.1",
     "clsx": "^2.1.0",
     "date-fns": "^3.0.6",
+    "dexie": "^4.4.3",
+    "dexie-react-hooks": "^4.4.0",
     "i18next": "^26.2.0",
     "i18next-browser-languagedetector": "^8.2.1",
     "idb": "^8.0.3",

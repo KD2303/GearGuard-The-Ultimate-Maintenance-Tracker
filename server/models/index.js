@@ -17,6 +17,7 @@ const Counter = require('./Counter');
 const Task = require('./Task');
 const KeyRotationJob = require('./KeyRotationJob');
 const WebhookEvent = require('./WebhookEvent');
+const ToolAuditLog = require('./ToolAuditLog');
 
 const syncDatabase = async () => {
   try {
@@ -42,7 +43,8 @@ const syncDatabase = async () => {
         Counter.createIndexes ? Counter.createIndexes() : Promise.resolve(),
         Task.createIndexes ? Task.createIndexes() : Promise.resolve(),
         KeyRotationJob.createIndexes ? KeyRotationJob.createIndexes() : Promise.resolve(),
-        WebhookEvent.createIndexes ? WebhookEvent.createIndexes() : Promise.resolve()
+        WebhookEvent.createIndexes ? WebhookEvent.createIndexes() : Promise.resolve(),
+        ToolAuditLog.createIndexes ? ToolAuditLog.createIndexes() : Promise.resolve()
       ]);
     } catch (idxErr) {
       // ignore index creation errors
@@ -74,5 +76,6 @@ module.exports = {
   Counter,
   Task,
   KeyRotationJob,
-  WebhookEvent
+  WebhookEvent,
+  ToolAuditLog
 };

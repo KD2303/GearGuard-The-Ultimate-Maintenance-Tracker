@@ -22,6 +22,7 @@ import {
   Map,
   Moon,
   Sun,
+  Cloud,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
 import LanguageSelector from "./LanguageSelector";
@@ -29,6 +30,34 @@ import { useTranslation } from "react-i18next";
 import { authService } from "../services/authService";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { syncManager } from "../services/syncManager";
+import { dbService } from "../services/db";
+
+const SyncQueueIndicator = () => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    // Initial fetch
+    dbService.getQueueCount().then(setCount);
+
+    // Subscribe to changes
+    const unsubscribe = dbService.subscribe((newCount) => {
+      setCount(newCount);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  if (count === 0) return null;
+
+  return (
+    <div className="relative flex items-center justify-center mr-2">
+      <div className="rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 p-2 shadow-sm flex items-center space-x-1.5 transition-all duration-200">
+        <Cloud className="h-5 w-5 text-blue-500 dark:text-blue-400 animate-pulse" />
+        <span className="text-sm font-bold text-blue-600 dark:text-blue-300">{count}</span>
+      </div>
+    </div>
+  );
+};
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -222,6 +251,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Header Right Actions */}
           <div className="flex items-center space-x-2.5">
             
+            <SyncQueueIndicator />
+
             {/* Notifications panel */}
             <NotificationCenter />
 

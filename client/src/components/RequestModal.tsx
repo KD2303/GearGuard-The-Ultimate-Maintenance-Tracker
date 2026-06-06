@@ -35,8 +35,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   editRequestId,
 }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto'>('details');
-  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'tools'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
@@ -958,6 +957,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
             </div>
           )}
         </div>
+      )}
+
       {activeTab === 'tools' && existingRequest && (
         <RequestToolsTab 
           requestRecord={existingRequest} 

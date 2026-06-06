@@ -5,7 +5,7 @@ import { MaintenanceRequest } from '../types';
 import { ShieldAlert, CheckCircle2, Upload, Loader2, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
-import { uploadService } from '../services/uploadService';
+import { requestService } from '../services/requestService';
 
 interface LOTOModalProps {
   isOpen: boolean;
@@ -50,7 +50,7 @@ const LOTOModal: React.FC<LOTOModalProps> = ({
       setIsSubmitting(true);
       
       // Upload photo
-      const attachments = await uploadService.uploadAttachments([file]);
+      const attachments = await requestService.uploadAttachments(requestRecord.id || requestRecord._id, [file]);
       const proofImageUrl = attachments[0].fileUrl;
 
       // Submit LOTO form

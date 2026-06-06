@@ -74,6 +74,7 @@ const EquipmentSchema = new Schema({
   },
   lotoChecklist: [{
     type: String
+  }],
   documents: [{
     title: { type: String, required: true },
     fileUrl: { type: String, required: true },

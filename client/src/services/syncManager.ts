@@ -28,12 +28,14 @@ class SyncManager {
 
       // Attempt to batch sync if there's a backend endpoint for it
       try {
-        const response = await api.post('/sync/batch', { actions });
+        const response = await api.post('/api/sync/batch', { actions });
         
         if (response.data.success) {
           // If successful, clear all synced actions
           for (const action of actions) {
-            await dbService.clearSyncAction(action.id);
+            if (action.id !== undefined) {
+              await dbService.clearSyncAction(action.id);
+            }
           }
           console.log('[SyncManager] Batch synchronization complete');
         } else {

@@ -217,7 +217,6 @@ exports.updateEquipment = asyncHandler(async (req, res, next) => {
     req.params.id,
     updateQuery,
     { new: true, runValidators: true }
-    { new: true }
   )
     .populate("maintenanceTeam")
     .populate("defaultTechnician");
