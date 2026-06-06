@@ -130,6 +130,30 @@ io.on("connection", (socket) => {
     socket.to(`ticket_${ticketId}`).emit("user_stop_typing", { userName });
   });
 
+  socket.on("location:update", async ({ longitude, latitude }) => {
+    try {
+      if (socket.user && socket.user.id) {
+        // We'll update any TeamMember linked to this user. We look up User to get email, then TeamMember.
+        const User = require('./models/user');
+        const TeamMember = require('./models/TeamMember');
+        const user = await User.findById(socket.user.id);
+        
+        if (user && user.email) {
+          await TeamMember.findOneAndUpdate(
+            { email: user.email },
+            { 
+              $set: { 
+                'geoLocation.coordinates': [longitude, latitude] 
+              } 
+            }
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Failed to update location:", err);
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log(`❌ User disconnected: ${socket.id}`);
   });

@@ -10,7 +10,18 @@ const TeamMemberSchema = new Schema({
   points: { type: Number, default: 0 },
   badges: [{ type: String }],
   isActive: { type: Boolean, default: true },
-  teamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' }
+  teamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
+  geoLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    }
+  }
 }, { timestamps: true });
 
 TeamMemberSchema.virtual('team', {
@@ -22,5 +33,7 @@ TeamMemberSchema.virtual('team', {
 
 TeamMemberSchema.set('toObject', { virtuals: true });
 TeamMemberSchema.set('toJSON', { virtuals: true });
+
+TeamMemberSchema.index({ geoLocation: '2dsphere' });
 
 module.exports = mongoose.model('TeamMember', TeamMemberSchema);
