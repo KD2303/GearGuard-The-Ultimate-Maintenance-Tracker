@@ -20,6 +20,9 @@ router.post('/:id/smart-assign', requestController.smartAssignRequest);
 router.get('/:id/predictions', requestController.predictSpareParts);
 router.post('/:id/parts', requestController.addPartToRequest);
 router.delete('/:id', authorizeRoles('Admin', 'Manager'), requestController.deleteRequest);
+router.post('/:id/loto', requestController.submitLOTO);
+router.post('/:id/tools/checkout', requestController.checkoutTool);
+router.post('/:id/tools/return', requestController.returnTool);
 
 // Attachments
 router.post('/:id/attachments', upload.array('attachments', 5), magicByteValidator, requestController.uploadAttachments);

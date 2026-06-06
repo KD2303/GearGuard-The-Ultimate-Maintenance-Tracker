@@ -216,6 +216,7 @@ exports.updateEquipment = asyncHandler(async (req, res, next) => {
   const updatedEquipment = await Equipment.findByIdAndUpdate(
     req.params.id,
     updateQuery,
+    { new: true, runValidators: true }
     { new: true }
   )
     .populate("maintenanceTeam")

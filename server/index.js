@@ -14,6 +14,7 @@ const swaggerUi = require("swagger-ui-express");
 
 const { globalLimiter } = require("./middleware/rateLimiter");
 const { errorMiddleware } = require("./middleware/errorHandler");
+const { csrfProtection } = require("./middleware/csrfProtection");
 const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
 const { startSlaChecker } = require("./jobs/slaChecker");
@@ -43,6 +44,8 @@ const webhookRoutes = require("./routes/webhookRoutes");
 const scheduleRoutes = require("./routes/scheduleRoutes");
 const telemetryRoutes = require("./routes/telemetry");
 const syncRoutes = require("./routes/sync");
+const toolRoutes = require("./routes/toolRoutes");
+const taskRoutes = require("./routes/tasks");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -152,8 +155,15 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(passport.initialize());
 
+// Apply threat intelligence IPS
+const { threatIntelligence } = require('./middleware/threatIntel');
+app.use(threatIntelligence);
+
 // Apply global rate limiter to all routes
 app.use(globalLimiter);
+
+// CSRF defense-in-depth: validate Origin/Referer on state-changing requests
+app.use(csrfProtection);
 
 // Serve uploaded attachments statically
 const path = require("path");
@@ -192,6 +202,8 @@ const defineRoutes = (router) => {
   router.use("/schedules", scheduleRoutes);
   router.use("/telemetry", telemetryRoutes);
   router.use("/sync", syncRoutes);
+  router.use("/tools", toolRoutes);
+  router.use("/tasks", taskRoutes);
 };
 
 const v1Router = express.Router();
@@ -264,9 +276,11 @@ const startServer = async () => {
 
     const { startHealthScoreCron } = require('./cron/healthScoreCron');
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');
+    const webhookDispatcher = require('./jobs/webhookDispatcher');
     
     startHealthScoreCron();
     startPreventiveSchedulerCron(io);
+    webhookDispatcher.start();
 
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`\n🚀 GearGuard Server Running!`);
@@ -281,9 +295,11 @@ const startServer = async () => {
   }
 };
 
-// Graceful shutdown
 const shutdown = () => {
   console.log("Gracefully shutting down server...");
+  const webhookDispatcher = require('./jobs/webhookDispatcher');
+  webhookDispatcher.stop();
+  
   server.close(() => {
     console.log("HTTP server closed.");
     mongoose.connection.close(false).then(() => {

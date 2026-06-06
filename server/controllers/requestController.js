@@ -4,6 +4,7 @@ const {
   MaintenanceTeam,
   TeamMember,
   SparePart,
+  Tool,
 } = require("../models");
 const { logActivity } = require("../utils/logActivity");
 const { auditLog } = require("../utils/auditLogger");
@@ -219,6 +220,31 @@ exports.createRequest = async (req, res) => {
     const payload = sanitizeBody(req.body);
     const requestNumber = await generateRequestNumber();
 
+    let equipmentDoc = null;
+    let oldEquipmentStatus = null;
+
+    if (payload.equipmentId) {
+      equipmentDoc = await Equipment.findById(payload.equipmentId)
+        .populate("maintenanceTeam")
+        .populate("defaultTechnician");
+
+      if (equipmentDoc) {
+        oldEquipmentStatus = equipmentDoc.status;
+
+        if (!payload.teamId && equipmentDoc.maintenanceTeamId)
+          payload.teamId = equipmentDoc.maintenanceTeamId;
+        if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
+          payload.assignedToId = equipmentDoc.defaultTechnicianId;
+
+        await Equipment.findByIdAndUpdate(equipmentDoc._id, {
+          $set: { status: "under-maintenance" },
+          $push: { history: {
+            eventType: 'STATUS_CHANGE',
+            description: `Status changed to under-maintenance (Request Created)`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          }}
+        });
     const requestWithRelations = await withTransactionFallback(async (session) => {
       let equipmentDoc = null;
       let oldEquipmentStatus = null;
@@ -444,15 +470,12 @@ exports.updateRequest = async (req, res) => {
         if (request.equipmentId) {
           await Equipment.findByIdAndUpdate(request.equipmentId, {
             $set: { status: "active" },
-            $push: {
-              history: {
-                eventType: 'STATUS_CHANGE',
-                description: `Status changed to active as request ${request.subject || request.requestNumber} was marked repaired`,
-                date: new Date(),
-                recordedBy: req.user?._id,
-                notes: 'Status updated automatically on request repaired'
-              }
-            }
+            $push: { history: {
+              eventType: 'REPAIR_COMPLETED',
+              description: `Request marked as repaired. Status changed to active.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
           });
         }
       }
@@ -461,16 +484,14 @@ exports.updateRequest = async (req, res) => {
         if (request.equipmentId) {
           await Equipment.findByIdAndUpdate(request.equipmentId, {
             $set: { status: "scrapped" },
-            $push: {
-              history: {
-                eventType: 'STATUS_CHANGE',
-                description: `Status changed to scrapped as request ${request.subject || request.requestNumber} was marked scrap`,
-                date: new Date(),
-                recordedBy: req.user?._id,
-                notes: 'Status updated automatically on request scrapped'
-              }
-            }
+            $push: { history: {
+              eventType: 'SCRAPPED',
+              description: `Request marked as scrap. Status changed to scrapped.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
           });
+    // Non-transactional block removed
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
     
@@ -703,6 +724,15 @@ exports.updateRequestStage = async (req, res) => {
       userId: req.user?._id,
       userName: request.createdBy?.name || ""
     });
+
+    if (stage === "in-progress" && request.equipment?.lotoRequired) {
+      if (!request.lotoAudit || !request.lotoAudit.isCompleted) {
+        return res.status(400).json({ error: "LOTO Safety Audit is required before starting work on this equipment." });
+    if (stage === "repaired" || stage === "scrap") {
+      if (request.checkedOutTools && request.checkedOutTools.length > 0) {
+        return res.status(400).json({ error: "Cannot close ticket. All tools must be returned first." });
+      }
+    }
 
     const updateData = { stage };
     if (partsCost !== undefined) updateData.partsCost = partsCost;
@@ -1183,12 +1213,11 @@ exports.deleteComment = async (req, res) => {
   }
 };
 
-exports.smartAssignRequest = async (req, res) => {
-  try {
-    const request = await MaintenanceRequest.findById(req.params.id);
-    if (!request) {
-      return res.status(404).json({ error: "Request not found" });
-    }
+exports.smartAssignInternal = async (requestId, io) => {
+  const request = await MaintenanceRequest.findById(requestId);
+  if (!request) {
+    throw new Error("Request not found");
+  }
 
     let targetSpecialization = null;
     let teamIds = [];
@@ -1219,15 +1248,15 @@ exports.smartAssignRequest = async (req, res) => {
       teamIds = Array.from(new Set([...teamIds, ...matchingTeamIds]));
     }
 
-    if (teamIds.length === 0) {
-      return res.status(400).json({ error: "Could not determine required specialization or team for this request. Please assign a team manually." });
-    }
+  if (teamIds.length === 0) {
+    throw new Error("Could not determine required specialization or team for this request. Please assign a team manually.");
+  }
 
-    // 2. Find All Active Technicians in these Teams
-    const technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
-    if (technicians.length === 0) {
-      return res.status(404).json({ error: "No active technicians found for the required specialization. Please assign manually." });
-    }
+  // 2. Find All Active Technicians in these Teams
+  const technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+  if (technicians.length === 0) {
+    throw new Error("No active technicians found for the required specialization. Please assign manually.");
+  }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
     const activeRequests = await MaintenanceRequest.find({
@@ -1260,13 +1289,11 @@ exports.smartAssignRequest = async (req, res) => {
       }
     }
 
-    // 5. Apply capacity protection limit (MAX_WORKLOAD = 5)
-    const MAX_WORKLOAD = 5;
-    if (minWorkload >= MAX_WORKLOAD) {
-      return res.status(400).json({ 
-        error: `All qualified technicians for specialization "${targetSpecialization || 'this team'}" are at maximum workload capacity (${MAX_WORKLOAD}+ active tickets). Please assign manually.` 
-      });
-    }
+  // 5. Apply capacity protection limit (MAX_WORKLOAD = 5)
+  const MAX_WORKLOAD = 5;
+  if (minWorkload >= MAX_WORKLOAD) {
+    throw new Error(`All qualified technicians for specialization "${targetSpecialization || 'this team'}" are at maximum workload capacity (${MAX_WORKLOAD}+ active tickets). Please assign manually.`);
+  }
 
     // Preserve old document for logging
     const oldRequest = await MaintenanceRequest.findById(request._id);
@@ -1289,40 +1316,47 @@ exports.smartAssignRequest = async (req, res) => {
       relatedRequestId: request._id,
     });
 
-    // 8. Log Audit Records
-    await auditLog({
-      entityType: 'MaintenanceRequest',
-      entityId: request._id,
-      action: 'UPDATE',
-      oldDoc: oldRequest,
-      newDoc: request.toObject(),
-      userId: req.user?._id,
-      userName: "System Auto-Assigner"
-    });
+  // 8. Log Audit Records
+  await auditLog({
+    entityType: 'MaintenanceRequest',
+    entityId: request._id,
+    action: 'UPDATE',
+    oldDoc: oldRequest,
+    newDoc: request.toObject(),
+    userId: null,
+    userName: "System Auto-Assigner"
+  });
 
-    // 9. Emit Socket.io update
-    const io = req.app.get("socketio");
-    const updatedRequest = await MaintenanceRequest.findById(request._id)
-      .populate('equipment')
-      .populate('team')
-      .populate('assignedTo');
+  // 9. Emit Socket.io update
+  const updatedRequest = await MaintenanceRequest.findById(request._id)
+    .populate('equipment')
+    .populate('team')
+    .populate('assignedTo');
 
-    await NotificationService.notifyRequestChange(
-      io, 
-      "request_updated", 
-      updatedRequest, 
-      `Automatically assigned to ${bestTechnician.name}`
+  await NotificationService.notifyRequestChange(
+    io, 
+    "request_updated", 
+    updatedRequest, 
+    `Automatically assigned to ${bestTechnician.name}`
+  );
+
+  if (request.equipmentId) {
+    calculateAndUpdateHealthScore(request.equipmentId).catch(err => 
+      console.error('Background health score update failed:', err)
     );
+  }
 
-    if (request.equipmentId) {
-      calculateAndUpdateHealthScore(request.equipmentId).catch(err => 
-        console.error('Background health score update failed:', err)
-      );
-    }
+  return updatedRequest;
+};
 
+exports.smartAssignRequest = async (req, res) => {
+  try {
+    const io = req.app.get("socketio");
+    const updatedRequest = await exports.smartAssignInternal(req.params.id, io);
     res.status(200).json(updatedRequest);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const status = error.message.includes('not found') ? 404 : 400;
+    res.status(status).json({ error: error.message });
   }
 };
 
@@ -1425,6 +1459,59 @@ exports.addPartToRequest = async (req, res) => {
   }
 };
 
+exports.submitLOTO = async (req, res) => {
+  try {
+    const { checklistResponses, proofImageUrl } = req.body;
+    const request = await MaintenanceRequest.findById(req.params.id).populate('equipment');
+    
+    if (!request) return res.status(404).json({ error: "Request not found" });
+    if (!request.equipment?.lotoRequired) {
+      return res.status(400).json({ error: "LOTO is not required for this equipment." });
+    }
+
+    request.lotoAudit = {
+      isCompleted: true,
+      completedAt: new Date(),
+      completedBy: req.user?._id,
+      proofImageUrl,
+      checklistResponses
+    };
+
+    await request.save();
+    res.status(200).json(request);
+exports.checkoutTool = async (req, res) => {
+  try {
+    const { toolId } = req.body;
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    // Atomic update acts as a distributed lock
+    const tool = await Tool.findOneAndUpdate(
+      { _id: toolId, status: 'Available' },
+      { status: 'Checked Out' },
+      { new: true }
+    );
+    
+    if (!tool) {
+      return res.status(400).json({ error: "Tool is not available for checkout or does not exist" });
+    }
+
+    request.checkedOutTools.push({ toolId: tool._id, checkedOutAt: new Date() });
+    await request.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      io.emit('tools_changed');
+    }
+
+    const updatedReq = await MaintenanceRequest.findById(request._id)
+      .populate('checkedOutTools.toolId');
+
+    res.status(200).json(updatedReq);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 const isAuthorizedForRequest = (request, user) => {
   if (user.role === 'Admin' || user.role === 'Manager') return true;
   if (request.assignedToId && request.assignedToId.toString() === user._id.toString()) return true;
@@ -1496,6 +1583,34 @@ exports.listAttachments = async (req, res) => {
   }
 };
 
+exports.returnTool = async (req, res) => {
+  try {
+    const { toolId } = req.body;
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    request.checkedOutTools = request.checkedOutTools.filter(t => t.toolId.toString() !== toolId);
+    await request.save();
+
+    const tool = await Tool.findOneAndUpdate(
+      { _id: toolId },
+      { status: 'Available' },
+      { new: true }
+    );
+
+    const io = req.app.get("socketio");
+    if (io) {
+      io.emit('tools_changed');
+    }
+
+    const updatedReq = await MaintenanceRequest.findById(request._id)
+      .populate('checkedOutTools.toolId');
+
+    res.status(200).json(updatedReq);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 exports.downloadAttachment = async (req, res) => {
   try {
     const request = await MaintenanceRequest.findById(req.params.id);
