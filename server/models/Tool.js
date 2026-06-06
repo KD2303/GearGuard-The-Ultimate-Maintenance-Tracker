@@ -6,6 +6,7 @@ const ToolSchema = new Schema({
   serialNumber: { type: String, required: true, unique: true },
   purchaseCost: { type: Number, default: 0 },
   status: { type: String, enum: ['Available', 'Checked Out', 'In Repair', 'Lost'], default: 'Available' },
+  isLoto: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Tool', ToolSchema);
