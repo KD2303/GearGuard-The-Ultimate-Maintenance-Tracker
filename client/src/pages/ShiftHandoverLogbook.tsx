@@ -42,8 +42,8 @@ const ShiftHandoverLogbook: React.FC = () => {
   const loadOpenRequests = async () => {
     try {
       const data = await requestService.getAll();
-      const open = data.filter(r => r.stage !== 'repaired' && r.stage !== 'scrap');
-      setOpenRequests(open);
+      const ongoing = data.items.filter(r => r.stage === 'in-progress' || r.stage === 'new');
+      setOpenRequests(ongoing);
     } catch (error) {
       console.error(error);
     }

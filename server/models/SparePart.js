@@ -5,6 +5,7 @@ const SparePartSchema = new Schema({
   name: { type: String, required: true },
   sku: { type: String, required: [true, 'SKU is required'], unique: true, trim: true },
   quantityInStock: { type: Number, required: true, default: 0 },
+  quantityReserved: { type: Number, default: 0 },
   unitCost: { type: Number, required: true, default: 0 },
   minReorderThreshold: { type: Number, required: true, default: 5 },
   supplierEmail: { type: String },

@@ -293,6 +293,10 @@ const RequestCard: React.FC<
         </div>
       ) : null}
 
+      {request.isBlockedAwaitingParts && (
+        <div className="flex items-center text-rose-600 dark:text-rose-400 text-xs mt-2 font-bold bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded w-fit border border-rose-100 dark:border-rose-800/50 shadow-sm">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Blocked: Awaiting Parts
       {request.checkedOutTools && request.checkedOutTools.length > 0 && (
         <div className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-2 flex items-center bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
           <Wrench className="h-3 w-3 mr-1" />
@@ -528,6 +532,10 @@ const KanbanBoard: React.FC =
       };
 
     const handleDrop = async (requestId: string, newStage: string) => {
+      const draggedReq = requests.find(r => (r.id || r._id) === requestId);
+      if (draggedReq?.stage === 'new' && newStage === 'in-progress' && draggedReq.isBlockedAwaitingParts) {
+        toast.error("Cannot start ticket: Blocked awaiting parts.");
+        return;
       const request = requests.find(r => r.id === requestId || r._id === requestId);
       if (!request) return;
 

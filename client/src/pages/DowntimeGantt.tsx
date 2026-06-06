@@ -25,7 +25,7 @@ const DowntimeGantt: React.FC = () => {
       const allRequests = await requestService.getAll();
       
       // Filter requests that are open or recently scheduled, and have a scheduledDate
-      const scheduled = allRequests.filter(req => 
+      const scheduled = allRequests.items.filter(req => 
         req.scheduledDate && 
         req.stage !== 'repaired' && 
         req.stage !== 'scrap' &&
@@ -54,7 +54,7 @@ const DowntimeGantt: React.FC = () => {
     
     requests.forEach(req => {
       if (!req.equipmentId || !req.equipment) return;
-      const eqId = typeof req.equipmentId === 'string' ? req.equipmentId : req.equipmentId._id || req.equipment.id;
+      const eqId = req.equipmentId || req.equipment.id || req.equipment._id;
       if (!eqId) return;
 
       if (!groups[eqId]) {

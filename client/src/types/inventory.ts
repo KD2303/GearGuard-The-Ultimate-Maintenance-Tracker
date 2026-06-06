@@ -4,6 +4,7 @@ export interface SparePart {
   name: string;
   sku: string;
   quantityInStock: number;
+  quantityReserved?: number;
   unitCost: number;
   minReorderThreshold: number;
   supplierEmail?: string;
@@ -16,4 +17,9 @@ export interface SparePart {
 export interface PartUsedInput {
   partId: string;
   quantityUsed: number;
+}
+
+export interface PartRequiredInput {
+  partId: string;
+  quantityNeeded: number;
 }
