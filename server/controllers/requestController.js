@@ -1477,7 +1477,12 @@ exports.smartAssignInternal = async (requestId, io) => {
       if (r.assignedToId) {
         const techIdStr = r.assignedToId.toString();
         if (workloadMap[techIdStr] !== undefined) {
-          workloadMap[techIdStr]++;
+          let weight = 1;
+          if (r.priority === 'urgent') weight = 3;
+          else if (r.priority === 'high') weight = 2;
+          else if (r.priority === 'low') weight = 0.5;
+          
+          workloadMap[techIdStr] += weight;
         }
       }
     });
@@ -1495,8 +1500,9 @@ exports.smartAssignInternal = async (requestId, io) => {
     }
 
   // 5. Apply capacity protection limit (MAX_WORKLOAD = 5)
+  // Urgent requests bypass the MAX_WORKLOAD hard cap to prevent critical breakdowns from blocking
   const MAX_WORKLOAD = 5;
-  if (minWorkload >= MAX_WORKLOAD) {
+  if (minWorkload >= MAX_WORKLOAD && request.priority !== 'urgent') {
     throw new Error(`All qualified technicians for specialization "${targetSpecialization || 'this team'}" are at maximum workload capacity (${MAX_WORKLOAD}+ active tickets). Please assign manually.`);
   }
 
