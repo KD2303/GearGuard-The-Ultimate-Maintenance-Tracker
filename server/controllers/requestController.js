@@ -25,6 +25,27 @@ function getGridFSBucket() {
   return new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'attachments' });
 }
 
+const calculateDowntimeCost = async (requestCreatedAt, completedDate, equipmentId, session = null) => {
+  let downtimeDurationHours = 0;
+  let totalDowntimeCost = 0;
+
+  if (requestCreatedAt) {
+    downtimeDurationHours = Math.max(0, (completedDate - new Date(requestCreatedAt)) / (1000 * 60 * 60));
+  }
+
+  let hourlyDowntimeCost = 0;
+  if (equipmentId) {
+    const query = Equipment.findById(equipmentId);
+    if (session) query.session(session);
+    const eq = await query;
+    if (eq && eq.hourlyDowntimeCost) {
+      hourlyDowntimeCost = eq.hourlyDowntimeCost;
+    }
+  }
+
+  totalDowntimeCost = downtimeDurationHours * hourlyDowntimeCost;
+
+  return { downtimeDurationHours, totalDowntimeCost };
 const checkCertifications = async (assignedToId, requiredSkills, session = null) => {
   if (!assignedToId || !requiredSkills || requiredSkills.length === 0) return true;
   const tech = await TeamMember.findById(assignedToId).session(session);
@@ -554,8 +575,16 @@ exports.updateRequest = async (req, res) => {
     const request = await withTransactionFallback(async (session) => {
       // Handle stage side-effects (equipment status updates)
       if (payload.stage) {
-        if (payload.stage === "repaired") {
+        if (payload.stage === "repaired" || payload.stage === "scrap") {
           payload.completedDate = new Date();
+          const { downtimeDurationHours, totalDowntimeCost } = await calculateDowntimeCost(
+            prevRequest.createdAt, payload.completedDate, prevRequest.equipmentId, session
+          );
+          payload.downtimeDurationHours = downtimeDurationHours;
+          payload.totalDowntimeCost = totalDowntimeCost;
+        }
+
+        if (payload.stage === "repaired") {
           if (prevRequest.equipmentId) {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
@@ -578,7 +607,6 @@ exports.updateRequest = async (req, res) => {
           }
         }
         if (payload.stage === "scrap") {
-          payload.completedDate = new Date();
           if (prevRequest.equipmentId) {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
@@ -816,16 +844,9 @@ exports.updateRequestStage = async (req, res) => {
 
     if (stage === "repaired" || stage === "scrap") {
       const completedDate = new Date();
-      let downtimeDurationHours = 0;
-      let totalDowntimeCost = 0;
-
-      if (request.createdAt) {
-        downtimeDurationHours = Math.max(0, (completedDate - request.createdAt) / (1000 * 60 * 60));
-      }
-
-      if (request.equipment && request.equipment.hourlyDowntimeCost) {
-        totalDowntimeCost = downtimeDurationHours * request.equipment.hourlyDowntimeCost;
-      }
+      const { downtimeDurationHours, totalDowntimeCost } = await calculateDowntimeCost(
+        request.createdAt, completedDate, request.equipmentId
+      );
 
       await MaintenanceRequest.findByIdAndUpdate(req.params.id, {
         completedDate,
