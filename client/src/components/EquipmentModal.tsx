@@ -5,6 +5,8 @@ import { CreateEquipmentDto, MaintenanceTeam, TeamMember } from "../types";
 import { equipmentService } from "../services/equipmentService";
 import { teamService } from "../services/teamService";
 import { Car } from "lucide-react";
+import Select from "react-select";
+import { CERTIFICATION_OPTIONS } from "../utils/certifications";
 
 interface EquipmentModalProps {
   isOpen: boolean;
@@ -457,16 +459,22 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-            Required Skills (comma-separated)
+            Required Skills
           </label>
-          <input
-            type="text"
-            value={formData.requiredSkills?.join(', ') || ""}
-            onChange={(e) =>
-              setFormData({ ...formData, requiredSkills: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })
-            }
-            className="input-dark"
-            placeholder="e.g., High Voltage, Hydraulics Level 2"
+          <Select
+            isMulti
+            options={CERTIFICATION_OPTIONS}
+            value={CERTIFICATION_OPTIONS.filter((option) =>
+              formData.requiredSkills?.includes(option.value)
+            )}
+            onChange={(selected) => {
+              setFormData({
+                ...formData,
+                requiredSkills: selected ? selected.map((s) => s.value) : [],
+              });
+            }}
+            className="text-gray-900"
+            placeholder="Select required skills..."
           />
         </div>
 
