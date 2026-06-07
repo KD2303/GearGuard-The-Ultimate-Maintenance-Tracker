@@ -19,6 +19,7 @@ router.delete('/:id/comments/:commentId', requestController.deleteComment);
 router.post('/:id/smart-assign', requestController.smartAssignRequest);
 router.get('/:id/predictions', requestController.predictSpareParts);
 router.post('/:id/parts', requestController.addPartToRequest);
+router.post('/:id/escalate', authorizeRoles('Admin', 'Manager'), requestController.escalateToVendor);
 router.delete('/:id', authorizeRoles('Admin', 'Manager'), requestController.deleteRequest);
 router.post('/:id/loto', requestController.submitLOTO);
 router.post('/:id/tools/checkout', requestController.checkoutTool);

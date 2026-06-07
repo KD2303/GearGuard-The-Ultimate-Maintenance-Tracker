@@ -267,6 +267,7 @@ const defineRoutes = (router) => {
   router.use("/sync", syncRoutes);
   router.use("/tools", toolRoutes);
   router.use("/tasks", taskRoutes);
+  router.use("/vendor", require("./routes/vendorRoutes"));
   router.use("/diagnostics", diagnosticsRoutes);
 };
 

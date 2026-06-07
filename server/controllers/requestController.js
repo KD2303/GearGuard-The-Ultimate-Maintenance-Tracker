@@ -46,6 +46,12 @@ const calculateDowntimeCost = async (requestCreatedAt, completedDate, equipmentI
   totalDowntimeCost = downtimeDurationHours * hourlyDowntimeCost;
 
   return { downtimeDurationHours, totalDowntimeCost };
+const checkCertifications = async (assignedToId, requiredSkills, session = null) => {
+  if (!assignedToId || !requiredSkills || requiredSkills.length === 0) return true;
+  const tech = await TeamMember.findById(assignedToId).session(session);
+  if (!tech) return false;
+  const techCerts = tech.certifications || [];
+  return requiredSkills.every(skill => techCerts.includes(skill));
 };
 
 const decrementInventory = async (io, partsUsed) => {
@@ -262,8 +268,19 @@ exports.createRequest = async (req, res) => {
 
           if (!payload.teamId && equipmentDoc.maintenanceTeamId)
             payload.teamId = equipmentDoc.maintenanceTeamId;
-          if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
-            payload.assignedToId = equipmentDoc.defaultTechnicianId;
+            
+          if (!payload.requiredSkills || payload.requiredSkills.length === 0) {
+            if (equipmentDoc.requiredSkills && equipmentDoc.requiredSkills.length > 0) {
+              payload.requiredSkills = equipmentDoc.requiredSkills;
+            }
+          }
+
+          if (!payload.assignedToId && equipmentDoc.defaultTechnicianId) {
+            const hasSkills = await checkCertifications(equipmentDoc.defaultTechnicianId, payload.requiredSkills, session);
+            if (hasSkills) {
+              payload.assignedToId = equipmentDoc.defaultTechnicianId;
+            }
+          }
 
           // Geospatial Technician Dispatch Routing
           if (payload.priority === 'urgent' && equipmentDoc.geoLocation && equipmentDoc.geoLocation.coordinates) {
@@ -323,6 +340,13 @@ exports.createRequest = async (req, res) => {
                $inc: { quantityReserved: reqPart.quantityNeeded }
              }, { session });
           }
+        }
+      }
+      
+      if (payload.assignedToId) {
+        const isCertified = await checkCertifications(payload.assignedToId, payload.requiredSkills, session);
+        if (!isCertified) {
+          throw new Error("Safety Violation: The assigned technician lacks the required certifications for this task.");
         }
       }
 
@@ -476,9 +500,52 @@ exports.updateRequest = async (req, res) => {
     const prevRequest = await MaintenanceRequest.findById(req.params.id);
     if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
+    if (payload.assignedToId) {
+      const reqSkills = payload.requiredSkills || prevRequest.requiredSkills;
+      const isCertified = await checkCertifications(payload.assignedToId, reqSkills);
+      if (!isCertified) {
+        return res.status(403).json({ error: "Safety Violation: The assigned technician lacks the required certifications for this task." });
+      }
+    }
 
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
+
+    if (payload.stage === 'in-progress' && prevStage === 'new' && prevRequest.isBlockedAwaitingParts) {
+       return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
+    }
+
+    // Handle stage side-effects (equipment status updates)
+    if (payload.stage) {
+      if (payload.stage === "repaired") {
+        payload.completedDate = new Date();
+        if (prevRequest.equipmentId) {
+          await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
+            $set: { status: "active" },
+            $push: { history: {
+              eventType: 'REPAIR_COMPLETED',
+              description: `Request marked as repaired. Status changed to active.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
+          });
+        }
+      }
+      if (payload.stage === "scrap") {
+        payload.completedDate = new Date();
+        if (prevRequest.equipmentId) {
+          await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
+            $set: { status: "scrapped" },
+            $push: { history: {
+              eventType: 'SCRAPPED',
+              description: `Request marked as scrap. Status changed to scrapped.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
+          });
+        }
+      }
+    }
     
     // NEW LOTO CHECK
     if (payload.stage === "in-progress" && prevStage !== "in-progress") {
@@ -1047,7 +1114,10 @@ exports.getAnalytics = async (req, res) => {
       trendData,
       mttrResult,
       financialLossResult,
-      costByCategory
+      costByCategory,
+      topExpensiveMachines,
+      costByDepartment,
+      moneySavedResult
     ] = await Promise.all([
       MaintenanceRequest.countDocuments(rangeMatch),
       MaintenanceRequest.countDocuments({
@@ -1137,6 +1207,97 @@ exports.getAnalytics = async (req, res) => {
         },
         { $project: { _id: 0, category: "$_id", value: 1 } },
         { $sort: { value: -1 } }
+      ]),
+      // 10. Top Expensive Machines
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $group: {
+            _id: "$equipmentDoc.name",
+            value: { $sum: "$totalDowntimeCost" }
+          }
+        },
+        { $project: { _id: 0, name: "$_id", value: 1 } },
+        { $sort: { value: -1 } },
+        { $limit: 5 }
+      ]),
+      // 11. Cost by Department
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $group: {
+            _id: "$equipmentDoc.department",
+            value: { $sum: "$totalDowntimeCost" }
+          }
+        },
+        { $project: { _id: 0, department: { $ifNull: ["$_id", "Unassigned"] }, value: 1 } },
+        { $sort: { value: -1 } }
+      ]),
+      // 12. Money Saved (Time saved * hourly cost)
+      MaintenanceRequest.aggregate([
+        {
+          $match: {
+            ...rangeMatch,
+            stage: { $in: ["repaired", "scrap"] },
+            completedDate: { $ne: null },
+            scheduledDate: { $ne: null }
+          }
+        },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $project: {
+            timeSavedMs: { $subtract: ["$scheduledDate", "$completedDate"] },
+            hourlyCost: "$equipmentDoc.hourlyDowntimeCost"
+          }
+        },
+        {
+          $match: {
+            timeSavedMs: { $gt: 0 },
+            hourlyCost: { $gt: 0 }
+          }
+        },
+        {
+          $project: {
+            moneySaved: {
+              $multiply: [
+                { $divide: ["$timeSavedMs", 3600000] }, // ms to hours
+                "$hourlyCost"
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalMoneySaved: { $sum: "$moneySaved" }
+          }
+        }
       ])
     ]);
 
@@ -1144,6 +1305,7 @@ exports.getAnalytics = async (req, res) => {
     const mttrHours = avgResolutionMs ? avgResolutionMs / (1000 * 60 * 60) : 0;
     const overdueRate = totalRequests ? (overdueRequests / totalRequests) * 100 : 0;
     const totalFinancialLoss = financialLossResult[0]?.totalCost || 0;
+    const moneySaved = moneySavedResult[0]?.totalMoneySaved || 0;
 
     res.json({
       range: {
@@ -1157,12 +1319,15 @@ exports.getAnalytics = async (req, res) => {
         mttrHours: Number(mttrHours.toFixed(2)),
         overdueRate: Number(overdueRate.toFixed(2)),
         totalFinancialLoss: Number(totalFinancialLoss.toFixed(2)),
+        moneySaved: Number(moneySaved.toFixed(2)),
       },
       charts: {
         stageBreakdown,
         typeBreakdown,
         trend: trendData,
-        costByCategory
+        costByCategory,
+        costByDepartment,
+        topExpensiveMachines
       },
     });
   } catch (error) {
@@ -1281,9 +1446,17 @@ exports.smartAssignInternal = async (requestId, io) => {
   }
 
   // 2. Find All Active Technicians in these Teams
-  const technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+  let technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+  
+  if (request.requiredSkills && request.requiredSkills.length > 0) {
+    technicians = technicians.filter(tech => {
+      const certs = tech.certifications || [];
+      return request.requiredSkills.every(skill => certs.includes(skill));
+    });
+  }
+
   if (technicians.length === 0) {
-    throw new Error("No active technicians found for the required specialization. Please assign manually.");
+    throw new Error("No active technicians found with the required certifications for this request. Please assign manually.");
   }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
@@ -1771,3 +1944,36 @@ exports.deleteAttachment = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.escalateToVendor = async (req, res) => {
+  try {
+    const { vendorEmail, vendorCompany, message } = req.body;
+    const request = await MaintenanceRequest.findById(req.params.id);
+    
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    // Generate magic token
+    const crypto = require('crypto');
+    const magicToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+
+    request.vendorEscalation = {
+      isEscalated: true,
+      vendorEmail,
+      vendorCompany,
+      message,
+      magicToken,
+      tokenExpiresAt
+    };
+
+    await request.save();
+
+    res.status(200).json({ 
+      message: "Escalated to vendor successfully", 
+      magicLink: `/vendor/ticket/${magicToken}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+

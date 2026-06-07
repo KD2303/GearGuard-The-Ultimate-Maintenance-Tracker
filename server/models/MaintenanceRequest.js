@@ -9,6 +9,7 @@ const MaintenanceRequestSchema = new Schema({
   type: { type: String, enum: ['corrective', 'preventive', 'predictive'], default: 'corrective' },
   stage: { type: String, enum: ['new', 'in-progress', 'repaired', 'scrap'], default: 'new' },
   priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
+  requiredSkills: [{ type: String }],
   scheduledDate: { type: Date },
   completedDate: { type: Date },
   duration: { type: Number },
@@ -85,6 +86,14 @@ const MaintenanceRequestSchema = new Schema({
   downtimeDurationHours: { type: Number, default: 0 },
   totalDowntimeCost: { type: Number, default: 0 },
   syncId: { type: String, default: null }, // UUID from offline device to prevent replay attacks or resolve conflicts
+  vendorEscalation: {
+    isEscalated: { type: Boolean, default: false },
+    vendorEmail: { type: String },
+    vendorCompany: { type: String },
+    message: { type: String },
+    magicToken: { type: String, select: false },
+    tokenExpiresAt: { type: Date }
+  }
   rootCause: { type: String }, // Used by the RCA logic tree wizard
   rcaNodeId: { type: Schema.Types.ObjectId, ref: 'DiagnosticNode' } // Final leaf node of the RCA tree
 }, { timestamps: true });

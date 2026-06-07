@@ -17,7 +17,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
   onSuccess,
   defaultTeamId,
 }) => {
-  type MemberForm = Pick<TeamMember, 'name' | 'email' | 'phone' | 'role' | 'isActive'> & {
+  type MemberForm = Pick<TeamMember, 'name' | 'email' | 'phone' | 'role' | 'isActive' | 'certifications'> & {
     teamId: string;
   };
 
@@ -27,6 +27,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
     phone: '',
     role: '',
     teamId: defaultTeamId || '',
+    certifications: [],
     isActive: true,
   });
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
@@ -131,6 +132,19 @@ const MemberModal: React.FC<MemberModalProps> = ({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Certifications (comma-separated)
+          </label>
+          <input
+            type="text"
+            value={formData.certifications?.join(', ') || ''}
+            onChange={(e) => setFormData({ ...formData, certifications: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="e.g., High Voltage, Hydraulics Level 2"
+          />
         </div>
 
         <div className="flex items-center">
