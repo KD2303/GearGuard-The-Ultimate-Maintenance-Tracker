@@ -143,7 +143,6 @@ export interface MaintenanceRequest {
     proofImageUrl?: string;
     checklistResponses?: { step: string; checked: boolean }[];
   };
-  rootCause?: string;
   rcaNodeId?: string;
   vendorEscalation?: {
     isEscalated: boolean;
