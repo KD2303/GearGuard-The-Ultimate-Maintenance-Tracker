@@ -266,14 +266,18 @@ exports.createRequest = async (req, res) => {
             const eqCoords = equipmentDoc.geoLocation.coordinates;
             // Only search if coordinates are not [0,0]
             if (eqCoords[0] !== 0 || eqCoords[1] !== 0) {
-              const nearestTech = await TeamMember.findOne({
+              const query = {
                 isActive: true,
                 geoLocation: {
                   $near: {
                     $geometry: { type: 'Point', coordinates: eqCoords }
                   }
                 }
-              }).session(session);
+              };
+              if (payload.requiredSkills && payload.requiredSkills.length > 0) {
+                query.certifications = { $all: payload.requiredSkills };
+              }
+              const nearestTech = await TeamMember.findOne(query).session(session);
 
               if (nearestTech) {
                 payload.assignedToId = nearestTech._id;
