@@ -143,7 +143,6 @@ export interface MaintenanceRequest {
     proofImageUrl?: string;
     checklistResponses?: { step: string; checked: boolean }[];
   };
-  rootCause?: string;
   rcaNodeId?: string;
   vendorEscalation?: {
     isEscalated: boolean;
@@ -163,6 +162,14 @@ export interface MaintenanceRequest {
   slaBreachProbability?: number;
   preBreachWarningSent?: boolean;
   slaBreached?: boolean;
+  approvalStatus?: 'not_required' | 'pending_tier1' | 'pending_tier2' | 'approved' | 'rejected';
+  approvalHistory?: {
+    tier?: string;
+    approvedBy?: string;
+    approvedAt?: string;
+    comments?: string;
+    status?: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
 }

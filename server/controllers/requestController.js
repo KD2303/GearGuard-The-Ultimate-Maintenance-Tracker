@@ -580,6 +580,23 @@ exports.updateRequest = async (req, res) => {
       // Handle stage side-effects (equipment status updates)
       if (payload.stage) {
         if (payload.stage === "repaired" || payload.stage === "scrap") {
+          // Approval check
+          const totalCost = (payload.partsCost !== undefined ? Number(payload.partsCost) : Number(prevRequest.partsCost || 0)) + 
+                            (payload.laborCost !== undefined ? Number(payload.laborCost) : Number(prevRequest.laborCost || 0));
+                            
+          if (prevRequest.approvalStatus !== 'approved' && totalCost > 1000) {
+            if (totalCost > 5000) {
+              payload.approvalStatus = 'pending_tier2';
+            } else {
+              payload.approvalStatus = 'pending_tier1';
+            }
+            payload.stage = 'in-progress'; // Keep it in progress
+            
+            await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload, { session });
+            
+            throw new Error(`High-cost repairs require management approval. The ticket has been flagged for approval and remains in-progress. Required Tier: ${payload.approvalStatus}`);
+          }
+
           payload.completedDate = new Date();
           const { downtimeDurationHours, totalDowntimeCost } = await calculateDowntimeCost(
             prevRequest.createdAt, payload.completedDate, prevRequest.equipmentId, session
@@ -843,6 +860,26 @@ exports.updateRequestStage = async (req, res) => {
     const updateData = { stage };
     if (partsCost !== undefined) updateData.partsCost = partsCost;
     if (laborCost !== undefined) updateData.laborCost = laborCost;
+
+    // Check Approval Thresholds if stage is being completed
+    if (stage === "repaired" || stage === "scrap") {
+      const totalCost = (partsCost !== undefined ? Number(partsCost) : Number(request.partsCost || 0)) + 
+                        (laborCost !== undefined ? Number(laborCost) : Number(request.laborCost || 0));
+                        
+      if (request.approvalStatus !== 'approved' && totalCost > 1000) {
+        if (totalCost > 5000) {
+          updateData.approvalStatus = 'pending_tier2';
+        } else {
+          updateData.approvalStatus = 'pending_tier1';
+        }
+        updateData.stage = 'in-progress'; // Keep it in progress
+        await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData);
+        return res.status(403).json({ 
+          error: "High-cost repairs require management approval. The ticket has been flagged for approval and remains in-progress.",
+          requiresApproval: true
+        });
+      }
+    }
 
     await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData);
 
@@ -1987,3 +2024,62 @@ exports.escalateToVendor = async (req, res) => {
   }
 };
 
+// Approve Request Costs
+exports.approveRequest = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
+    if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
+    }
+    if (request.approvalStatus === 'pending_tier2' && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: "Admin approval required for Tier 2." });
+    }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
+    request.approvalStatus = 'approved';
+    request.approvalHistory.push({
+      tier: previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Approved",
+      status: 'approved'
+    });
+
+    await request.save();
+
+    res.json({ message: "Request approved successfully.", request });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Reject Request Costs
+exports.rejectRequest = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    if (!['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Unauthorized to reject requests." });
+    }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
+    request.approvalStatus = 'rejected';
+    request.approvalHistory.push({
+      tier: previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
+
+    await request.save();
+
+    res.json({ message: "Request rejected successfully.", request });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};

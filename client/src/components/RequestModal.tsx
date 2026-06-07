@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import TicketComments from './TicketComments';
 import RequestToolsTab from './RequestToolsTab';
 import { MaintenanceRequest } from '../types';
-import { ShieldCheck, CheckCircle } from 'lucide-react';
+import { ShieldCheck, CheckCircle, AlertCircle } from 'lucide-react';
 import ImageUploadZone from './ImageUploadZone';
 import ImageGallery from './ImageGallery';
 import axios from 'axios';
@@ -502,6 +502,66 @@ const RequestModal: React.FC<RequestModalProps> = ({
 
       {activeTab === 'details' && (
       <div className="space-y-6">
+        {existingRequest && (existingRequest.approvalStatus === 'pending_tier1' || existingRequest.approvalStatus === 'pending_tier2') && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50 rounded-xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="flex items-center text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                  <AlertCircle className="w-4 h-4 mr-1.5" />
+                  Management Approval Required
+                </h3>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  This request exceeds cost thresholds and is awaiting {existingRequest.approvalStatus === 'pending_tier1' ? 'Manager (Tier 1)' : 'Admin (Tier 2)'} approval before work can proceed.
+                </p>
+              </div>
+              {(user?.role === 'Admin' || (user?.role === 'Manager' && existingRequest.approvalStatus === 'pending_tier1')) && (
+                <div className="flex space-x-2 ml-4 flex-shrink-0">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="text-xs py-1.5 px-3 border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={async () => {
+                      const comments = prompt("Rejection Reason:");
+                      if (comments === null) return;
+                      try {
+                        const updated = await requestService.rejectCosts(existingRequest.id || existingRequest._id || '', comments);
+                        setExistingRequest(updated);
+                        onSuccess();
+                      } catch (e) {}
+                    }}
+                  >
+                    Reject
+                  </Button>
+                  <Button
+                    type="button"
+                    className="text-xs py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white border-transparent"
+                    onClick={async () => {
+                      try {
+                        const updated = await requestService.approveCosts(existingRequest.id || existingRequest._id || '', "Approved via UI");
+                        setExistingRequest(updated);
+                        onSuccess();
+                      } catch (e) {}
+                    }}
+                  >
+                    Approve
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {existingRequest && existingRequest.approvalStatus === 'rejected' && (
+          <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-xl">
+            <h3 className="flex items-center text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
+              <AlertCircle className="w-4 h-4 mr-1.5" />
+              Costs Rejected
+            </h3>
+            <p className="text-xs text-red-700 dark:text-red-400">
+              The estimated costs for this repair were rejected by management. Ticket returned to New stage.
+            </p>
+          </div>
+        )}
         {editRequestId && (predictions.length > 0 || loadingPredictions) && (
           <div className="p-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900 rounded-xl">
             <h3 className="flex items-center text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">

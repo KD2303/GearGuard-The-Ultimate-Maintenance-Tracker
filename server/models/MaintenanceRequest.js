@@ -32,6 +32,18 @@ const MaintenanceRequestSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  approvalStatus: {
+    type: String,
+    enum: ['not_required', 'pending_tier1', 'pending_tier2', 'approved', 'rejected'],
+    default: 'not_required'
+  },
+  approvalHistory: [{
+    tier: { type: String },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: { type: Date },
+    comments: { type: String },
+    status: { type: String }
+  }],
   slaDeadline: { type: Date },
   slaBreachProbability: { type: Number, default: 0, min: 0, max: 100 },
   preBreachWarningSent: { type: Boolean, default: false },
