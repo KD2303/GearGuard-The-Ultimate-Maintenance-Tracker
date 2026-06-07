@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const MaintenanceRequest = require('../models/MaintenanceRequest');
+const SyncConflict = require('../models/SyncConflict');
 
 router.post('/batch', auth, async (req, res, next) => {
   try {
@@ -33,8 +34,20 @@ router.post('/batch', auth, async (req, res, next) => {
           // action.timestamp is when the offline edit was made.
           // existingRequest.updatedAt is when the document was last modified on the server.
           if (action.timestamp && existingRequest.updatedAt && new Date(action.timestamp) < existingRequest.updatedAt) {
-            console.warn(`[Sync] Conflict detected for Request ${requestId}. Rejecting offline action.`);
-            results.push({ id: action.id, status: 'rejected', reason: 'Conflict: Server data is newer' });
+            console.warn(`[Sync] Conflict detected for Request ${requestId}. Logging conflict for admin review.`);
+            
+            // Log the conflict
+            await SyncConflict.create({
+              documentId: requestId,
+              documentModel: 'MaintenanceRequest',
+              userId: req.user._id,
+              offlinePayload: updateData,
+              serverDocument: existingRequest.toObject(),
+              status: 'pending',
+              tenantId: existingRequest.tenantId || req.user.tenantId || req.tenantId
+            });
+
+            results.push({ id: action.id, status: 'conflict_logged', reason: 'Conflict: Server data is newer. Awaiting admin review.' });
             continue;
           }
 
