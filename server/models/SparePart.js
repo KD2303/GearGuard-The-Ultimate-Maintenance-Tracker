@@ -1,5 +1,6 @@
 const { mongoose } = require('../config/database');
 const { Schema } = mongoose;
+const updateIfCurrentPlugin = require('mongoose-update-if-current').updateIfCurrentPlugin;
 
 const SparePartSchema = new Schema({
   name: { type: String, required: true },
@@ -14,6 +15,8 @@ const SparePartSchema = new Schema({
   location: { type: String }, // shelf location e.g. Shelf A-4
   reorderStatus: { type: String, enum: ['ok', 'low-stock', 'reordered'], default: 'ok' }
 }, { timestamps: true });
+
+SparePartSchema.plugin(updateIfCurrentPlugin);
 
 SparePartSchema.set('toObject', { virtuals: true });
 SparePartSchema.set('toJSON', { virtuals: true });
