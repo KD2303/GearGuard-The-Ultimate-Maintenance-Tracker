@@ -1060,7 +1060,10 @@ exports.getAnalytics = async (req, res) => {
       trendData,
       mttrResult,
       financialLossResult,
-      costByCategory
+      costByCategory,
+      topExpensiveMachines,
+      costByDepartment,
+      moneySavedResult
     ] = await Promise.all([
       MaintenanceRequest.countDocuments(rangeMatch),
       MaintenanceRequest.countDocuments({
@@ -1150,6 +1153,97 @@ exports.getAnalytics = async (req, res) => {
         },
         { $project: { _id: 0, category: "$_id", value: 1 } },
         { $sort: { value: -1 } }
+      ]),
+      // 10. Top Expensive Machines
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $group: {
+            _id: "$equipmentDoc.name",
+            value: { $sum: "$totalDowntimeCost" }
+          }
+        },
+        { $project: { _id: 0, name: "$_id", value: 1 } },
+        { $sort: { value: -1 } },
+        { $limit: 5 }
+      ]),
+      // 11. Cost by Department
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $group: {
+            _id: "$equipmentDoc.department",
+            value: { $sum: "$totalDowntimeCost" }
+          }
+        },
+        { $project: { _id: 0, department: { $ifNull: ["$_id", "Unassigned"] }, value: 1 } },
+        { $sort: { value: -1 } }
+      ]),
+      // 12. Money Saved (Time saved * hourly cost)
+      MaintenanceRequest.aggregate([
+        {
+          $match: {
+            ...rangeMatch,
+            stage: { $in: ["repaired", "scrap"] },
+            completedDate: { $ne: null },
+            scheduledDate: { $ne: null }
+          }
+        },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $project: {
+            timeSavedMs: { $subtract: ["$scheduledDate", "$completedDate"] },
+            hourlyCost: "$equipmentDoc.hourlyDowntimeCost"
+          }
+        },
+        {
+          $match: {
+            timeSavedMs: { $gt: 0 },
+            hourlyCost: { $gt: 0 }
+          }
+        },
+        {
+          $project: {
+            moneySaved: {
+              $multiply: [
+                { $divide: ["$timeSavedMs", 3600000] }, // ms to hours
+                "$hourlyCost"
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalMoneySaved: { $sum: "$moneySaved" }
+          }
+        }
       ])
     ]);
 
@@ -1157,6 +1251,7 @@ exports.getAnalytics = async (req, res) => {
     const mttrHours = avgResolutionMs ? avgResolutionMs / (1000 * 60 * 60) : 0;
     const overdueRate = totalRequests ? (overdueRequests / totalRequests) * 100 : 0;
     const totalFinancialLoss = financialLossResult[0]?.totalCost || 0;
+    const moneySaved = moneySavedResult[0]?.totalMoneySaved || 0;
 
     res.json({
       range: {
@@ -1170,12 +1265,15 @@ exports.getAnalytics = async (req, res) => {
         mttrHours: Number(mttrHours.toFixed(2)),
         overdueRate: Number(overdueRate.toFixed(2)),
         totalFinancialLoss: Number(totalFinancialLoss.toFixed(2)),
+        moneySaved: Number(moneySaved.toFixed(2)),
       },
       charts: {
         stageBreakdown,
         typeBreakdown,
         trend: trendData,
-        costByCategory
+        costByCategory,
+        costByDepartment,
+        topExpensiveMachines
       },
     });
   } catch (error) {

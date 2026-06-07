@@ -20,12 +20,15 @@ export interface AnalyticsResponse {
     mttrHours: number;
     overdueRate: number;
     totalFinancialLoss?: number;
+    moneySaved?: number;
   };
   charts: {
     stageBreakdown: Array<{ stage: string; value: number }>;
     typeBreakdown: Array<{ type: string; value: number }>;
     trend: Array<{ date: string; total: number; completed: number }>;
     costByCategory?: Array<{ category: string; value: number }>;
+    costByDepartment?: Array<{ department: string; value: number }>;
+    topExpensiveMachines?: Array<{ name: string; value: number }>;
   };
 }
 
