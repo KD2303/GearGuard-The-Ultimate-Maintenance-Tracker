@@ -72,12 +72,15 @@ exports.createPart = async (req, res) => {
 // Update a spare part
 exports.updatePart = async (req, res) => {
   try {
-    const prevPart = await SparePart.findById(req.params.id);
-    if (!prevPart) return res.status(404).json({ error: "Spare part not found" });
+    const part = await SparePart.findById(req.params.id);
+    if (!part) return res.status(404).json({ error: "Spare part not found" });
+
+    // Store previous stock for logging
+    const prevStock = part.quantityInStock;
 
     const payload = { ...req.body };
-    const quantity = payload.quantityInStock !== undefined ? payload.quantityInStock : prevPart.quantityInStock;
-    const threshold = payload.minReorderThreshold !== undefined ? payload.minReorderThreshold : prevPart.minReorderThreshold;
+    const quantity = payload.quantityInStock !== undefined ? payload.quantityInStock : part.quantityInStock;
+    const threshold = payload.minReorderThreshold !== undefined ? payload.minReorderThreshold : part.minReorderThreshold;
     
     if (quantity < 0 || threshold < 0) {
       return res.status(400).json({ error: "Inventory quantities cannot be negative." });
@@ -85,20 +88,24 @@ exports.updatePart = async (req, res) => {
 
     if (quantity > threshold) {
       payload.reorderStatus = 'ok';
-    } else if (prevPart.reorderStatus === 'ok') {
+    } else if (part.reorderStatus === 'ok') {
       payload.reorderStatus = 'low-stock';
     }
 
-    const part = await SparePart.findByIdAndUpdate(req.params.id, payload, { new: true });
+    // Apply updates
+    part.set(payload);
+    
+    // Save (will trigger version check because of mongoose-update-if-current)
+    await part.save();
 
     // Log Activity if stock count changed
-    if (prevPart.quantityInStock !== part.quantityInStock) {
+    if (prevStock !== part.quantityInStock) {
       await logActivity({
         type: "inventory_updated",
         title: "Spare Part Stock Updated",
-        description: `Stock level for "${part.name}" changed from ${prevPart.quantityInStock} to ${part.quantityInStock}`,
+        description: `Stock level for "${part.name}" changed from ${prevStock} to ${part.quantityInStock}`,
         userName: req.user?.name || "System",
-        metadata: { from: prevPart.quantityInStock, to: part.quantityInStock, sku: part.sku },
+        metadata: { from: prevStock, to: part.quantityInStock, sku: part.sku },
         entityType: "inventory",
         entityId: String(part._id)
       });
@@ -106,6 +113,12 @@ exports.updatePart = async (req, res) => {
 
     res.json(part);
   } catch (error) {
+    if (error.name === 'VersionError') {
+      return res.status(409).json({ 
+        error: "Concurrency Conflict: This spare part was modified by another user. Please refresh and try again.",
+        code: "VERSION_ERROR"
+      });
+    }
     res.status(400).json({ error: error.message });
   }
 };

@@ -1,8 +1,20 @@
 const axios = require('axios');
+const http = require('http');
+const https = require('https');
 const { Worker } = require('bullmq');
 const IORedis = require('ioredis');
 const WebhookEvent = require('../models/WebhookEvent');
 const circuitBreaker = require('../utils/circuitBreaker');
+
+// Configure keep-alive agents to prevent Socket Exhaustion during High-Volume Event Storms
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 100 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100 });
+
+const keepAliveAxios = axios.create({
+  httpAgent,
+  httpsAgent,
+  timeout: 10000
+});
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null
@@ -45,7 +57,7 @@ class WebhookDispatcher {
 
       // 4. Attempt the HTTP request
       try {
-        const response = await axios.post(url, formattedPayload, { timeout: 10000 });
+        const response = await keepAliveAxios.post(url, formattedPayload);
         
         // Success
         await circuitBreaker.recordSuccess(url);

@@ -2,40 +2,13 @@ const Equipment = require('../models/Equipment');
 const TelemetryData = require('../models/TelemetryData');
 const MaintenanceRequest = require('../models/MaintenanceRequest');
 
+const mlAnomalyService = require('../services/mlAnomalyService');
+
 const SIMULATION_INTERVAL_MS = 10000; // Every 10 seconds to not overwhelm the database in dev
-const Z_SCORE_THRESHOLD = 3;
-const EMA_ALPHA = 0.2; // Smoothing factor for EMA (higher = adapts faster to recent data)
+// Threshold for ML Anomaly Detection (probability density < epsilon indicates anomaly)
+const ML_ANOMALY_THRESHOLD = 1e-5;
 
-// In-memory stats for Z-score calculation (EMA and EMVar)
-// Key: EquipmentId_MetricType
-const statsCache = new Map();
-
-function getStats(key, baselineValue) {
-  if (!statsCache.has(key)) {
-    // Initialize with baseline. Assume standard deviation starts at a small percentage of baseline or a minimum.
-    statsCache.set(key, {
-      ema: baselineValue,
-      emvar: baselineValue * 0.05 // Initial small variance
-    });
-  }
-  return statsCache.get(key);
-}
-
-function updateStats(key, newValue) {
-  const stats = statsCache.get(key);
-  
-  // Calculate variance before updating EMA
-  const diff = newValue - stats.ema;
-  const emvar = (1 - EMA_ALPHA) * (stats.emvar + EMA_ALPHA * diff * diff);
-  const ema = stats.ema + EMA_ALPHA * diff;
-  
-  statsCache.set(key, { ema, emvar });
-  
-  const stdDev = Math.sqrt(emvar);
-  const zScore = stdDev === 0 ? 0 : Math.abs(newValue - ema) / stdDev;
-  
-  return { ema, stdDev, zScore };
-}
+// Legacy univariate stats functions removed
 
 let ioRef = null;
 
@@ -70,24 +43,13 @@ const startTelemetryIngest = (io) => {
           { metadata: { equipmentId: eq._id, metricType: 'vibration' }, value: vibValue }
         );
 
-        // 3. Process Statistical Deviation
-        const tempKey = `${eq._id}_temperature`;
-        const vibKey = `${eq._id}_vibration`;
-        
-        getStats(tempKey, baseTemp);
-        getStats(vibKey, baseVib);
-        
-        const tempStats = updateStats(tempKey, tempValue);
-        const vibStats = updateStats(vibKey, vibValue);
+        // 3. Process ML Multivariate Anomaly Detection
+        const features = [tempValue, vibValue];
+        const anomalyProb = mlAnomalyService.evaluateTelemetry(eq._id.toString(), features);
 
         // 4. Action Automation: Check Thresholds
-        // Make sure we only alert if there's an actual anomaly spike, not just normal variance
-        if (isAnomaly && tempStats.zScore > Z_SCORE_THRESHOLD) {
-          await triggerPredictiveAlert(eq, 'temperature', tempValue, tempStats.zScore, tempStats.ema);
-        }
-        
-        if (isAnomaly && vibStats.zScore > Z_SCORE_THRESHOLD) {
-          await triggerPredictiveAlert(eq, 'vibration', vibValue, vibStats.zScore, vibStats.ema);
+        if (isAnomaly && anomalyProb < ML_ANOMALY_THRESHOLD) {
+          await triggerPredictiveAlert(eq, tempValue, vibValue, anomalyProb);
         }
       }
 
@@ -101,7 +63,7 @@ const startTelemetryIngest = (io) => {
   }, SIMULATION_INTERVAL_MS);
 };
 
-const triggerPredictiveAlert = async (equipment, metricType, value, zScore, ema) => {
+const triggerPredictiveAlert = async (equipment, tempValue, vibValue, anomalyProb) => {
   // Check if an active predictive alert already exists to prevent spam
   const existingAlert = await MaintenanceRequest.findOne({
     equipmentId: equipment._id,
@@ -116,8 +78,8 @@ const triggerPredictiveAlert = async (equipment, metricType, value, zScore, ema)
 
   const newRequest = new MaintenanceRequest({
     requestNumber,
-    subject: `[PREDICTIVE ALERT] Anomaly detected in ${metricType}`,
-    description: `IoT sensor array detected a statistical anomaly. \n\nMetric: ${metricType.toUpperCase()} \nCurrent Value: ${value.toFixed(2)} \nBaseline (EMA): ${ema.toFixed(2)} \nZ-Score: ${zScore.toFixed(2)} standard deviations. \n\nImmediate inspection is required.`,
+    subject: `[ML PREDICTIVE ALERT] Multivariate Anomaly Detected`,
+    description: `Machine Learning IoT sensor array detected a statistical anomaly in equipment telemetry.\n\nTemperature: ${tempValue.toFixed(2)}°C \nVibration: ${vibValue.toFixed(2)} mm/s\nML Anomaly Probability Score: ${anomalyProb.toExponential(4)} (Threshold: ${ML_ANOMALY_THRESHOLD})\n\nThe combined vector of telemetry readings represents an abnormal behavioral pattern. Immediate inspection is required.`,
     type: 'predictive',
     stage: 'new',
     priority: 'urgent',
@@ -129,15 +91,15 @@ const triggerPredictiveAlert = async (equipment, metricType, value, zScore, ema)
 
   await newRequest.save();
 
-  console.log(`⚠️ Predictive Alert Generated for ${equipment.name} (${metricType})`);
+  console.log(`⚠️ ML Predictive Alert Generated for ${equipment.name} (Prob: ${anomalyProb.toExponential(2)})`);
 
   // Optional: Send Real-Time Socket Notification
   if (ioRef) {
     ioRef.emit('predictive_alert', {
       equipmentName: equipment.name,
-      metricType,
-      value: value.toFixed(2),
-      zScore: zScore.toFixed(2),
+      tempValue: tempValue.toFixed(2),
+      vibValue: vibValue.toFixed(2),
+      anomalyProb: anomalyProb.toExponential(4),
       requestId: newRequest._id
     });
   }

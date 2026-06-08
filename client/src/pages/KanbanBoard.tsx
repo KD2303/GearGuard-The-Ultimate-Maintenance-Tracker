@@ -238,6 +238,13 @@ const RequestCard: React.FC<
         )}
       </div>
 
+      {(request.approvalStatus === 'pending_tier1' || request.approvalStatus === 'pending_tier2') && (
+        <div className="flex items-center text-amber-600 dark:text-amber-400 text-xs mt-2 font-bold bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded w-fit border border-amber-100 dark:border-amber-800/50 shadow-sm">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Awaiting {request.approvalStatus === 'pending_tier1' ? 'Manager' : 'Admin'} Approval
+        </div>
+      )}
+
       {request.assignedTo && (
         <div className="flex items-center text-xs text-gray-600 dark:text-gray-300 mt-2">
           <User className="h-3 w-3 mr-1" />
@@ -377,9 +384,7 @@ interface ColumnProps {
   sortByCost: boolean;
 }
 
-const Column: React.FC<
-  ColumnProps
-> = ({
+const Column: React.FC<ColumnProps> = ({
   stage,
   requests,
   onDrop,

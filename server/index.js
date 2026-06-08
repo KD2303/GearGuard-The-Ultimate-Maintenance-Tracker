@@ -47,6 +47,7 @@ const syncRoutes = require("./routes/sync");
 const toolRoutes = require("./routes/toolRoutes");
 const taskRoutes = require("./routes/tasks");
 const diagnosticsRoutes = require("./routes/diagnostics");
+const conflictRoutes = require("./routes/conflicts");
 
 console.log("ENV CHECK");
 console.log("MONGO_URI:", process.env.MONGO_URI ? "Set" : "Not Set");
@@ -269,6 +270,7 @@ const defineRoutes = (router) => {
   router.use("/tasks", taskRoutes);
   router.use("/vendor", require("./routes/vendorRoutes"));
   router.use("/diagnostics", diagnosticsRoutes);
+  router.use("/conflicts", conflictRoutes);
 };
 
 const v1Router = express.Router();

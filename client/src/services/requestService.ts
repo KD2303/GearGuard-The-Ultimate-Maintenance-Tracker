@@ -20,12 +20,15 @@ export interface AnalyticsResponse {
     mttrHours: number;
     overdueRate: number;
     totalFinancialLoss?: number;
+    moneySaved?: number;
   };
   charts: {
     stageBreakdown: Array<{ stage: string; value: number }>;
     typeBreakdown: Array<{ type: string; value: number }>;
     trend: Array<{ date: string; total: number; completed: number }>;
     costByCategory?: Array<{ category: string; value: number }>;
+    costByDepartment?: Array<{ department: string; value: number }>;
+    topExpensiveMachines?: Array<{ name: string; value: number }>;
   };
 }
 
@@ -81,14 +84,31 @@ export const requestService = {
     partsCost?: number,
     laborCost?: number
   ): Promise<MaintenanceRequest> => {
-    const response = await api.patch(
-      `/requests/${id}/stage`,
-      { stage, partsCost, laborCost }
-    );
+    try {
+      const response = await api.patch(
+        `/requests/${id}/stage`,
+        { stage, partsCost, laborCost }
+      );
+      toast.success("Request stage updated");
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.requiresApproval) {
+        toast.error("Cost exceeded limit. Forwarded for management approval.");
+      }
+      throw error;
+    }
+  },
 
-    toast.success("Request stage updated");
+  approveCosts: async (id: string, comments?: string): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${id}/approve`, { comments });
+    toast.success("Costs approved successfully");
+    return response.data.request;
+  },
 
-    return response.data;
+  rejectCosts: async (id: string, comments?: string): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${id}/reject`, { comments });
+    toast.success("Costs rejected");
+    return response.data.request;
   },
 
   delete: async (id: string): Promise<void> => {
