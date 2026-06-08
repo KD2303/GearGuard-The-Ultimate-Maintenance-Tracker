@@ -61,6 +61,13 @@ const STAGES = [
   },
 
   {
+    id: "awaiting-approval",
+    title: "Awaiting Approval",
+    color:
+      "bg-purple-50 border-purple-200 dark:bg-slate-800 dark:border-purple-500/30",
+  },
+
+  {
     id: "in-progress",
     title: "In Progress",
     color:
@@ -297,6 +304,9 @@ const RequestCard: React.FC<
         <div className="flex items-center text-rose-600 dark:text-rose-400 text-xs mt-2 font-bold bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded w-fit border border-rose-100 dark:border-rose-800/50 shadow-sm">
           <AlertCircle className="h-3 w-3 mr-1" />
           Blocked: Awaiting Parts
+        </div>
+      )}
+
       {request.checkedOutTools && request.checkedOutTools.length > 0 && (
         <div className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-2 flex items-center bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
           <Wrench className="h-3 w-3 mr-1" />
@@ -312,6 +322,39 @@ const RequestCard: React.FC<
           <Sparkles className="h-3.5 w-3.5 animate-pulse" />
           Smart Assign
         </button>
+      )}
+
+      {request.approvalStatus === 'pending' && (
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await requestService.approveRequest(request.id || request._id || "");
+                _onUpdate();
+              } catch (err: any) {
+                toast.error(err.response?.data?.error || "Failed to approve");
+              }
+            }}
+            className="flex-1 px-2 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/30 dark:hover:bg-green-800/50 dark:text-green-400 rounded text-xs font-medium border border-green-200 dark:border-green-800/50 transition-colors"
+          >
+            Approve
+          </button>
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await requestService.rejectRequest(request.id || request._id || "");
+                _onUpdate();
+              } catch (err: any) {
+                toast.error(err.response?.data?.error || "Failed to reject");
+              }
+            }}
+            className="flex-1 px-2 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-800/50 dark:text-red-400 rounded text-xs font-medium border border-red-200 dark:border-red-800/50 transition-colors"
+          >
+            Reject
+          </button>
+        </div>
       )}
     </div>
   );
@@ -536,6 +579,7 @@ const KanbanBoard: React.FC =
       if (draggedReq?.stage === 'new' && newStage === 'in-progress' && draggedReq.isBlockedAwaitingParts) {
         toast.error("Cannot start ticket: Blocked awaiting parts.");
         return;
+      }
       const request = requests.find(r => r.id === requestId || r._id === requestId);
       if (!request) return;
 

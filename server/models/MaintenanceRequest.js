@@ -7,7 +7,7 @@ const MaintenanceRequestSchema = new Schema({
   subject: { type: String, required: true },
   description: { type: String },
   type: { type: String, enum: ['corrective', 'preventive', 'predictive'], default: 'corrective' },
-  stage: { type: String, enum: ['new', 'in-progress', 'repaired', 'scrap'], default: 'new' },
+  stage: { type: String, enum: ['new', 'awaiting-approval', 'in-progress', 'repaired', 'scrap'], default: 'new' },
   priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
   scheduledDate: { type: Date },
   completedDate: { type: Date },
@@ -15,6 +15,11 @@ const MaintenanceRequestSchema = new Schema({
   cost: { type: Number },
   partsCost: { type: Number, default: 0 },
   laborCost: { type: Number, default: 0 },
+  estimatedCost: { type: Number, default: 0 },
+  expectedVendorQuote: { type: Number, default: 0 },
+  approvalStatus: { type: String, enum: ['not-required', 'pending', 'approved', 'rejected'], default: 'not-required' },
+  approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  approvalDate: { type: Date },
   // notes holds sensitive repair findings and cost commentary. It is encrypted
   // at rest with AES-256-GCM via transparent get and set functions. It is not
   // part of any text index, so encryption does not affect search.

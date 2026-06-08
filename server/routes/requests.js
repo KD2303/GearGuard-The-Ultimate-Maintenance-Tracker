@@ -24,6 +24,8 @@ router.delete('/:id', authorizeRoles('Admin', 'Manager'), requestController.dele
 router.post('/:id/loto', requestController.submitLOTO);
 router.post('/:id/tools/checkout', requestController.checkoutTool);
 router.post('/:id/tools/return', requestController.returnTool);
+router.patch('/:id/approve', requestController.approveRequest);
+router.patch('/:id/reject', requestController.rejectRequest);
 
 // Attachments
 router.post('/:id/attachments', upload.array('attachments', 5), magicByteValidator, requestController.uploadAttachments);

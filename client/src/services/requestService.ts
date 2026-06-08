@@ -186,5 +186,17 @@ export const requestService = {
   deleteAttachment: async (requestId: string, attachmentId: string): Promise<void> => {
     await api.delete(`/requests/${requestId}/attachments/${attachmentId}`);
     toast.success("Attachment deleted successfully");
+  },
+
+  approveRequest: async (requestId: string): Promise<MaintenanceRequest> => {
+    const response = await api.patch(`/requests/${requestId}/approve`);
+    toast.success("Financial approval granted.");
+    return response.data;
+  },
+
+  rejectRequest: async (requestId: string): Promise<MaintenanceRequest> => {
+    const response = await api.patch(`/requests/${requestId}/reject`);
+    toast.success("Financial approval rejected.");
+    return response.data;
   }
 };

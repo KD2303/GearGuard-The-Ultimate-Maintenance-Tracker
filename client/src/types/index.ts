@@ -101,7 +101,7 @@ export interface MaintenanceRequest {
   subject: string;
   description?: string;
   type: 'corrective' | 'preventive';
-  stage: 'new' | 'in-progress' | 'repaired' | 'scrap';
+  stage: 'new' | 'awaiting-approval' | 'in-progress' | 'repaired' | 'scrap';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   scheduledDate?: string;
   completedDate?: string;
@@ -110,6 +110,11 @@ export interface MaintenanceRequest {
   partsCost?: number;
   laborCost?: number;
   notes?: string;
+  estimatedCost?: number;
+  expectedVendorQuote?: number;
+  approvalStatus?: 'not-required' | 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvalDate?: string;
   equipmentId?: string;
   equipment?: Equipment;
   teamId?: string;
@@ -206,6 +211,7 @@ export interface CreateMaintenanceRequestDto {
   partsUsed?: PartUsedInput[];
   requiredParts?: { partId: string; quantityNeeded: number }[];
   checklist?: { text: string; isCompleted: boolean }[];
+  expectedVendorQuote?: number;
 }
 
 export interface Notification {

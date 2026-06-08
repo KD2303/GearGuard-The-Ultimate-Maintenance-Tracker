@@ -87,6 +87,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
     teamId: '',
     assignedToId: '',
     checklist: [],
+    expectedVendorQuote: 0,
   });
 
   const [autoFilled, setAutoFilled] = useState({
@@ -189,6 +190,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
             teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
             assignedToId: typeof req.assignedToId === 'object' ? (req.assignedToId as any)._id : req.assignedToId || '',
             checklist: req.checklist || [],
+            expectedVendorQuote: req.expectedVendorQuote || 0,
           });
         })
         .catch(err => {
@@ -412,6 +414,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
       if (editRequestId) {
         await requestService.update(editRequestId, {
           ...formData,
+          requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
+          expectedVendorQuote: formData.expectedVendorQuote,
         });
 
         if (attachments.length > 0) {
@@ -422,6 +426,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
           ...formData,
           partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
           requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
+          expectedVendorQuote: formData.expectedVendorQuote,
         });
 
         if (attachments.length > 0 && newRequest._id) {
@@ -914,6 +919,41 @@ const RequestModal: React.FC<RequestModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Financial Approval Block */}
+        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800/30 space-y-3">
+          <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-300">Financial Estimations</h3>
+          
+          <div>
+            <label className="block text-xs font-medium text-purple-700 dark:text-purple-400 mb-1">
+              Expected Vendor Quote ($)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.expectedVendorQuote || ""}
+              onChange={(e) => setFormData({ ...formData, expectedVendorQuote: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-purple-200 dark:border-purple-700/50 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-950 text-sm"
+              placeholder="e.g. 5000"
+            />
+          </div>
+
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-medium text-purple-700 dark:text-purple-400">Total Estimated Cost:</span>
+            <span className="font-bold text-purple-900 dark:text-purple-200">
+              ${(
+                (formData.expectedVendorQuote || 0) + 
+                requiredParts.reduce((acc, curr) => {
+                  const part = spareParts.find((p) => p._id === curr.partId || p.id === curr.partId);
+                  return acc + ((part?.unitCost || 0) * (curr.quantityNeeded || 1));
+                }, 0)
+              ).toFixed(2)}
+            </span>
+          </div>
+          <p className="text-[10px] text-purple-600/80 dark:text-purple-400/80">Tickets $\ge$ $5,000 will be locked awaiting financial approval.</p>
+        </div>
+
           <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">
             Spare Parts Used
           </label>
