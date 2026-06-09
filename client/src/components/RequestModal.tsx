@@ -6,7 +6,7 @@ import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { inventoryService } from '../services/inventoryService';
-import { Plus, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Sparkles, Loader2, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import TicketComments from './TicketComments';
@@ -38,7 +38,6 @@ const RequestModal: React.FC<RequestModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools' | 'vendor'>('details');
-  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
@@ -479,12 +478,38 @@ const RequestModal: React.FC<RequestModalProps> = ({
     onClose();
   };
 
+  const handleCopySummary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!existingRequest) return;
+    const priorityIcon = existingRequest.priority === 'urgent' ? '🚨 ' : '';
+    const summary = `${priorityIcon}[${existingRequest.priority?.toUpperCase()}] ${existingRequest.requestNumber}: ${existingRequest.subject} | Stage: ${existingRequest.stage}${existingRequest.assignedTo ? ` | Assigned to: ${existingRequest.assignedTo.name}` : ''}`;
+    navigator.clipboard.writeText(summary);
+    toast.success("Copied to clipboard!");
+  };
+
+  const modalTitle = editRequestId ? (
+    <div className="flex items-center gap-2">
+      <span>Request {existingRequest?.requestNumber || ''}</span>
+      {existingRequest && (
+        <button
+          onClick={handleCopySummary}
+          className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+          title="Copy Summary to Clipboard"
+        >
+          <Copy className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  ) : (
+    "Create Maintenance Request"
+  );
+
   return (
     <>
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={editRequestId ? `Request ${existingRequest?.requestNumber || ''}` : "Create Maintenance Request"}
+      title={modalTitle}
       size="lg"
     >
       {editRequestId && (
