@@ -293,14 +293,20 @@ exports.createRequest = async (req, res) => {
         for (const reqPart of payload.requiredParts) {
           const partDoc = await SparePart.findById(reqPart.partId).session(session);
           if (partDoc) {
-             const availableStock = partDoc.quantityInStock - partDoc.quantityReserved;
-             if (availableStock < reqPart.quantityNeeded) {
+             estimatedPartsCost += (partDoc.unitCost || 0) * (reqPart.quantityNeeded || 1);
+             const updatedPart = await SparePart.findOneAndUpdate(
+               { 
+                 _id: reqPart.partId,
+                 $expr: { $gte: [{ $subtract: ["$quantityInStock", "$quantityReserved"] }, reqPart.quantityNeeded] }
+               },
+               {
+                 $inc: { quantityReserved: reqPart.quantityNeeded }
+               },
+               { session, new: true }
+             );
+             if (!updatedPart) {
                isBlocked = true;
              }
-             estimatedPartsCost += (partDoc.unitCost || 0) * (reqPart.quantityNeeded || 1);
-             await SparePart.findByIdAndUpdate(reqPart.partId, {
-               $inc: { quantityReserved: reqPart.quantityNeeded }
-             }, { session });
           }
         }
       }
