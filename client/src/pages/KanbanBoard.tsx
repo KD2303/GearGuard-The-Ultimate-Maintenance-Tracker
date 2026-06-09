@@ -82,6 +82,33 @@ const STAGES = [
   },
 ];
 
+const LiveTimer: React.FC<{ startTime: string }> = ({ startTime }) => {
+  const [elapsed, setElapsed] = useState<string>('');
+
+  useEffect(() => {
+    const start = new Date(startTime).getTime();
+    
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = Math.max(0, now - start);
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setElapsed(
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return <span className="font-mono">{elapsed}</span>;
+};
+
 interface RequestCardProps {
   request: MaintenanceRequest;
   onUpdate: () => void;
@@ -209,6 +236,13 @@ const RequestCard: React.FC<
         {request.requestNumber}
       </p>
 
+      {request.stage !== "repaired" && request.stage !== "scrap" && request.createdAt && (
+        <div className="flex items-center text-xs text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded w-fit border border-orange-100 dark:border-orange-800/50 shadow-sm mb-2">
+          <Clock className="h-3 w-3 mr-1 animate-pulse" />
+          Downtime: <span className="ml-1"><LiveTimer startTime={request.createdAt} /></span>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 mb-2">
         <Badge
           variant={
@@ -297,6 +331,8 @@ const RequestCard: React.FC<
         <div className="flex items-center text-rose-600 dark:text-rose-400 text-xs mt-2 font-bold bg-rose-50 dark:bg-rose-900/20 px-2 py-1 rounded w-fit border border-rose-100 dark:border-rose-800/50 shadow-sm">
           <AlertCircle className="h-3 w-3 mr-1" />
           Blocked: Awaiting Parts
+        </div>
+      )}
       {request.checkedOutTools && request.checkedOutTools.length > 0 && (
         <div className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-2 flex items-center bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
           <Wrench className="h-3 w-3 mr-1" />
@@ -536,6 +572,7 @@ const KanbanBoard: React.FC =
       if (draggedReq?.stage === 'new' && newStage === 'in-progress' && draggedReq.isBlockedAwaitingParts) {
         toast.error("Cannot start ticket: Blocked awaiting parts.");
         return;
+      }
       const request = requests.find(r => r.id === requestId || r._id === requestId);
       if (!request) return;
 
