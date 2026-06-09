@@ -17,6 +17,7 @@ import SettingsPage from './pages/SettingsPage';
 import AdminDashboard from './pages/AdminDashboard';
 import AnalyticsPage from './pages/AnalyticsPage';
 import RCABuilder from './pages/RCABuilder';
+import ConflictResolution from './pages/ConflictResolution';
 import InventoryList from './pages/InventoryList';
 import PredictiveDashboard from './pages/PredictiveDashboard';
 import PurchaseOrdersPage from './pages/PurchaseOrdersPage';
@@ -49,6 +50,7 @@ function AppContent() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/rca-builder" element={<RCABuilder />} />
+        <Route path="/admin/sync-conflicts" element={<ConflictResolution />} />
         <Route path="/requests" element={<KanbanBoard />} />
         <Route path="/financials" element={<FinancialDashboard />} />
         <Route path="/requests-all" element={<RequestsPage />} />

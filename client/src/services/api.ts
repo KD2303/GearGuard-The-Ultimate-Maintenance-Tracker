@@ -96,6 +96,12 @@ api.interceptors.response.use(
 
     let message = 'Something went wrong';
     
+    if (error.response?.status === 409) {
+      message = error.response.data?.error || 'Concurrency Conflict: This record was modified by another user. Please refresh and try again.';
+      toast.error(message, { duration: 6000 });
+      return Promise.reject(error);
+    }
+    
     if (error.response?.data?.message) {
       message = error.response.data.message;
     } else if (error.response?.data?.error) {

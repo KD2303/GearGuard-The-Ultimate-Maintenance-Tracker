@@ -3,6 +3,8 @@ import Modal from './Modal';
 import Button from './Button';
 import { teamService } from '../services/teamService';
 import { MaintenanceTeam, TeamMember } from '../types';
+import Select from "react-select";
+import { CERTIFICATION_OPTIONS } from "../utils/certifications";
 
 interface MemberModalProps {
   isOpen: boolean;
@@ -17,7 +19,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
   onSuccess,
   defaultTeamId,
 }) => {
-  type MemberForm = Pick<TeamMember, 'name' | 'email' | 'phone' | 'role' | 'isActive'> & {
+  type MemberForm = Pick<TeamMember, 'name' | 'email' | 'phone' | 'role' | 'isActive' | 'certifications'> & {
     teamId: string;
   };
 
@@ -27,6 +29,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
     phone: '',
     role: '',
     teamId: defaultTeamId || '',
+    certifications: [],
     isActive: true,
   });
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
@@ -131,6 +134,27 @@ const MemberModal: React.FC<MemberModalProps> = ({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Certifications
+          </label>
+          <Select
+            isMulti
+            options={CERTIFICATION_OPTIONS}
+            value={CERTIFICATION_OPTIONS.filter((option) =>
+              formData.certifications?.includes(option.value)
+            )}
+            onChange={(selected) => {
+              setFormData({
+                ...formData,
+                certifications: selected ? selected.map((s) => s.value) : [],
+              });
+            }}
+            className="text-gray-900"
+            placeholder="Select certifications..."
+          />
         </div>
 
         <div className="flex items-center">

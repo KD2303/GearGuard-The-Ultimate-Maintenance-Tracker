@@ -12,11 +12,14 @@ import { useAuth } from '../contexts/AuthContext';
 import TicketComments from './TicketComments';
 import RequestToolsTab from './RequestToolsTab';
 import { MaintenanceRequest } from '../types';
-import { ShieldCheck, CheckCircle } from 'lucide-react';
+import { ShieldCheck, CheckCircle, AlertCircle } from 'lucide-react';
 import ImageUploadZone from './ImageUploadZone';
 import ImageGallery from './ImageGallery';
 import axios from 'axios';
 import RCAWizardModal from './RCAWizardModal';
+import Select from "react-select";
+import { CERTIFICATION_OPTIONS } from "../utils/certifications";
+
 interface RequestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,6 +41,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools' | 'vendor'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
@@ -86,6 +90,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
     teamId: '',
     assignedToId: '',
     checklist: [],
+    expectedVendorQuote: 0,
+    requiredSkills: [],
   });
 
   const [autoFilled, setAutoFilled] = useState({
@@ -188,6 +194,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
             teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
             assignedToId: typeof req.assignedToId === 'object' ? (req.assignedToId as any)._id : req.assignedToId || '',
             checklist: req.checklist || [],
+            expectedVendorQuote: req.expectedVendorQuote || 0,
+            requiredSkills: req.requiredSkills || [],
           });
         })
         .catch(err => {
@@ -228,43 +236,6 @@ const RequestModal: React.FC<RequestModalProps> = ({
       setPredictions(prev => prev.map(p => p._id === partId ? { ...p, quantityInStock: p.quantityInStock - 1 } : p));
     } catch (error: any) {
       toast.error('Failed to reserve part: ' + (error.response?.data?.error || error.message));
-    }
-  };
-
-  const handleVendorEscalate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!editRequestId) return;
-    const form = e.target as HTMLFormElement;
-    const vendorCompany = (form.elements.namedItem('vendorCompany') as HTMLInputElement).value;
-    const vendorEmail = (form.elements.namedItem('vendorEmail') as HTMLInputElement).value;
-    const vendorMessage = (form.elements.namedItem('vendorMessage') as HTMLTextAreaElement).value;
-
-    try {
-      // Direct axios call or add to requestService
-      const axios = require('axios');
-      const res = await axios.post(`http://localhost:5001/api/requests/${editRequestId}/escalate`, {
-        vendorCompany,
-        vendorEmail,
-        message: vendorMessage
-      }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      toast.success(
-        <div>
-          <p>Link generated!</p>
-          <a href={res.data.magicLink} target="_blank" rel="noreferrer" className="underline text-blue-200 break-all">{res.data.magicLink}</a>
-        </div>,
-        { duration: 10000 }
-      );
-      
-      // Refresh request
-      const updatedReq = await requestService.getById(editRequestId);
-      setExistingRequest(updatedReq);
-    } catch (err: any) {
-      toast.error('Failed to escalate: ' + (err.response?.data?.error || err.message));
     }
   };
 
@@ -322,6 +293,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
         assignedToId:
           techObj?._id ||
           prev.assignedToId,
+        requiredSkills: eq.requiredSkills && eq.requiredSkills.length > 0 ? eq.requiredSkills : prev.requiredSkills,
       }));
     } catch (error) {
       console.error(
@@ -411,6 +383,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
       if (editRequestId) {
         await requestService.update(editRequestId, {
           ...formData,
+          requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
+          expectedVendorQuote: formData.expectedVendorQuote,
         });
 
         if (attachments.length > 0) {
@@ -421,6 +395,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
           ...formData,
           partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
           requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
+          expectedVendorQuote: formData.expectedVendorQuote,
         });
 
         if (attachments.length > 0 && newRequest._id) {
@@ -554,20 +529,71 @@ const RequestModal: React.FC<RequestModalProps> = ({
               </span>
             )}
           </button>
-          {user?.role !== 'Technician' && (
-            <button
-              type="button"
-              className={`py-2 px-4 text-sm font-medium border-b-2 ${activeTab === 'vendor' ? 'border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
-              onClick={() => setActiveTab('vendor')}
-            >
-              Vendor
-            </button>
-          )}
         </div>
       )}
 
       {activeTab === 'details' && (
       <div className="space-y-6">
+        {existingRequest && (existingRequest.approvalStatus === 'pending_tier1' || existingRequest.approvalStatus === 'pending_tier2') && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50 rounded-xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="flex items-center text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                  <AlertCircle className="w-4 h-4 mr-1.5" />
+                  Management Approval Required
+                </h3>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  This request exceeds cost thresholds and is awaiting {existingRequest.approvalStatus === 'pending_tier1' ? 'Manager (Tier 1)' : 'Admin (Tier 2)'} approval before work can proceed.
+                </p>
+              </div>
+              {(user?.role === 'Admin' || (user?.role === 'Manager' && existingRequest.approvalStatus === 'pending_tier1')) && (
+                <div className="flex space-x-2 ml-4 flex-shrink-0">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="text-xs py-1.5 px-3 border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={async () => {
+                      const comments = prompt("Rejection Reason:");
+                      if (comments === null) return;
+                      try {
+                        const updated = await requestService.rejectCosts(existingRequest.id || existingRequest._id || '', comments);
+                        setExistingRequest(updated);
+                        onSuccess();
+                      } catch (e) {}
+                    }}
+                  >
+                    Reject
+                  </Button>
+                  <Button
+                    type="button"
+                    className="text-xs py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white border-transparent"
+                    onClick={async () => {
+                      try {
+                        const updated = await requestService.approveCosts(existingRequest.id || existingRequest._id || '', "Approved via UI");
+                        setExistingRequest(updated);
+                        onSuccess();
+                      } catch (e) {}
+                    }}
+                  >
+                    Approve
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {existingRequest && existingRequest.approvalStatus === 'rejected' && (
+          <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-xl">
+            <h3 className="flex items-center text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
+              <AlertCircle className="w-4 h-4 mr-1.5" />
+              Costs Rejected
+            </h3>
+            <p className="text-xs text-red-700 dark:text-red-400">
+              The estimated costs for this repair were rejected by management. Ticket returned to New stage.
+            </p>
+          </div>
+        )}
         {editRequestId && (predictions.length > 0 || loadingPredictions) && (
           <div className="p-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900 rounded-xl">
             <h3 className="flex items-center text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">
@@ -858,13 +884,43 @@ const RequestModal: React.FC<RequestModalProps> = ({
             <option value="">Select technician...</option>
             {members.map((member) => {
               const memberId = member._id ?? member.id;
+              
+              let certificationStatus = "";
+              if (formData.requiredSkills && formData.requiredSkills.length > 0) {
+                const techCerts = member.certifications || [];
+                const hasSkills = formData.requiredSkills.every(skill => techCerts.includes(skill));
+                certificationStatus = hasSkills ? " [✓ Certified]" : " [⚠ Lacks Skills]";
+              }
+              
               return (
                 <option key={memberId} value={String(memberId)}>
-                  {member.name} {member.role && `(${member.role})`}
+                  {member.name} {member.role && `(${member.role})`}{certificationStatus}
                 </option>
               );
             })}
           </select>
+
+          {/* Required Skills */}
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
+              Required Skills
+            </label>
+            <Select
+              isMulti
+              options={CERTIFICATION_OPTIONS}
+              value={CERTIFICATION_OPTIONS.filter((option) =>
+                formData.requiredSkills?.includes(option.value)
+              )}
+              onChange={(selected) => {
+                setFormData({
+                  ...formData,
+                  requiredSkills: selected ? selected.map((s) => s.value) : [],
+                });
+              }}
+              className="text-gray-900"
+              placeholder="Select required skills (Auto-filled from equipment)..."
+            />
+          </div>
 
           {!formData.assignedToId && editRequestId && (
             <button
@@ -939,6 +995,41 @@ const RequestModal: React.FC<RequestModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Financial Approval Block */}
+        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800/30 space-y-3">
+          <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-300">Financial Estimations</h3>
+          
+          <div>
+            <label className="block text-xs font-medium text-purple-700 dark:text-purple-400 mb-1">
+              Expected Vendor Quote ($)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.expectedVendorQuote || ""}
+              onChange={(e) => setFormData({ ...formData, expectedVendorQuote: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-purple-200 dark:border-purple-700/50 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-950 text-sm"
+              placeholder="e.g. 5000"
+            />
+          </div>
+
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-medium text-purple-700 dark:text-purple-400">Total Estimated Cost:</span>
+            <span className="font-bold text-purple-900 dark:text-purple-200">
+              ${(
+                (formData.expectedVendorQuote || 0) + 
+                requiredParts.reduce((acc, curr) => {
+                  const part = spareParts.find((p) => p._id === curr.partId || p.id === curr.partId);
+                  return acc + ((part?.unitCost || 0) * (curr.quantityNeeded || 1));
+                }, 0)
+              ).toFixed(2)}
+            </span>
+          </div>
+          <p className="text-[10px] text-purple-600/80 dark:text-purple-400/80">Tickets $\ge$ $5,000 will be locked awaiting financial approval.</p>
+        </div>
+
           <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">
             Spare Parts Used
           </label>
@@ -1156,43 +1247,6 @@ const RequestModal: React.FC<RequestModalProps> = ({
                   </div>
                 )}
               </div>
-            </div>
-          )}
-        </div>
-      )}
-      {activeTab === 'vendor' && existingRequest && (
-        <div className="space-y-6">
-          {!existingRequest.vendorEscalation?.isEscalated ? (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Escalate to External Vendor</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Generate a secure, time-boxed magic link to allow an external contractor to view this ticket and add service notes without logging in.
-              </p>
-              <form onSubmit={handleVendorEscalate} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor Company</label>
-                  <input type="text" name="vendorCompany" id="vendorCompany" required className="mt-1 w-full px-3 py-2 border rounded-md" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor Email</label>
-                  <input type="email" name="vendorEmail" id="vendorEmail" required className="mt-1 w-full px-3 py-2 border rounded-md" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Message to Vendor</label>
-                  <textarea name="vendorMessage" id="vendorMessage" rows={3} className="mt-1 w-full px-3 py-2 border rounded-md"></textarea>
-                </div>
-                <Button type="submit" variant="primary">Generate Magic Link</Button>
-              </form>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-green-200 dark:border-green-900/50">
-              <div className="flex items-center mb-4">
-                <CheckCircle className="h-6 w-6 text-green-500 mr-2" />
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Escalated to Vendor</h3>
-              </div>
-              <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Company:</strong> {existingRequest.vendorEscalation.vendorCompany}</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300"><strong>Email:</strong> {existingRequest.vendorEscalation.vendorEmail}</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300 mt-2"><strong>Expires:</strong> {existingRequest.vendorEscalation.tokenExpiresAt ? new Date(existingRequest.vendorEscalation.tokenExpiresAt).toLocaleString() : 'Unknown'}</p>
             </div>
           )}
         </div>
