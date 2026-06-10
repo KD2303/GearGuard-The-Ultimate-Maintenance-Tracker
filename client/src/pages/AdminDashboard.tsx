@@ -3,6 +3,7 @@ import { MetricsCard } from '../components/MetricsCard';
 import { MaintenanceTrendChart } from '../components/MaintenanceTrendChart';
 import { AlertsPanel } from '../components/AlertsPanel';
 import { adminService } from '../services/adminService';
+import { getDepletionForecast, DepletionForecast } from '../services/predictiveService';
 import {
   Plus,
   Wrench,
@@ -11,7 +12,9 @@ import {
   RefreshCcw,
   History,
   Moon,
-  Sun
+  Sun,
+  AlertTriangle,
+  TrendingDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
@@ -24,6 +27,7 @@ const AdminDashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<any>(null);
   const [alerts, setAlerts] = useState<any>(null);
   const [recent, setRecent] = useState<any>(null);
+  const [depletionForecasts, setDepletionForecasts] = useState<DepletionForecast[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(false);
   const [showEquipmentModal, setShowEquipmentModal] = useState(false);
@@ -32,16 +36,18 @@ const AdminDashboard: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [m, a, al, r] = await Promise.all([
+      const [m, a, al, r, forecasts] = await Promise.all([
         adminService.getMetrics(),
         adminService.getAnalytics(),
         adminService.getAlerts(),
-        adminService.getRecentActivity()
+        adminService.getRecentActivity(),
+        getDepletionForecast()
       ]);
       setMetrics(m);
       setAnalytics(a);
       setAlerts(al);
       setRecent(r);
+      setDepletionForecasts(forecasts);
     } catch (error) {
       toast.error('Failed to refresh dashboard data');
     } finally {
@@ -236,12 +242,51 @@ const AdminDashboard: React.FC = () => {
 
       {/* 4. Alerts & Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 flex flex-col gap-6">
           <AlertsPanel
             overdue={alerts?.overdue || []}
             dueSoon={alerts?.dueSoon || []}
             capacity={alerts?.capacityWarnings || []}
           />
+          
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+              <h3 className="font-bold text-gray-900 dark:text-white flex items-center">
+                <TrendingDown className="w-5 h-5 mr-2 text-rose-500" />
+                Parts Nearing Depletion
+              </h3>
+            </div>
+            <div className="p-5 overflow-hidden">
+              {depletionForecasts.length > 0 ? (
+                <div className="space-y-4">
+                  {depletionForecasts.map(part => (
+                    <div key={part.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600">
+                      <div>
+                        <p className="font-medium text-sm text-gray-900 dark:text-white">{part.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+                          <span className="font-mono bg-gray-200 dark:bg-gray-600 px-1.5 rounded">{part.sku}</span>
+                          <span className="ml-2">Stock: {part.quantityInStock}</span>
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-bold flex items-center justify-end ${part.isAlertTriggered ? 'text-rose-500' : 'text-amber-500'}`}>
+                          {part.isAlertTriggered && <AlertTriangle className="w-4 h-4 mr-1" />}
+                          {part.daysUntilDepletion} days left
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Rate: {part.dailyBurnRate}/day
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No parts currently at risk of depletion.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
