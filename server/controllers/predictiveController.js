@@ -5,6 +5,7 @@ const {
   analyzeEquipmentFailures,
   generatePredictiveAlerts
 } = require('../services/predictiveMaintenanceService');
+const mlAnomalyService = require('../services/mlAnomalyService');
 
 // ===================================
 // Get High Risk Equipment
@@ -118,6 +119,10 @@ const simulateTelemetry = asyncHandler(async (req, res) => {
     analysis.healthScore
   );
 
+  // Calculate ML Anomaly Probability for the simulated values
+  const features = [equipment.temperatureCelsius, equipment.vibrationAmplitude];
+  const anomalyProb = mlAnomalyService.evaluateTelemetry(equipment._id.toString(), features);
+
   const updatedResult = {
     id: equipment._id,
     name: equipment.name,
@@ -137,7 +142,8 @@ const simulateTelemetry = asyncHandler(async (req, res) => {
     status: equipment.status,
     alerts,
     autoDispatched: analysis.autoDispatched,
-    dispatchedRequest: analysis.dispatchedRequest
+    dispatchedRequest: analysis.dispatchedRequest,
+    anomalyProb
   };
 
   // Broadcast telemetry update via socket
