@@ -103,6 +103,7 @@ export interface MaintenanceRequest {
   subject: string;
   description?: string;
   type: 'corrective' | 'preventive';
+  stage: 'new' | 'awaiting-approval' | 'in-progress' | 'repaired' | 'scrap';
   stage: 'new' | 'in-progress' | 'repaired' | 'scrap';
   rootCause?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
@@ -114,6 +115,11 @@ export interface MaintenanceRequest {
   partsCost?: number;
   laborCost?: number;
   notes?: string;
+  estimatedCost?: number;
+  expectedVendorQuote?: number;
+  approvalStatus?: 'not-required' | 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvalDate?: string;
   equipmentId?: string;
   equipment?: Equipment;
   teamId?: string;
@@ -143,7 +149,6 @@ export interface MaintenanceRequest {
     proofImageUrl?: string;
     checklistResponses?: { step: string; checked: boolean }[];
   };
-  rootCause?: string;
   rcaNodeId?: string;
   vendorEscalation?: {
     isEscalated: boolean;
@@ -163,6 +168,14 @@ export interface MaintenanceRequest {
   slaBreachProbability?: number;
   preBreachWarningSent?: boolean;
   slaBreached?: boolean;
+  approvalStatus?: 'not_required' | 'pending_tier1' | 'pending_tier2' | 'approved' | 'rejected';
+  approvalHistory?: {
+    tier?: string;
+    approvedBy?: string;
+    approvedAt?: string;
+    comments?: string;
+    status?: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -214,6 +227,7 @@ export interface CreateMaintenanceRequestDto {
   partsUsed?: PartUsedInput[];
   requiredParts?: { partId: string; quantityNeeded: number }[];
   checklist?: { text: string; isCompleted: boolean }[];
+  expectedVendorQuote?: number;
 }
 
 export interface Notification {

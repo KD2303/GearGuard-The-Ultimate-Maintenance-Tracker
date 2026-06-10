@@ -26,10 +26,8 @@ export interface PredictiveEquipmentStatus {
     maxVibration: number;
   };
   status: string;
-  alerts: Array<{
-    type: string;
-    message: string;
-  }>;
+  alerts?: Array<{ type: string; message: string }>;
+  anomalyProb?: number;
   autoDispatched?: boolean;
   dispatchedRequest?: {
     requestNumber: string;

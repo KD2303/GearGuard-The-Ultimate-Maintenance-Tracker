@@ -84,14 +84,31 @@ export const requestService = {
     partsCost?: number,
     laborCost?: number
   ): Promise<MaintenanceRequest> => {
-    const response = await api.patch(
-      `/requests/${id}/stage`,
-      { stage, partsCost, laborCost }
-    );
+    try {
+      const response = await api.patch(
+        `/requests/${id}/stage`,
+        { stage, partsCost, laborCost }
+      );
+      toast.success("Request stage updated");
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.data?.requiresApproval) {
+        toast.error("Cost exceeded limit. Forwarded for management approval.");
+      }
+      throw error;
+    }
+  },
 
-    toast.success("Request stage updated");
+  approveCosts: async (id: string, comments?: string): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${id}/approve`, { comments });
+    toast.success("Costs approved successfully");
+    return response.data.request;
+  },
 
-    return response.data;
+  rejectCosts: async (id: string, comments?: string): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${id}/reject`, { comments });
+    toast.success("Costs rejected");
+    return response.data.request;
   },
 
   delete: async (id: string): Promise<void> => {
@@ -189,5 +206,17 @@ export const requestService = {
   deleteAttachment: async (requestId: string, attachmentId: string): Promise<void> => {
     await api.delete(`/requests/${requestId}/attachments/${attachmentId}`);
     toast.success("Attachment deleted successfully");
+  },
+
+  approveRequest: async (requestId: string): Promise<MaintenanceRequest> => {
+    const response = await api.patch(`/requests/${requestId}/approve`);
+    toast.success("Financial approval granted.");
+    return response.data;
+  },
+
+  rejectRequest: async (requestId: string): Promise<MaintenanceRequest> => {
+    const response = await api.patch(`/requests/${requestId}/reject`);
+    toast.success("Financial approval rejected.");
+    return response.data;
   }
 };

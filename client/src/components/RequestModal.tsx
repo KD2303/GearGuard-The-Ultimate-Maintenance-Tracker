@@ -6,13 +6,13 @@ import { requestService } from '../services/requestService';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { inventoryService } from '../services/inventoryService';
-import { Plus, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Sparkles, Loader2, Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import TicketComments from './TicketComments';
 import RequestToolsTab from './RequestToolsTab';
 import { MaintenanceRequest } from '../types';
-import { ShieldCheck, CheckCircle } from 'lucide-react';
+import { ShieldCheck, CheckCircle, AlertCircle } from 'lucide-react';
 import ImageUploadZone from './ImageUploadZone';
 import ImageGallery from './ImageGallery';
 import axios from 'axios';
@@ -40,6 +40,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   editRequestId,
 }) => {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools' | 'vendor'>('details');
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   // Helper function to format date for datetime-local input
@@ -89,6 +90,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
     teamId: '',
     assignedToId: '',
     checklist: [],
+    expectedVendorQuote: 0,
     requiredSkills: [],
   });
 
@@ -192,6 +194,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
             teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
             assignedToId: typeof req.assignedToId === 'object' ? (req.assignedToId as any)._id : req.assignedToId || '',
             checklist: req.checklist || [],
+            expectedVendorQuote: req.expectedVendorQuote || 0,
             requiredSkills: req.requiredSkills || [],
           });
         })
@@ -380,6 +383,8 @@ const RequestModal: React.FC<RequestModalProps> = ({
       if (editRequestId) {
         await requestService.update(editRequestId, {
           ...formData,
+          requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
+          expectedVendorQuote: formData.expectedVendorQuote,
         });
 
         if (attachments.length > 0) {
@@ -390,6 +395,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
           ...formData,
           partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
           requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
+          expectedVendorQuote: formData.expectedVendorQuote,
         });
 
         if (attachments.length > 0 && newRequest._id) {
@@ -447,12 +453,38 @@ const RequestModal: React.FC<RequestModalProps> = ({
     onClose();
   };
 
+  const handleCopySummary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!existingRequest) return;
+    const priorityIcon = existingRequest.priority === 'urgent' ? '🚨 ' : '';
+    const summary = `${priorityIcon}[${existingRequest.priority?.toUpperCase()}] ${existingRequest.requestNumber}: ${existingRequest.subject} | Stage: ${existingRequest.stage}${existingRequest.assignedTo ? ` | Assigned to: ${existingRequest.assignedTo.name}` : ''}`;
+    navigator.clipboard.writeText(summary);
+    toast.success("Copied to clipboard!");
+  };
+
+  const modalTitle = editRequestId ? (
+    <div className="flex items-center gap-2">
+      <span>Request {existingRequest?.requestNumber || ''}</span>
+      {existingRequest && (
+        <button
+          onClick={handleCopySummary}
+          className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+          title="Copy Summary to Clipboard"
+        >
+          <Copy className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  ) : (
+    "Create Maintenance Request"
+  );
+
   return (
     <>
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={editRequestId ? `Request ${existingRequest?.requestNumber || ''}` : "Create Maintenance Request"}
+      title={modalTitle}
       size="lg"
     >
       {editRequestId && (
@@ -502,6 +534,66 @@ const RequestModal: React.FC<RequestModalProps> = ({
 
       {activeTab === 'details' && (
       <div className="space-y-6">
+        {existingRequest && (existingRequest.approvalStatus === 'pending_tier1' || existingRequest.approvalStatus === 'pending_tier2') && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50 rounded-xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="flex items-center text-sm font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                  <AlertCircle className="w-4 h-4 mr-1.5" />
+                  Management Approval Required
+                </h3>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  This request exceeds cost thresholds and is awaiting {existingRequest.approvalStatus === 'pending_tier1' ? 'Manager (Tier 1)' : 'Admin (Tier 2)'} approval before work can proceed.
+                </p>
+              </div>
+              {(user?.role === 'Admin' || (user?.role === 'Manager' && existingRequest.approvalStatus === 'pending_tier1')) && (
+                <div className="flex space-x-2 ml-4 flex-shrink-0">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="text-xs py-1.5 px-3 border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={async () => {
+                      const comments = prompt("Rejection Reason:");
+                      if (comments === null) return;
+                      try {
+                        const updated = await requestService.rejectCosts(existingRequest.id || existingRequest._id || '', comments);
+                        setExistingRequest(updated);
+                        onSuccess();
+                      } catch (e) {}
+                    }}
+                  >
+                    Reject
+                  </Button>
+                  <Button
+                    type="button"
+                    className="text-xs py-1.5 px-3 bg-green-600 hover:bg-green-700 text-white border-transparent"
+                    onClick={async () => {
+                      try {
+                        const updated = await requestService.approveCosts(existingRequest.id || existingRequest._id || '', "Approved via UI");
+                        setExistingRequest(updated);
+                        onSuccess();
+                      } catch (e) {}
+                    }}
+                  >
+                    Approve
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {existingRequest && existingRequest.approvalStatus === 'rejected' && (
+          <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 rounded-xl">
+            <h3 className="flex items-center text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
+              <AlertCircle className="w-4 h-4 mr-1.5" />
+              Costs Rejected
+            </h3>
+            <p className="text-xs text-red-700 dark:text-red-400">
+              The estimated costs for this repair were rejected by management. Ticket returned to New stage.
+            </p>
+          </div>
+        )}
         {editRequestId && (predictions.length > 0 || loadingPredictions) && (
           <div className="p-4 bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-100 dark:border-blue-900 rounded-xl">
             <h3 className="flex items-center text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">
@@ -903,6 +995,41 @@ const RequestModal: React.FC<RequestModalProps> = ({
             </div>
           </div>
         )}
+
+        {/* Financial Approval Block */}
+        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800/30 space-y-3">
+          <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-300">Financial Estimations</h3>
+          
+          <div>
+            <label className="block text-xs font-medium text-purple-700 dark:text-purple-400 mb-1">
+              Expected Vendor Quote ($)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.expectedVendorQuote || ""}
+              onChange={(e) => setFormData({ ...formData, expectedVendorQuote: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border border-purple-200 dark:border-purple-700/50 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-950 text-sm"
+              placeholder="e.g. 5000"
+            />
+          </div>
+
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-medium text-purple-700 dark:text-purple-400">Total Estimated Cost:</span>
+            <span className="font-bold text-purple-900 dark:text-purple-200">
+              ${(
+                (formData.expectedVendorQuote || 0) + 
+                requiredParts.reduce((acc, curr) => {
+                  const part = spareParts.find((p) => p._id === curr.partId || p.id === curr.partId);
+                  return acc + ((part?.unitCost || 0) * (curr.quantityNeeded || 1));
+                }, 0)
+              ).toFixed(2)}
+            </span>
+          </div>
+          <p className="text-[10px] text-purple-600/80 dark:text-purple-400/80">Tickets $\ge$ $5,000 will be locked awaiting financial approval.</p>
+        </div>
+
           <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2">
             Spare Parts Used
           </label>

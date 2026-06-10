@@ -54,7 +54,8 @@ exports.queueWebhookEvent = async (eventName, payload) => {
           type: 'exponential',
           delay: 1000 // 1s, 2s, 4s, 8s, 16s
         },
-        removeOnComplete: true
+        removeOnComplete: true,
+        removeOnFail: true
       });
     }
 

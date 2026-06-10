@@ -15,6 +15,7 @@ import {
   HelpCircle,
   Sliders,
   AlertTriangle,
+  BrainCircuit,
 } from "lucide-react";
 import Button from "../components/Button";
 import Badge from "../components/Badge";
@@ -257,6 +258,19 @@ const PredictiveDashboard: React.FC = () => {
                 </div>
               </div>
 
+              {/* ML Anomaly Score */}
+              {asset.anomalyProb !== undefined && (
+                <div className="mb-6 flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                  <div className="flex items-center space-x-2">
+                    <BrainCircuit className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    <span className="text-xs font-bold text-indigo-900 dark:text-indigo-300">ML Anomaly Prob</span>
+                  </div>
+                  <span className={`text-xs font-black ${asset.anomalyProb < 1e-5 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    {asset.anomalyProb.toExponential(4)}
+                  </span>
+                </div>
+              )}
+
               {/* Alert Notifications list */}
               {asset.alerts && asset.alerts.length > 0 && (
                 <div className="space-y-1.5 mb-6">
@@ -388,7 +402,14 @@ const PredictiveDashboard: React.FC = () => {
                   <h4 className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
                     Expected Simulation Impact
                   </h4>
-                  {simTemp >= selectedAsset.criticalThresholds?.maxTemp ||
+                  {selectedAsset.anomalyProb !== undefined && selectedAsset.anomalyProb < 1e-5 ? (
+                    <div className="flex items-start space-x-2 text-red-600 text-xs mt-2">
+                      <BrainCircuit className="h-4 w-4 shrink-0 mt-0.5" />
+                      <p className="leading-snug">
+                        <strong>ML Multivariate Anomaly Detected:</strong> The combined vector of readings produced an anomaly probability of {selectedAsset.anomalyProb.toExponential(4)}, which is below the safe threshold. A preemptive work order will be dispatched!
+                      </p>
+                    </div>
+                  ) : simTemp >= selectedAsset.criticalThresholds?.maxTemp ||
                   simVib >= selectedAsset.criticalThresholds?.maxVibration ||
                   simHours >= selectedAsset.criticalThresholds?.maxHours ? (
                     <div className="flex items-start space-x-2 text-red-600 text-xs">
