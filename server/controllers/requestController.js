@@ -46,6 +46,7 @@ const calculateDowntimeCost = async (requestCreatedAt, completedDate, equipmentI
   totalDowntimeCost = downtimeDurationHours * hourlyDowntimeCost;
 
   return { downtimeDurationHours, totalDowntimeCost };
+};
 const checkCertifications = async (assignedToId, requiredSkills, session = null) => {
   if (!assignedToId || !requiredSkills || requiredSkills.length === 0) return true;
   const tech = await TeamMember.findById(assignedToId).session(session);
@@ -54,53 +55,50 @@ const checkCertifications = async (assignedToId, requiredSkills, session = null)
   return requiredSkills.every(skill => techCerts.includes(skill));
 };
 
-const decrementInventory = async (io, partsUsed) => {
+const decrementInventory = async (io, partsUsed, session) => {
   if (!partsUsed || !Array.isArray(partsUsed) || partsUsed.length === 0) return;
   for (const item of partsUsed) {
     const partId = item.partId?._id || item.partId;
     if (!partId) continue;
-    try {
-      // Atomic decrement prevents concurrency data loss and prevents negative stock
-      const updatedPart = await SparePart.findOneAndUpdate(
-        { _id: partId, quantityInStock: { $gte: item.quantityUsed } },
-        { $inc: { quantityInStock: -item.quantityUsed } },
-        { new: true }
-      );
+    
+    // Atomic decrement prevents concurrency data loss and prevents negative stock
+    const updatedPart = await SparePart.findOneAndUpdate(
+      { _id: partId, quantityInStock: { $gte: item.quantityUsed } },
+      { $inc: { quantityInStock: -item.quantityUsed } },
+      { new: true, session }
+    );
 
-      if (updatedPart) {
-        if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
-          if (updatedPart.reorderStatus === 'ok') {
-            const finalPart = await SparePart.findByIdAndUpdate(
-              partId, 
-              { reorderStatus: 'low-stock' }, 
-              { new: true }
-            );
-            await NotificationService.notifyLowStock(io, finalPart);
-          }
-        } else if (updatedPart.reorderStatus !== 'ok') {
-           await SparePart.findByIdAndUpdate(partId, { reorderStatus: 'ok' });
+    if (!updatedPart) {
+      throw new Error(`Insufficient stock for part allocation (ID: ${partId})`);
+    }
+
+    if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
+      if (updatedPart.reorderStatus === 'ok') {
+        const finalPart = await SparePart.findByIdAndUpdate(
+          partId, 
+          { reorderStatus: 'low-stock' }, 
+          { new: true, session }
+        );
+        if (io) {
+          NotificationService.notifyLowStock(io, finalPart).catch(err => console.error(err));
         }
       }
-    } catch (err) {
-      console.error(`Failed to decrement inventory for part ${partId}:`, err);
+    } else if (updatedPart.reorderStatus !== 'ok') {
+       await SparePart.findByIdAndUpdate(partId, { reorderStatus: 'ok' }, { session });
     }
   }
 };
 
-const releaseReservations = async (requiredParts) => {
+const releaseReservations = async (requiredParts, session) => {
   if (!requiredParts || !Array.isArray(requiredParts) || requiredParts.length === 0) return;
   for (const item of requiredParts) {
     const partId = item.partId?._id || item.partId;
     if (!partId) continue;
-    try {
-      await SparePart.findByIdAndUpdate(
-        partId,
-        { $inc: { quantityReserved: -item.quantityNeeded } },
-        { new: true }
-      );
-    } catch (err) {
-      console.error(`Failed to release reservation for part ${partId}:`, err);
-    }
+    await SparePart.findByIdAndUpdate(
+      partId,
+      { $inc: { quantityReserved: -item.quantityNeeded } },
+      { new: true, session }
+    );
   }
 };
 
@@ -634,11 +632,27 @@ exports.updateRequest = async (req, res) => {
         }
       }
 
-      return await MaintenanceRequest.findByIdAndUpdate(
+      const isCompleted = prevStage === "repaired" || prevStage === "scrap";
+      const nowCompleted = payload.stage === "repaired" || payload.stage === "scrap";
+      const shouldProcessCompletion = payload.stage && nowCompleted && !isCompleted && !prevRequest.completionProcessed;
+      
+      if (shouldProcessCompletion) {
+        payload.completionProcessed = true;
+      }
+
+      const updatedReq = await MaintenanceRequest.findByIdAndUpdate(
         req.params.id,
         payload,
         { new: true, session }
       ).populate("equipment").populate("createdBy", "name email");
+
+      if (shouldProcessCompletion) {
+        const io = req.app.get("socketio");
+        await decrementInventory(io, updatedReq.partsUsed, session);
+        await releaseReservations(updatedReq.requiredParts, session);
+      }
+
+      return updatedReq;
     });
 
     // Notify requester if stage changed
@@ -690,12 +704,6 @@ exports.updateRequest = async (req, res) => {
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = request.stage === "repaired" || request.stage === "scrap";
     const shouldProcessCompletion = request.stage && nowCompleted && !isCompleted && !request.completionProcessed;
-    if (shouldProcessCompletion) {
-      const io = req.app.get("socketio");
-      await decrementInventory(io, request.partsUsed);
-      await releaseReservations(request.requiredParts);
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
-    }
 
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
@@ -840,47 +848,51 @@ exports.updateRequestStage = async (req, res) => {
       }
     }
 
+    const isCompleted = prevStage === "repaired" || prevStage === "scrap";
+    const nowCompleted = stage === "repaired" || stage === "scrap";
+    const shouldProcessCompletion = nowCompleted && !isCompleted && !request.completionProcessed;
+
     const updateData = { stage };
     if (partsCost !== undefined) updateData.partsCost = partsCost;
     if (laborCost !== undefined) updateData.laborCost = laborCost;
 
-    await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData);
+    if (shouldProcessCompletion) {
+      updateData.completionProcessed = true;
+    }
 
     if (stage === "repaired" || stage === "scrap") {
-      const completedDate = new Date();
+      updateData.completedDate = new Date();
       const { downtimeDurationHours, totalDowntimeCost } = await calculateDowntimeCost(
-        request.createdAt, completedDate, request.equipmentId
+        request.createdAt, updateData.completedDate, request.equipmentId
       );
+      updateData.downtimeDurationHours = downtimeDurationHours;
+      updateData.totalDowntimeCost = totalDowntimeCost;
+    }
 
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, {
-        completedDate,
-        downtimeDurationHours,
-        totalDowntimeCost
-      });
+    await withTransactionFallback(async (session) => {
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData, { session });
 
-      if (request.equipmentId) {
-        const newStatus = stage === "scrap" ? "scrapped" : "active";
-        await Equipment.findByIdAndUpdate(request.equipmentId, {
-          $set: { status: newStatus },
-          $push: { history: {
-            eventType: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
-            description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
-            userId: req.user?._id,
-            userName: req.user?.name || "System"
-          }}
-        });
+      if (stage === "repaired" || stage === "scrap") {
+        if (request.equipmentId) {
+          const newStatus = stage === "scrap" ? "scrapped" : "active";
+          await Equipment.findByIdAndUpdate(request.equipmentId, {
+            $set: { status: newStatus },
+            $push: { history: {
+              eventType: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
+              description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
+          }, { session });
+        }
       }
-    }
 
-    const isCompleted = prevStage === "repaired" || prevStage === "scrap";
-    const nowCompleted = stage === "repaired" || stage === "scrap";
-    const shouldProcessCompletion = nowCompleted && !isCompleted && !request.completionProcessed;
-    if (shouldProcessCompletion) {
-      const io = req.app.get("socketio");
-      await decrementInventory(io, request.partsUsed);
-      await releaseReservations(request.requiredParts);
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
-    }
+      if (shouldProcessCompletion) {
+        const io = req.app.get("socketio");
+        await decrementInventory(io, request.partsUsed, session);
+        await releaseReservations(request.requiredParts, session);
+      }
+    });
 
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
