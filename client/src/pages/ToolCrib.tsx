@@ -6,7 +6,6 @@ import Spinner from '../components/Spinner';
 import Badge from '../components/Badge';
 import { Tool } from '../types';
 import toast from 'react-hot-toast';
-import { request } from '../services/api';
 import api from '../services/api';
 import { io } from 'socket.io-client';
 

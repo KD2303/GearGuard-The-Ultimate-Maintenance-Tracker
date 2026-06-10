@@ -110,6 +110,8 @@ export interface MaintenanceRequest {
   partsCost?: number;
   laborCost?: number;
   notes?: string;
+  rootCause?: string;
+  rcaNodeId?: string;
   equipmentId?: string;
   equipment?: Equipment;
   teamId?: string;
