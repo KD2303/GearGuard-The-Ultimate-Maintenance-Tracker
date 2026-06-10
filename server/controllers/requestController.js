@@ -454,42 +454,6 @@ exports.updateRequest = async (req, res) => {
     if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
 
-    const prevStage = request.stage;
-    const prevPriority = request.priority;
-
-    if (payload.stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
-       return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
-    }
-
-    // Handle stage side-effects (equipment status updates)
-    if (payload.stage) {
-      if (payload.stage === "repaired") {
-        payload.completedDate = new Date();
-        if (request.equipmentId) {
-          await Equipment.findByIdAndUpdate(request.equipmentId, {
-            $set: { status: "active" },
-            $push: { history: {
-              eventType: 'REPAIR_COMPLETED',
-              description: `Request marked as repaired. Status changed to active.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
-          });
-        }
-      }
-      if (payload.stage === "scrap") {
-        payload.completedDate = new Date();
-        if (request.equipmentId) {
-          await Equipment.findByIdAndUpdate(request.equipmentId, {
-            $set: { status: "scrapped" },
-            $push: { history: {
-              eventType: 'SCRAPPED',
-              description: `Request marked as scrap. Status changed to scrapped.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
-          });
-    // Non-transactional block removed
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
     

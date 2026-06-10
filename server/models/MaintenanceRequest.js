@@ -92,7 +92,7 @@ const MaintenanceRequestSchema = new Schema({
     message: { type: String },
     magicToken: { type: String, select: false },
     tokenExpiresAt: { type: Date }
-  }
+  },
   rootCause: { type: String }, // Used by the RCA logic tree wizard
   rcaNodeId: { type: Schema.Types.ObjectId, ref: 'DiagnosticNode' } // Final leaf node of the RCA tree
 }, { timestamps: true });

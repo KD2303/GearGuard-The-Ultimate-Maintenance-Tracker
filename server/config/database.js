@@ -43,7 +43,10 @@ const seedMockData = async () => {
 
     // Check if equipment already exists
     const count = await Equipment.countDocuments();
-    if (count > 0) return; // already seeded!
+    if (count > 0) {
+      console.log('✓ Database already seeded.');
+      return resolve();
+    }
 
     console.log('🌱 Seeding premium mock data into database...');
 
