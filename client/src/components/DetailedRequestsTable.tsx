@@ -336,6 +336,12 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
                     >
                       {request.stage}
                     </span>
+                    {(request.approvalStatus === 'pending_tier1' || request.approvalStatus === 'pending_tier2') && (
+                      <div className="mt-2 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-sm inline-flex items-center">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        Pending {request.approvalStatus === 'pending_tier1' ? 'Manager' : 'Admin'}
+                      </div>
+                    )}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">

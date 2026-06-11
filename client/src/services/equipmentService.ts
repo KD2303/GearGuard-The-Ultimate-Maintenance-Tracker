@@ -23,6 +23,15 @@ export const equipmentService = {
     return response.data.data || response.data;
   },
 
+  getCompatibleWithPart: async (partId: string, excludeEquipmentId?: string): Promise<Equipment[]> => {
+    let url = `/equipment/compatible-with-part/${partId}`;
+    if (excludeEquipmentId) {
+      url += `?exclude=${excludeEquipmentId}`;
+    }
+    const response = await api.get(url);
+    return response.data.data || response.data;
+  },
+
   create: async (data: CreateEquipmentDto): Promise<Equipment> => {
     const response = await api.post('/equipment', data);
     toast.success('Equipment created successfully');

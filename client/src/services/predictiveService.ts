@@ -26,10 +26,8 @@ export interface PredictiveEquipmentStatus {
     maxVibration: number;
   };
   status: string;
-  alerts: Array<{
-    type: string;
-    message: string;
-  }>;
+  alerts?: Array<{ type: string; message: string }>;
+  anomalyProb?: number;
   autoDispatched?: boolean;
   dispatchedRequest?: {
     requestNumber: string;
@@ -50,4 +48,21 @@ export const getPredictiveStatus = async (): Promise<PredictiveEquipmentStatus[]
 export const simulateTelemetry = async (data: TelemetrySimulationDto): Promise<PredictiveEquipmentStatus> => {
   const response = await api.post('/predictive/simulate-telemetry', data);
   return response.data.data || response.data;
+};
+
+export interface DepletionForecast {
+  id: string;
+  name: string;
+  sku: string;
+  quantityInStock: number;
+  dailyBurnRate: number;
+  daysUntilDepletion: number;
+  projectedExhaustionDate: string | null;
+  isAlertTriggered: boolean;
+  leadTimeDays: number;
+}
+
+export const getDepletionForecast = async (): Promise<DepletionForecast[]> => {
+  const response = await api.get('/predictive/depletion-forecast');
+  return response.data.data || [];
 };
