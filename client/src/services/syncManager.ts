@@ -1,5 +1,6 @@
 import { dbService } from './db';
 import api from './api';
+import toast from 'react-hot-toast';
 
 class SyncManager {
   private isSyncing = false;
@@ -31,15 +32,31 @@ class SyncManager {
         const response = await api.post('/api/sync/batch', { actions });
         
         if (response.data.success) {
-          // If successful, clear all synced actions
-          for (const action of actions) {
-            if (action.id !== undefined) {
-              await dbService.clearSyncAction(action.id);
+          let conflictCount = 0;
+          let successCount = 0;
+
+          // Process results
+          for (const result of response.data.results) {
+            if (result.status === 'success') {
+              successCount++;
+              if (result.id !== undefined) await dbService.clearSyncAction(result.id);
+            } else if (result.status === 'conflict_logged') {
+              conflictCount++;
+              if (result.id !== undefined) await dbService.clearSyncAction(result.id);
             }
           }
+          
+          if (successCount > 0) {
+            toast.success(`Successfully synced ${successCount} offline actions.`);
+          }
+          if (conflictCount > 0) {
+            toast.error(`${conflictCount} offline changes conflicted with server updates and require admin review.`, { duration: 6000 });
+          }
+          
           console.log('[SyncManager] Batch synchronization complete');
         } else {
            console.error('[SyncManager] Batch sync failed:', response.data);
+           toast.error('Failed to sync offline changes.');
         }
       } catch (error) {
         console.error('[SyncManager] Failed to sync batch:', error);

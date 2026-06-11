@@ -21,10 +21,14 @@ router.get('/:id/predictions', requestController.predictSpareParts);
 router.post('/:id/parts', requestController.addPartToRequest);
 router.post('/:id/cannibalize', requestController.cannibalizePart);
 router.post('/:id/escalate', authorizeRoles('Admin', 'Manager'), requestController.escalateToVendor);
+router.post('/:id/approve', authorizeRoles('Admin', 'Manager'), requestController.approveRequest);
+router.post('/:id/reject', authorizeRoles('Admin', 'Manager'), requestController.rejectRequest);
 router.delete('/:id', authorizeRoles('Admin', 'Manager'), requestController.deleteRequest);
 router.post('/:id/loto', requestController.submitLOTO);
 router.post('/:id/tools/checkout', requestController.checkoutTool);
 router.post('/:id/tools/return', requestController.returnTool);
+router.patch('/:id/approve', requestController.approveRequest);
+router.patch('/:id/reject', requestController.rejectRequest);
 
 // Attachments
 router.post('/:id/attachments', upload.array('attachments', 5), magicByteValidator, requestController.uploadAttachments);

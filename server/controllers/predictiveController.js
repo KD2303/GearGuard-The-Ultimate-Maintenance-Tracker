@@ -5,6 +5,9 @@ const {
   analyzeEquipmentFailures,
   generatePredictiveAlerts
 } = require('../services/predictiveMaintenanceService');
+const mlAnomalyService = require('../services/mlAnomalyService');
+const MaintenanceRequest = require('../models/MaintenanceRequest');
+const SparePart = require('../models/SparePart');
 
 // ===================================
 // Get High Risk Equipment
@@ -118,6 +121,10 @@ const simulateTelemetry = asyncHandler(async (req, res) => {
     analysis.healthScore
   );
 
+  // Calculate ML Anomaly Probability for the simulated values
+  const features = [equipment.temperatureCelsius, equipment.vibrationAmplitude];
+  const anomalyProb = mlAnomalyService.evaluateTelemetry(equipment._id.toString(), features);
+
   const updatedResult = {
     id: equipment._id,
     name: equipment.name,
@@ -137,7 +144,8 @@ const simulateTelemetry = asyncHandler(async (req, res) => {
     status: equipment.status,
     alerts,
     autoDispatched: analysis.autoDispatched,
-    dispatchedRequest: analysis.dispatchedRequest
+    dispatchedRequest: analysis.dispatchedRequest,
+    anomalyProb
   };
 
   // Broadcast telemetry update via socket
@@ -152,8 +160,93 @@ const simulateTelemetry = asyncHandler(async (req, res) => {
   });
 });
 
+// ===================================
+// Get Spare Part Depletion Forecast
+// ===================================
+const getDepletionForecast = asyncHandler(async (req, res) => {
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+  // Aggregate spare part usage over the last 90 days
+  const consumptionAgg = await MaintenanceRequest.aggregate([
+    {
+      $match: {
+        stage: { $in: ['repaired', 'scrap'] },
+        completedDate: { $gte: ninetyDaysAgo }
+      }
+    },
+    { $unwind: "$partsUsed" },
+    {
+      $group: {
+        _id: "$partsUsed.partId",
+        totalConsumed: { $sum: "$partsUsed.quantityUsed" }
+      }
+    }
+  ]);
+
+  const consumptionMap = {};
+  consumptionAgg.forEach(item => {
+    if (item._id) {
+      consumptionMap[item._id.toString()] = item.totalConsumed;
+    }
+  });
+
+  const spareParts = await SparePart.find();
+  const forecasts = [];
+
+  for (const part of spareParts) {
+    const consumedLast90Days = consumptionMap[part._id.toString()] || 0;
+    const dailyBurnRate = consumedLast90Days / 90;
+    
+    let daysUntilDepletion = null;
+    let projectedExhaustionDate = null;
+    let isAlertTriggered = false;
+
+    if (dailyBurnRate > 0) {
+      daysUntilDepletion = part.quantityInStock / dailyBurnRate;
+      projectedExhaustionDate = new Date();
+      projectedExhaustionDate.setDate(projectedExhaustionDate.getDate() + daysUntilDepletion);
+
+      const leadTime = part.leadTimeDays || 14;
+      if (daysUntilDepletion <= leadTime) {
+        isAlertTriggered = true;
+      }
+    } else if (part.quantityInStock === 0) {
+      daysUntilDepletion = 0;
+      projectedExhaustionDate = new Date();
+      isAlertTriggered = true;
+    }
+
+    if (daysUntilDepletion !== null) {
+      forecasts.push({
+        id: part._id,
+        name: part.name,
+        sku: part.sku,
+        quantityInStock: part.quantityInStock,
+        dailyBurnRate: parseFloat(dailyBurnRate.toFixed(2)),
+        daysUntilDepletion: Math.floor(daysUntilDepletion),
+        projectedExhaustionDate,
+        isAlertTriggered,
+        leadTimeDays: part.leadTimeDays || 14
+      });
+    }
+  }
+
+  // Sort by days until depletion ascending
+  forecasts.sort((a, b) => a.daysUntilDepletion - b.daysUntilDepletion);
+
+  // Return top 5
+  const top5 = forecasts.slice(0, 5);
+
+  res.status(200).json({
+    success: true,
+    data: top5
+  });
+});
+
 module.exports = {
   getHighRiskEquipment,
   getPredictiveStatus,
-  simulateTelemetry
+  simulateTelemetry,
+  getDepletionForecast
 };

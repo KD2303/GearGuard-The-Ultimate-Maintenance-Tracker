@@ -107,6 +107,16 @@ const AnalyticsPage: React.FC = () => {
     [data]
   );
 
+  const costByDepartmentData = useMemo(
+    () => data?.charts.costByDepartment || [],
+    [data]
+  );
+
+  const topExpensiveMachinesData = useMemo(
+    () => data?.charts.topExpensiveMachines || [],
+    [data]
+  );
+
   if (loading) {
     return <Spinner size="lg" label="Loading analytics..." centered />;
   }
@@ -200,6 +210,14 @@ const AnalyticsPage: React.FC = () => {
             ${data?.metrics.totalFinancialLoss?.toLocaleString() || '0'}
           </p>
         </div>
+        <div className="rounded-xl border border-green-200 bg-green-50 p-5 shadow-sm dark:border-green-900/50 dark:bg-green-900/10">
+          <p className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center">
+            <span className="mr-1">💰</span> Money Saved (ROI)
+          </p>
+          <p className="mt-2 text-3xl font-bold text-green-700 dark:text-green-300">
+            ${data?.metrics.moneySaved?.toLocaleString() || '0'}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -277,6 +295,43 @@ const AnalyticsPage: React.FC = () => {
                 <Tooltip formatter={(value: any) => [`$${value}`, 'Lost Revenue']} />
                 <Bar dataKey="value" fill="#ef4444" radius={[0, 4, 4, 0]} />
               </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 mt-6">
+        <div className="rounded-xl border border-rose-100 bg-white p-5 shadow-sm dark:border-rose-900/30 dark:bg-gray-800">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+            <span className="mr-2">🔥</span> Top 5 Expensive Machines
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={topExpensiveMachinesData} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={(val) => `$${val}`} />
+                <YAxis type="category" dataKey="name" width={100} />
+                <Tooltip formatter={(value: any) => [`$${value}`, 'Downtime Cost']} />
+                <Bar dataKey="value" fill="#fb7185" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-orange-100 bg-white p-5 shadow-sm dark:border-orange-900/30 dark:bg-gray-800">
+          <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+            <span className="mr-2">🏢</span> Cost by Department
+          </h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={costByDepartmentData} dataKey="value" nameKey="department" outerRadius={95} label>
+                  {costByDepartmentData.map((entry, index) => (
+                    <Cell key={`dept-${index}`} fill={['#f97316', '#eab308', '#84cc16', '#14b8a6', '#6366f1', '#d946ef'][index % 6]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: any) => [`$${value}`, 'Lost Revenue']} />
+                <Legend />
+              </PieChart>
             </ResponsiveContainer>
           </div>
         </div>

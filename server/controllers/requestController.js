@@ -25,53 +25,80 @@ function getGridFSBucket() {
   return new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'attachments' });
 }
 
-const decrementInventory = async (io, partsUsed) => {
+const calculateDowntimeCost = async (requestCreatedAt, completedDate, equipmentId, session = null) => {
+  let downtimeDurationHours = 0;
+  let totalDowntimeCost = 0;
+
+  if (requestCreatedAt) {
+    downtimeDurationHours = Math.max(0, (completedDate - new Date(requestCreatedAt)) / (1000 * 60 * 60));
+  }
+
+  let hourlyDowntimeCost = 0;
+  if (equipmentId) {
+    const query = Equipment.findById(equipmentId);
+    if (session) query.session(session);
+    const eq = await query;
+    if (eq && eq.hourlyDowntimeCost) {
+      hourlyDowntimeCost = eq.hourlyDowntimeCost;
+    }
+  }
+
+  totalDowntimeCost = downtimeDurationHours * hourlyDowntimeCost;
+
+  return { downtimeDurationHours, totalDowntimeCost };
+};
+const checkCertifications = async (assignedToId, requiredSkills, session = null) => {
+  if (!assignedToId || !requiredSkills || requiredSkills.length === 0) return true;
+  const tech = await TeamMember.findById(assignedToId).session(session);
+  if (!tech) return false;
+  const techCerts = tech.certifications || [];
+  return requiredSkills.every(skill => techCerts.includes(skill));
+};
+
+const decrementInventory = async (io, partsUsed, session) => {
   if (!partsUsed || !Array.isArray(partsUsed) || partsUsed.length === 0) return;
   for (const item of partsUsed) {
     const partId = item.partId?._id || item.partId;
     if (!partId) continue;
-    try {
-      // Atomic decrement prevents concurrency data loss and prevents negative stock
-      const updatedPart = await SparePart.findOneAndUpdate(
-        { _id: partId, quantityInStock: { $gte: item.quantityUsed } },
-        { $inc: { quantityInStock: -item.quantityUsed } },
-        { new: true }
-      );
+    
+    // Atomic decrement prevents concurrency data loss and prevents negative stock
+    const updatedPart = await SparePart.findOneAndUpdate(
+      { _id: partId, quantityInStock: { $gte: item.quantityUsed } },
+      { $inc: { quantityInStock: -item.quantityUsed } },
+      { new: true, session }
+    );
 
-      if (updatedPart) {
-        if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
-          if (updatedPart.reorderStatus === 'ok') {
-            const finalPart = await SparePart.findByIdAndUpdate(
-              partId, 
-              { reorderStatus: 'low-stock' }, 
-              { new: true }
-            );
-            await NotificationService.notifyLowStock(io, finalPart);
-          }
-        } else if (updatedPart.reorderStatus !== 'ok') {
-           await SparePart.findByIdAndUpdate(partId, { reorderStatus: 'ok' });
+    if (!updatedPart) {
+      throw new Error(`Insufficient stock for part allocation (ID: ${partId})`);
+    }
+
+    if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
+      if (updatedPart.reorderStatus === 'ok') {
+        const finalPart = await SparePart.findByIdAndUpdate(
+          partId, 
+          { reorderStatus: 'low-stock' }, 
+          { new: true, session }
+        );
+        if (io) {
+          NotificationService.notifyLowStock(io, finalPart).catch(err => console.error(err));
         }
       }
-    } catch (err) {
-      console.error(`Failed to decrement inventory for part ${partId}:`, err);
+    } else if (updatedPart.reorderStatus !== 'ok') {
+       await SparePart.findByIdAndUpdate(partId, { reorderStatus: 'ok' }, { session });
     }
   }
 };
 
-const releaseReservations = async (requiredParts) => {
+const releaseReservations = async (requiredParts, session) => {
   if (!requiredParts || !Array.isArray(requiredParts) || requiredParts.length === 0) return;
   for (const item of requiredParts) {
     const partId = item.partId?._id || item.partId;
     if (!partId) continue;
-    try {
-      await SparePart.findByIdAndUpdate(
-        partId,
-        { $inc: { quantityReserved: -item.quantityNeeded } },
-        { new: true }
-      );
-    } catch (err) {
-      console.error(`Failed to release reservation for part ${partId}:`, err);
-    }
+    await SparePart.findByIdAndUpdate(
+      partId,
+      { $inc: { quantityReserved: -item.quantityNeeded } },
+      { new: true, session }
+    );
   }
 };
 
@@ -239,22 +266,37 @@ exports.createRequest = async (req, res) => {
 
           if (!payload.teamId && equipmentDoc.maintenanceTeamId)
             payload.teamId = equipmentDoc.maintenanceTeamId;
-          if (!payload.assignedToId && equipmentDoc.defaultTechnicianId)
-            payload.assignedToId = equipmentDoc.defaultTechnicianId;
+            
+          if (!payload.requiredSkills || payload.requiredSkills.length === 0) {
+            if (equipmentDoc.requiredSkills && equipmentDoc.requiredSkills.length > 0) {
+              payload.requiredSkills = equipmentDoc.requiredSkills;
+            }
+          }
+
+          if (!payload.assignedToId && equipmentDoc.defaultTechnicianId) {
+            const hasSkills = await checkCertifications(equipmentDoc.defaultTechnicianId, payload.requiredSkills, session);
+            if (hasSkills) {
+              payload.assignedToId = equipmentDoc.defaultTechnicianId;
+            }
+          }
 
           // Geospatial Technician Dispatch Routing
           if (payload.priority === 'urgent' && equipmentDoc.geoLocation && equipmentDoc.geoLocation.coordinates) {
             const eqCoords = equipmentDoc.geoLocation.coordinates;
             // Only search if coordinates are not [0,0]
             if (eqCoords[0] !== 0 || eqCoords[1] !== 0) {
-              const nearestTech = await TeamMember.findOne({
+              const query = {
                 isActive: true,
                 geoLocation: {
                   $near: {
                     $geometry: { type: 'Point', coordinates: eqCoords }
                   }
                 }
-              }).session(session);
+              };
+              if (payload.requiredSkills && payload.requiredSkills.length > 0) {
+                query.certifications = { $all: payload.requiredSkills };
+              }
+              const nearestTech = await TeamMember.findOne(query).session(session);
 
               if (nearestTech) {
                 payload.assignedToId = nearestTech._id;
@@ -288,19 +330,41 @@ exports.createRequest = async (req, res) => {
       }
 
       let isBlocked = false;
+      let estimatedPartsCost = 0;
       if (payload.requiredParts && payload.requiredParts.length > 0) {
         for (const reqPart of payload.requiredParts) {
           const partDoc = await SparePart.findById(reqPart.partId).session(session);
           if (partDoc) {
-             const availableStock = partDoc.quantityInStock - partDoc.quantityReserved;
-             if (availableStock < reqPart.quantityNeeded) {
+             estimatedPartsCost += (partDoc.unitCost || 0) * (reqPart.quantityNeeded || 1);
+             const updatedPart = await SparePart.findOneAndUpdate(
+               { 
+                 _id: reqPart.partId,
+                 $expr: { $gte: [{ $subtract: ["$quantityInStock", "$quantityReserved"] }, reqPart.quantityNeeded] }
+               },
+               {
+                 $inc: { quantityReserved: reqPart.quantityNeeded }
+               },
+               { session, new: true }
+             );
+             if (!updatedPart) {
                isBlocked = true;
              }
-             await SparePart.findByIdAndUpdate(reqPart.partId, {
-               $inc: { quantityReserved: reqPart.quantityNeeded }
-             }, { session });
           }
         }
+      }
+      
+      if (payload.assignedToId) {
+        const isCertified = await checkCertifications(payload.assignedToId, payload.requiredSkills, session);
+        if (!isCertified) {
+          throw new Error("Safety Violation: The assigned technician lacks the required certifications for this task.");
+        }
+      }
+
+      payload.estimatedCost = estimatedPartsCost + (payload.expectedVendorQuote || 0);
+
+      if (payload.estimatedCost >= 5000) {
+        payload.stage = 'awaiting-approval';
+        payload.approvalStatus = 'pending';
       }
 
       const request = await MaintenanceRequest.create([{
@@ -453,9 +517,86 @@ exports.updateRequest = async (req, res) => {
     const prevRequest = await MaintenanceRequest.findById(req.params.id);
     if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
+    if (payload.assignedToId) {
+      const reqSkills = payload.requiredSkills || prevRequest.requiredSkills;
+      const isCertified = await checkCertifications(payload.assignedToId, reqSkills);
+      if (!isCertified) {
+        return res.status(403).json({ error: "Safety Violation: The assigned technician lacks the required certifications for this task." });
+      }
+    }
 
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
+
+    if (payload.stage === 'in-progress' && prevStage === 'new' && prevRequest.isBlockedAwaitingParts) {
+       return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
+    }
+
+    let currentApprovalStatus = prevRequest.approvalStatus;
+    let currentEstimatedCost = prevRequest.estimatedCost || 0;
+
+    // Recalculate cost if parts or vendor quote changes
+    if (payload.requiredParts || payload.expectedVendorQuote !== undefined) {
+      const partsToUse = payload.requiredParts || prevRequest.requiredParts || [];
+      let newPartsCost = 0;
+      for (const reqPart of partsToUse) {
+        const partDoc = await SparePart.findById(reqPart.partId);
+        if (partDoc) {
+          newPartsCost += (partDoc.unitCost || 0) * (reqPart.quantityNeeded || 1);
+        }
+      }
+      currentEstimatedCost = newPartsCost + (payload.expectedVendorQuote !== undefined ? payload.expectedVendorQuote : (prevRequest.expectedVendorQuote || 0));
+      payload.estimatedCost = currentEstimatedCost;
+      
+      if (currentEstimatedCost >= 5000 && currentApprovalStatus !== 'approved') {
+        payload.stage = 'awaiting-approval';
+        payload.approvalStatus = 'pending';
+        currentApprovalStatus = 'pending';
+      } else if (currentEstimatedCost < 5000 && currentApprovalStatus === 'pending') {
+        if (prevRequest.stage === 'awaiting-approval' && !payload.stage) {
+          payload.stage = 'new';
+        }
+        payload.approvalStatus = 'not-required';
+        currentApprovalStatus = 'not-required';
+      }
+    }
+
+    if (payload.stage === 'in-progress' && currentApprovalStatus === 'pending') {
+      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost ticket." });
+    }
+
+    // Handle stage side-effects (equipment status updates)
+    if (payload.stage) {
+      if (payload.stage === "repaired") {
+        payload.completedDate = new Date();
+        if (prevRequest.equipmentId) {
+          await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
+            $set: { status: "active" },
+            $push: { history: {
+              eventType: 'REPAIR_COMPLETED',
+              description: `Request marked as repaired. Status changed to active.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
+          });
+        }
+      }
+      if (payload.stage === "scrap") {
+        payload.completedDate = new Date();
+        if (prevRequest.equipmentId) {
+          await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
+            $set: { status: "scrapped" },
+            $push: { history: {
+              eventType: 'SCRAPPED',
+              description: `Request marked as scrap. Status changed to scrapped.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
+          });
+        }
+      }
+    }
+    // Non-transactional block removed
     
     // NEW LOTO CHECK
     if (payload.stage === "in-progress" && prevStage !== "in-progress") {
@@ -485,8 +626,33 @@ exports.updateRequest = async (req, res) => {
     const request = await withTransactionFallback(async (session) => {
       // Handle stage side-effects (equipment status updates)
       if (payload.stage) {
-        if (payload.stage === "repaired") {
+        if (payload.stage === "repaired" || payload.stage === "scrap") {
+          // Approval check
+          const totalCost = (payload.partsCost !== undefined ? Number(payload.partsCost) : Number(prevRequest.partsCost || 0)) + 
+                            (payload.laborCost !== undefined ? Number(payload.laborCost) : Number(prevRequest.laborCost || 0));
+                            
+          if (prevRequest.approvalStatus !== 'approved' && totalCost > 1000) {
+            if (totalCost > 5000) {
+              payload.approvalStatus = 'pending_tier2';
+            } else {
+              payload.approvalStatus = 'pending_tier1';
+            }
+            payload.stage = 'in-progress'; // Keep it in progress
+            
+            await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload, { session });
+            
+            throw new Error(`High-cost repairs require management approval. The ticket has been flagged for approval and remains in-progress. Required Tier: ${payload.approvalStatus}`);
+          }
+
           payload.completedDate = new Date();
+          const { downtimeDurationHours, totalDowntimeCost } = await calculateDowntimeCost(
+            prevRequest.createdAt, payload.completedDate, prevRequest.equipmentId, session
+          );
+          payload.downtimeDurationHours = downtimeDurationHours;
+          payload.totalDowntimeCost = totalDowntimeCost;
+        }
+
+        if (payload.stage === "repaired") {
           if (prevRequest.equipmentId) {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
@@ -509,7 +675,6 @@ exports.updateRequest = async (req, res) => {
           }
         }
         if (payload.stage === "scrap") {
-          payload.completedDate = new Date();
           if (prevRequest.equipmentId) {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
@@ -533,11 +698,27 @@ exports.updateRequest = async (req, res) => {
         }
       }
 
-      return await MaintenanceRequest.findByIdAndUpdate(
+      const isCompleted = prevStage === "repaired" || prevStage === "scrap";
+      const nowCompleted = payload.stage === "repaired" || payload.stage === "scrap";
+      const shouldProcessCompletion = payload.stage && nowCompleted && !isCompleted && !prevRequest.completionProcessed;
+      
+      if (shouldProcessCompletion) {
+        payload.completionProcessed = true;
+      }
+
+      const updatedReq = await MaintenanceRequest.findByIdAndUpdate(
         req.params.id,
         payload,
         { new: true, session }
       ).populate("equipment").populate("createdBy", "name email");
+
+      if (shouldProcessCompletion) {
+        const io = req.app.get("socketio");
+        await decrementInventory(io, updatedReq.partsUsed, session);
+        await releaseReservations(updatedReq.requiredParts, session);
+      }
+
+      return updatedReq;
     });
 
     // Notify requester if stage changed
@@ -589,12 +770,6 @@ exports.updateRequest = async (req, res) => {
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = request.stage === "repaired" || request.stage === "scrap";
     const shouldProcessCompletion = request.stage && nowCompleted && !isCompleted && !request.completionProcessed;
-    if (shouldProcessCompletion) {
-      const io = req.app.get("socketio");
-      await decrementInventory(io, request.partsUsed);
-      await releaseReservations(request.requiredParts);
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
-    }
 
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
@@ -698,6 +873,10 @@ exports.updateRequestStage = async (req, res) => {
 
     const prevStage = request.stage;
 
+    if (stage === 'in-progress' && request.approvalStatus === 'pending') {
+      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost ticket." });
+    }
+
     if (stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
     }
@@ -739,54 +918,71 @@ exports.updateRequestStage = async (req, res) => {
       }
     }
 
+    const isCompleted = prevStage === "repaired" || prevStage === "scrap";
+    const nowCompleted = stage === "repaired" || stage === "scrap";
+    const shouldProcessCompletion = nowCompleted && !isCompleted && !request.completionProcessed;
+
     const updateData = { stage };
     if (partsCost !== undefined) updateData.partsCost = partsCost;
     if (laborCost !== undefined) updateData.laborCost = laborCost;
 
-    await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData);
+    if (shouldProcessCompletion) {
+      updateData.completionProcessed = true;
+    }
 
+    // Check Approval Thresholds if stage is being completed
     if (stage === "repaired" || stage === "scrap") {
-      const completedDate = new Date();
-      let downtimeDurationHours = 0;
-      let totalDowntimeCost = 0;
-
-      if (request.createdAt) {
-        downtimeDurationHours = Math.max(0, (completedDate - request.createdAt) / (1000 * 60 * 60));
-      }
-
-      if (request.equipment && request.equipment.hourlyDowntimeCost) {
-        totalDowntimeCost = downtimeDurationHours * request.equipment.hourlyDowntimeCost;
-      }
-
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, {
-        completedDate,
-        downtimeDurationHours,
-        totalDowntimeCost
-      });
-
-      if (request.equipmentId) {
-        const newStatus = stage === "scrap" ? "scrapped" : "active";
-        await Equipment.findByIdAndUpdate(request.equipmentId, {
-          $set: { status: newStatus },
-          $push: { history: {
-            eventType: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
-            description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
-            userId: req.user?._id,
-            userName: req.user?.name || "System"
-          }}
+      const totalCost = (partsCost !== undefined ? Number(partsCost) : Number(request.partsCost || 0)) + 
+                        (laborCost !== undefined ? Number(laborCost) : Number(request.laborCost || 0));
+                        
+      if (request.approvalStatus !== 'approved' && totalCost > 1000) {
+        if (totalCost > 5000) {
+          updateData.approvalStatus = 'pending_tier2';
+        } else {
+          updateData.approvalStatus = 'pending_tier1';
+        }
+        updateData.stage = 'in-progress'; // Keep it in progress
+        await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData);
+        return res.status(403).json({ 
+          error: "High-cost repairs require management approval. The ticket has been flagged for approval and remains in-progress.",
+          requiresApproval: true
         });
       }
     }
 
-    const isCompleted = prevStage === "repaired" || prevStage === "scrap";
-    const nowCompleted = stage === "repaired" || stage === "scrap";
-    const shouldProcessCompletion = nowCompleted && !isCompleted && !request.completionProcessed;
-    if (shouldProcessCompletion) {
-      const io = req.app.get("socketio");
-      await decrementInventory(io, request.partsUsed);
-      await releaseReservations(request.requiredParts);
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, { completionProcessed: true });
+    if (stage === "repaired" || stage === "scrap") {
+      updateData.completedDate = new Date();
+      const { downtimeDurationHours, totalDowntimeCost } = await calculateDowntimeCost(
+        request.createdAt, updateData.completedDate, request.equipmentId
+      );
+      updateData.downtimeDurationHours = downtimeDurationHours;
+      updateData.totalDowntimeCost = totalDowntimeCost;
     }
+
+    await withTransactionFallback(async (session) => {
+      await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData, { session });
+
+      if (stage === "repaired" || stage === "scrap") {
+        if (request.equipmentId) {
+          const newStatus = stage === "scrap" ? "scrapped" : "active";
+          await Equipment.findByIdAndUpdate(request.equipmentId, {
+            $set: { status: newStatus },
+            $push: { history: {
+              eventType: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
+              description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            }}
+          }, { session });
+        }
+      }
+
+      if (shouldProcessCompletion) {
+        const io = req.app.get("socketio");
+        await decrementInventory(io, request.partsUsed, session);
+        await releaseReservations(request.requiredParts, session);
+      }
+    });
 
     const updatedRequest = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
@@ -1024,7 +1220,10 @@ exports.getAnalytics = async (req, res) => {
       trendData,
       mttrResult,
       financialLossResult,
-      costByCategory
+      costByCategory,
+      topExpensiveMachines,
+      costByDepartment,
+      moneySavedResult
     ] = await Promise.all([
       MaintenanceRequest.countDocuments(rangeMatch),
       MaintenanceRequest.countDocuments({
@@ -1114,6 +1313,97 @@ exports.getAnalytics = async (req, res) => {
         },
         { $project: { _id: 0, category: "$_id", value: 1 } },
         { $sort: { value: -1 } }
+      ]),
+      // 10. Top Expensive Machines
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $group: {
+            _id: "$equipmentDoc.name",
+            value: { $sum: "$totalDowntimeCost" }
+          }
+        },
+        { $project: { _id: 0, name: "$_id", value: 1 } },
+        { $sort: { value: -1 } },
+        { $limit: 5 }
+      ]),
+      // 11. Cost by Department
+      MaintenanceRequest.aggregate([
+        { $match: rangeMatch },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $group: {
+            _id: "$equipmentDoc.department",
+            value: { $sum: "$totalDowntimeCost" }
+          }
+        },
+        { $project: { _id: 0, department: { $ifNull: ["$_id", "Unassigned"] }, value: 1 } },
+        { $sort: { value: -1 } }
+      ]),
+      // 12. Money Saved (Time saved * hourly cost)
+      MaintenanceRequest.aggregate([
+        {
+          $match: {
+            ...rangeMatch,
+            stage: { $in: ["repaired", "scrap"] },
+            completedDate: { $ne: null },
+            scheduledDate: { $ne: null }
+          }
+        },
+        {
+          $lookup: {
+            from: "equipments",
+            localField: "equipmentId",
+            foreignField: "_id",
+            as: "equipmentDoc"
+          }
+        },
+        { $unwind: "$equipmentDoc" },
+        {
+          $project: {
+            timeSavedMs: { $subtract: ["$scheduledDate", "$completedDate"] },
+            hourlyCost: "$equipmentDoc.hourlyDowntimeCost"
+          }
+        },
+        {
+          $match: {
+            timeSavedMs: { $gt: 0 },
+            hourlyCost: { $gt: 0 }
+          }
+        },
+        {
+          $project: {
+            moneySaved: {
+              $multiply: [
+                { $divide: ["$timeSavedMs", 3600000] }, // ms to hours
+                "$hourlyCost"
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalMoneySaved: { $sum: "$moneySaved" }
+          }
+        }
       ])
     ]);
 
@@ -1121,6 +1411,7 @@ exports.getAnalytics = async (req, res) => {
     const mttrHours = avgResolutionMs ? avgResolutionMs / (1000 * 60 * 60) : 0;
     const overdueRate = totalRequests ? (overdueRequests / totalRequests) * 100 : 0;
     const totalFinancialLoss = financialLossResult[0]?.totalCost || 0;
+    const moneySaved = moneySavedResult[0]?.totalMoneySaved || 0;
 
     res.json({
       range: {
@@ -1134,12 +1425,15 @@ exports.getAnalytics = async (req, res) => {
         mttrHours: Number(mttrHours.toFixed(2)),
         overdueRate: Number(overdueRate.toFixed(2)),
         totalFinancialLoss: Number(totalFinancialLoss.toFixed(2)),
+        moneySaved: Number(moneySaved.toFixed(2)),
       },
       charts: {
         stageBreakdown,
         typeBreakdown,
         trend: trendData,
-        costByCategory
+        costByCategory,
+        costByDepartment,
+        topExpensiveMachines
       },
     });
   } catch (error) {
@@ -1258,9 +1552,17 @@ exports.smartAssignInternal = async (requestId, io) => {
   }
 
   // 2. Find All Active Technicians in these Teams
-  const technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+  let technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+  
+  if (request.requiredSkills && request.requiredSkills.length > 0) {
+    technicians = technicians.filter(tech => {
+      const certs = tech.certifications || [];
+      return request.requiredSkills.every(skill => certs.includes(skill));
+    });
+  }
+
   if (technicians.length === 0) {
-    throw new Error("No active technicians found for the required specialization. Please assign manually.");
+    throw new Error("No active technicians found with the required certifications for this request. Please assign manually.");
   }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
@@ -1277,7 +1579,12 @@ exports.smartAssignInternal = async (requestId, io) => {
       if (r.assignedToId) {
         const techIdStr = r.assignedToId.toString();
         if (workloadMap[techIdStr] !== undefined) {
-          workloadMap[techIdStr]++;
+          let weight = 1;
+          if (r.priority === 'urgent') weight = 3;
+          else if (r.priority === 'high') weight = 2;
+          else if (r.priority === 'low') weight = 0.5;
+          
+          workloadMap[techIdStr] += weight;
         }
       }
     });
@@ -1295,8 +1602,9 @@ exports.smartAssignInternal = async (requestId, io) => {
     }
 
   // 5. Apply capacity protection limit (MAX_WORKLOAD = 5)
+  // Urgent requests bypass the MAX_WORKLOAD hard cap to prevent critical breakdowns from blocking
   const MAX_WORKLOAD = 5;
-  if (minWorkload >= MAX_WORKLOAD) {
+  if (minWorkload >= MAX_WORKLOAD && request.priority !== 'urgent') {
     throw new Error(`All qualified technicians for specialization "${targetSpecialization || 'this team'}" are at maximum workload capacity (${MAX_WORKLOAD}+ active tickets). Please assign manually.`);
   }
 
@@ -1873,3 +2181,113 @@ exports.cannibalizePart = async (req, res) => {
   }
 };
 
+
+// Approve Request Costs
+exports.approveRequest = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    // Ensure authorized
+    if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
+      return res.status(403).json({ error: "Not authorized to approve financial requests." });
+    }
+
+    if (request.approvalStatus !== 'pending') {
+      return res.status(400).json({ error: "Request is not pending approval." });
+    }
+
+    request.approvalStatus = 'approved';
+    request.approvedBy = req.user._id;
+    request.approvalDate = new Date();
+    request.stage = 'new'; // unlock it back to 'new' so work can begin
+
+    await request.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.notifyRequestChange(io, "request_updated", request, `Financial approval granted by ${req.user.name}.`);
+    }
+
+    res.status(200).json(request);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+    // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
+    if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
+    }
+    if (request.approvalStatus === 'pending_tier2' && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: "Admin approval required for Tier 2." });
+    }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
+    request.approvalStatus = 'approved';
+    request.approvalHistory.push({
+      tier: previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Approved",
+      status: 'approved'
+    });
+
+    await request.save();
+
+    res.json({ message: "Request approved successfully.", request });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Reject Request Costs
+exports.rejectRequest = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
+      return res.status(403).json({ error: "Not authorized to reject financial requests." });
+    }
+
+    if (request.approvalStatus !== 'pending') {
+      return res.status(400).json({ error: "Request is not pending approval." });
+    }
+
+    request.approvalStatus = 'rejected';
+    request.stage = 'new'; // unlock it back to 'new' but maybe they should just modify parts
+
+    await request.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.notifyRequestChange(io, "request_updated", request, `Financial approval rejected by ${req.user.name}.`);
+    }
+
+    res.status(200).json(request);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+    if (!['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Unauthorized to reject requests." });
+    }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
+    request.approvalStatus = 'rejected';
+    request.approvalHistory.push({
+      tier: previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
+
+    await request.save();
+
+    res.json({ message: "Request rejected successfully.", request });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};

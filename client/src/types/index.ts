@@ -26,6 +26,7 @@ export interface Equipment {
   model?: string;
   status: 'active' | 'inactive' | 'scrapped' | 'under-maintenance';
   licensePlate?: string;
+  requiredSkills?: string[];
   currentMileage?: number;
   fuelType?: 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'CNG';
   notes?: string;
@@ -87,6 +88,7 @@ export interface TeamMember {
   avatar?: string;
   points?: number;
   badges?: string[];
+  certifications?: string[];
   isActive: boolean;
   teamId?: string;
   team?: MaintenanceTeam;
@@ -101,8 +103,11 @@ export interface MaintenanceRequest {
   subject: string;
   description?: string;
   type: 'corrective' | 'preventive';
+  stage: 'new' | 'awaiting-approval' | 'in-progress' | 'repaired' | 'scrap';
   stage: 'new' | 'in-progress' | 'repaired' | 'scrap';
+  rootCause?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
+  requiredSkills?: string[];
   scheduledDate?: string;
   completedDate?: string;
   duration?: number;
@@ -112,6 +117,11 @@ export interface MaintenanceRequest {
   notes?: string;
   rootCause?: string;
   rcaNodeId?: string;
+  estimatedCost?: number;
+  expectedVendorQuote?: number;
+  approvalStatus?: 'not-required' | 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvalDate?: string;
   equipmentId?: string;
   equipment?: Equipment;
   teamId?: string;
@@ -141,6 +151,7 @@ export interface MaintenanceRequest {
     proofImageUrl?: string;
     checklistResponses?: { step: string; checked: boolean }[];
   };
+  rcaNodeId?: string;
   vendorEscalation?: {
     isEscalated: boolean;
     vendorEmail?: string;
@@ -159,6 +170,14 @@ export interface MaintenanceRequest {
   slaBreachProbability?: number;
   preBreachWarningSent?: boolean;
   slaBreached?: boolean;
+  approvalStatus?: 'not_required' | 'pending_tier1' | 'pending_tier2' | 'approved' | 'rejected';
+  approvalHistory?: {
+    tier?: string;
+    approvedBy?: string;
+    approvedAt?: string;
+    comments?: string;
+    status?: string;
+  }[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -182,6 +201,7 @@ export interface CreateEquipmentDto {
   currentMileage?: number;
   fuelType?: string;
   notes?: string;
+  requiredSkills?: string[];
   maintenanceTeamId?: string;
   defaultTechnicianId?: string;
   mapCoordinates?: { x: number; y: number };
@@ -195,6 +215,7 @@ export interface CreateMaintenanceRequestDto {
   description?: string;
   type: 'corrective' | 'preventive';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
+  requiredSkills?: string[];
   scheduledDate?: string;
   equipmentId?: string;
   teamId?: string;
@@ -208,6 +229,7 @@ export interface CreateMaintenanceRequestDto {
   partsUsed?: PartUsedInput[];
   requiredParts?: { partId: string; quantityNeeded: number }[];
   checklist?: { text: string; isCompleted: boolean }[];
+  expectedVendorQuote?: number;
 }
 
 export interface Notification {
