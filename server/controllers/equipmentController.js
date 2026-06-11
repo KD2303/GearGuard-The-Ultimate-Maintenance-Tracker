@@ -249,6 +249,20 @@ exports.updateEquipment = asyncHandler(async (req, res, next) => {
 
 // Delete equipment
 exports.deleteEquipment = asyncHandler(async (req, res, next) => {
+  // Check for active maintenance requests
+  const activeRequests = await MaintenanceRequest.find({
+    equipmentId: req.params.id,
+    stage: { $nin: ['repaired', 'scrap'] }
+  });
+
+  if (activeRequests.length > 0) {
+    throw new ErrorHandler(
+      "Cannot delete equipment with active maintenance tickets. Please close or reassign them first.",
+      ERROR_TYPES.VALIDATION_ERROR,
+      400
+    );
+  }
+
   const equipment = await Equipment.findByIdAndDelete(req.params.id);
   if (!equipment) {
     throw new ErrorHandler("Equipment not found", ERROR_TYPES.NOT_FOUND_ERROR);
@@ -262,7 +276,7 @@ exports.deleteEquipment = asyncHandler(async (req, res, next) => {
     userName: req.user?.name || ""
   });
 
-  // Cascade delete all maintenance requests associated with this equipment
+  // Cascade delete all CLOSED/REPAIRED maintenance requests associated with this equipment
   await MaintenanceRequest.deleteMany({ equipmentId: req.params.id });
 
   res.status(200).json({
@@ -358,5 +372,31 @@ exports.getEquipmentFinancials = asyncHandler(async (req, res, next) => {
   res.status(200).json({
     success: true,
     data: financials
+  });
+});
+
+// Get equipment that are compatible with a specific part (for cannibalization)
+exports.getEquipmentByCompatiblePart = asyncHandler(async (req, res, next) => {
+  const { partId } = req.params;
+  const excludeEquipmentId = req.query.exclude;
+
+  if (!partId) {
+    throw new ErrorHandler("Part ID is required", ERROR_TYPES.VALIDATION_ERROR);
+  }
+
+  const query = { compatibleParts: partId };
+  if (excludeEquipmentId) {
+    query._id = { $ne: excludeEquipmentId };
+  }
+
+  const equipment = await Equipment.find(query)
+    .populate("maintenanceTeam")
+    .populate("defaultTechnician")
+    .sort({ status: 1, createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    count: equipment.length,
+    data: equipment,
   });
 });

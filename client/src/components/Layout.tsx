@@ -24,6 +24,7 @@ import {
   Sun,
   Cloud,
   UserCircle,
+  ShieldAlert,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
 import LanguageSelector from "./LanguageSelector";
@@ -104,6 +105,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { to: '/', icon: LayoutDashboard, label: t('nav.dashboard'), gradient: 'from-blue-500 to-indigo-600 shadow-blue-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/admin', icon: Shield, label: t('nav.admin'), gradient: 'from-rose-500 to-red-600 shadow-rose-500/20', roles: ['Admin', 'Manager'] },
     { to: '/admin/rca-builder', icon: Shield, label: 'RCA Builder', gradient: 'from-blue-500 to-cyan-600 shadow-blue-500/20', roles: ['Admin', 'Manager'] },
+    { to: '/admin/sync-conflicts', icon: ShieldAlert, label: 'Sync Conflicts', gradient: 'from-red-500 to-orange-600 shadow-red-500/20', roles: ['Admin', 'Manager'] },
     { to: '/requests', icon: Wrench, label: t('nav.kanban'), gradient: 'from-purple-500 to-pink-600 shadow-purple-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/requests-all', icon: List, label: t('nav.allRequests'), gradient: 'from-pink-500 to-rose-600 shadow-pink-500/20', roles: ['Admin', 'Manager', 'Technician'] },
     { to: '/shift-handovers', icon: Activity, label: 'Shift Logbook', gradient: 'from-amber-400 to-orange-500 shadow-amber-500/20', roles: ['Admin', 'Manager', 'Technician'] },

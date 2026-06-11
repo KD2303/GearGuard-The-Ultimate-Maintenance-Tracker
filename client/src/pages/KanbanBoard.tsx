@@ -61,6 +61,13 @@ const STAGES = [
   },
 
   {
+    id: "awaiting-approval",
+    title: "Awaiting Approval",
+    color:
+      "bg-purple-50 border-purple-200 dark:bg-slate-800 dark:border-purple-500/30",
+  },
+
+  {
     id: "in-progress",
     title: "In Progress",
     color:
@@ -81,6 +88,33 @@ const STAGES = [
       "bg-red-50 border-red-200 dark:bg-slate-800 dark:border-red-500/30",
   },
 ];
+
+const LiveTimer: React.FC<{ startTime: string }> = ({ startTime }) => {
+  const [elapsed, setElapsed] = useState<string>('');
+
+  useEffect(() => {
+    const start = new Date(startTime).getTime();
+    
+    const updateTimer = () => {
+      const now = Date.now();
+      const diff = Math.max(0, now - start);
+      
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setElapsed(
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      );
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return <span className="font-mono">{elapsed}</span>;
+};
 
 interface RequestCardProps {
   request: MaintenanceRequest;
@@ -110,13 +144,30 @@ const RequestCard: React.FC<
       }),
     }));
 
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  useEffect(() => {
+    if (request.stage === "repaired" || request.stage === "scrap") return;
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [request.stage]);
+
+  const isDynamicallyBreached = () => {
+    if (request.slaBreached) return true;
+    if (request.stage === "repaired" || request.stage === "scrap") return false;
+    if (request.slaDeadline && currentTime > new Date(request.slaDeadline).getTime()) return true;
+    return false;
+  };
+
   const isOverdue = (
     date?: string,
     stage?: string
   ) => {
     if (!date) return false;
 
-    const today = new Date();
+    const today = new Date(currentTime);
 
     const due = new Date(date);
 
@@ -163,7 +214,7 @@ const RequestCard: React.FC<
           : 1,
       }}
       className={`kanban-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm dark:shadow-none border-2 mb-3 cursor-pointer ${
-        request.slaBreached 
+        isDynamicallyBreached() 
           ? "border-red-500 shadow-red-500/20"
           : (request.slaBreachProbability && request.slaBreachProbability >= 85 && request.stage !== "repaired" && request.stage !== "scrap")
           ? "border-orange-500 shadow-orange-500/20 bg-orange-50 dark:bg-orange-900/10 animate-pulse-border"
@@ -209,6 +260,13 @@ const RequestCard: React.FC<
         {request.requestNumber}
       </p>
 
+      {request.stage !== "repaired" && request.stage !== "scrap" && request.createdAt && (
+        <div className="flex items-center text-xs text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded w-fit border border-orange-100 dark:border-orange-800/50 shadow-sm mb-2">
+          <Clock className="h-3 w-3 mr-1 animate-pulse" />
+          Downtime: <span className="ml-1"><LiveTimer startTime={request.createdAt} /></span>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 mb-2">
         <Badge
           variant={
@@ -230,6 +288,13 @@ const RequestCard: React.FC<
           </span>
         )}
       </div>
+
+      {(request.approvalStatus === 'pending_tier1' || request.approvalStatus === 'pending_tier2') && (
+        <div className="flex items-center text-amber-600 dark:text-amber-400 text-xs mt-2 font-bold bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded w-fit border border-amber-100 dark:border-amber-800/50 shadow-sm">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Awaiting {request.approvalStatus === 'pending_tier1' ? 'Manager' : 'Admin'} Approval
+        </div>
+      )}
 
       {request.assignedTo && (
         <div className="flex items-center text-xs text-gray-600 dark:text-gray-300 mt-2">
@@ -299,6 +364,7 @@ const RequestCard: React.FC<
           Blocked: Awaiting Parts
         </div>
       )}
+
       {request.checkedOutTools && request.checkedOutTools.length > 0 && (
         <div className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-2 flex items-center bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
           <Wrench className="h-3 w-3 mr-1" />
@@ -314,6 +380,39 @@ const RequestCard: React.FC<
           <Sparkles className="h-3.5 w-3.5 animate-pulse" />
           Smart Assign
         </button>
+      )}
+
+      {request.approvalStatus === 'pending' && (
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await requestService.approveRequest(request.id || request._id || "");
+                _onUpdate();
+              } catch (err: any) {
+                toast.error(err.response?.data?.error || "Failed to approve");
+              }
+            }}
+            className="flex-1 px-2 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/30 dark:hover:bg-green-800/50 dark:text-green-400 rounded text-xs font-medium border border-green-200 dark:border-green-800/50 transition-colors"
+          >
+            Approve
+          </button>
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await requestService.rejectRequest(request.id || request._id || "");
+                _onUpdate();
+              } catch (err: any) {
+                toast.error(err.response?.data?.error || "Failed to reject");
+              }
+            }}
+            className="flex-1 px-2 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-800/50 dark:text-red-400 rounded text-xs font-medium border border-red-200 dark:border-red-800/50 transition-colors"
+          >
+            Reject
+          </button>
+        </div>
       )}
     </div>
   );
@@ -337,6 +436,7 @@ interface ColumnProps {
 }
 
 const Column = ({
+const Column: React.FC<ColumnProps> = ({
   stage,
   requests,
   onDrop,

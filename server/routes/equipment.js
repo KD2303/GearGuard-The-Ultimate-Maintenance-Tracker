@@ -17,6 +17,9 @@ router.use(protect);
 // GET all equipment (any logged-in user)
 router.get('/', equipmentController.getAllEquipment);
 
+// GET equipment compatible with a specific part
+router.get('/compatible-with-part/:partId', equipmentController.getEquipmentByCompatiblePart);
+
 // GET equipment financials (Admin + Manager)
 router.get('/financials', authorizeRoles("Admin", "Manager"), equipmentController.getEquipmentFinancials);
 

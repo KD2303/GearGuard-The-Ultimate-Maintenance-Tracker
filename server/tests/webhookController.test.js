@@ -1,5 +1,5 @@
 const webhookController = require('../controllers/webhookController');
-const { Webhook } = require('../models');
+const { Webhook, WebhookEvent } = require('../models');
 const axios = require('axios');
 
 jest.mock('../models', () => ({
@@ -8,6 +8,9 @@ jest.mock('../models', () => ({
     create: jest.fn(),
     findByIdAndUpdate: jest.fn(),
     findByIdAndDelete: jest.fn()
+  },
+  WebhookEvent: {
+    create: jest.fn()
   }
 }));
 jest.mock('axios');
@@ -121,15 +124,16 @@ describe('Webhook Controller', () => {
   });
 
   describe('testWebhook', () => {
-    it('should send a test payload via axios', async () => {
+    it('should queue a test payload via WebhookEvent', async () => {
       req.body = { url: 'http://test.com', provider: 'Slack' };
-      axios.post.mockResolvedValue({ status: 200 });
+      const newWebhookEvent = { _id: 'event-1' };
+      WebhookEvent.create.mockResolvedValue(newWebhookEvent);
 
       await webhookController.testWebhook(req, res);
 
-      expect(axios.post).toHaveBeenCalled();
+      expect(WebhookEvent.create).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Test webhook sent successfully' });
+      expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Test webhook queued successfully via dispatcher', data: newWebhookEvent });
     });
 
     it('should return 400 if url or provider is missing', async () => {
