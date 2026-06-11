@@ -19,6 +19,14 @@ export const authService = {
     return response.data;
   },
 
+  updateProfile: async (data: any) => {
+    const response = await api.put('/auth/profile', data);
+    if (response.data.user) {
+      localStorage.setItem('gearguard_user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
+
   logout: async () => {
     try {
       await api.post('/auth/logout');
