@@ -54,6 +54,10 @@ const UserSchema = new Schema({
     select: false,
   },
 
+  preferences: {
+    desktopNotifications: { type: Boolean, default: false }
+  }
+
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 UserSchema.virtual('isLocked').get(function () {

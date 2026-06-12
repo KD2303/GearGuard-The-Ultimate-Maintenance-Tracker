@@ -14,6 +14,7 @@ import RequestsPage from './pages/RequestsPage';
 import ActivityPage from './pages/ActivityPage';
 import VehicleList from './pages/VehicleList';
 import SettingsPage from './pages/SettingsPage';
+import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard';
 import AnalyticsPage from './pages/AnalyticsPage';
 import RCABuilder from './pages/RCABuilder';
@@ -68,6 +69,7 @@ function AppContent() {
         <Route path="/predictive" element={<PredictiveDashboard />} />
         <Route path="/procurement" element={<ProcurementDashboard />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/tool-crib" element={<ToolCrib />} />
       </Routes>
     </Layout>

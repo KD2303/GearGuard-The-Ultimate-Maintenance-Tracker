@@ -367,6 +367,20 @@ exports.createRequest = async (req, res) => {
         payload.approvalStatus = 'pending';
       }
 
+      // Certification Check
+      if (payload.assignedToId && payload.requiredCertifications && payload.requiredCertifications.length > 0) {
+        const technician = await TeamMember.findById(payload.assignedToId).session(session);
+        if (technician) {
+          const techCerts = technician.certifications || [];
+          const missingCerts = payload.requiredCertifications.filter(cert => !techCerts.includes(cert));
+          if (missingCerts.length > 0) {
+            const error = new Error(`Safety Compliance Error: Technician is missing required certifications (${missingCerts.join(', ')})`);
+            error.status = 403;
+            throw error;
+          }
+        }
+      }
+
       const request = await MaintenanceRequest.create([{
         ...payload,
         requestNumber,
@@ -450,7 +464,8 @@ exports.createRequest = async (req, res) => {
 
     res.status(201).json(requestWithRelations);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    const status = error.status || 400;
+    res.status(status).json({ error: error.message });
   }
 };
 
@@ -532,6 +547,20 @@ exports.updateRequest = async (req, res) => {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
     }
 
+    // Certification Check
+    const requiredCerts = payload.requiredCertifications || prevRequest.requiredCertifications || [];
+    if (payload.assignedToId && requiredCerts.length > 0) {
+      // If assignment hasn't changed, we could theoretically skip this, but it's safe to always check
+      // in case requirements were added in the same update.
+      const technician = await TeamMember.findById(payload.assignedToId);
+      if (technician) {
+        const techCerts = technician.certifications || [];
+        const missingCerts = requiredCerts.filter(cert => !techCerts.includes(cert));
+        if (missingCerts.length > 0) {
+          return res.status(403).json({ error: `Safety Compliance Error: Technician is missing required certifications (${missingCerts.join(', ')})` });
+        }
+      }
+    }
     let currentApprovalStatus = prevRequest.approvalStatus;
     let currentEstimatedCost = prevRequest.estimatedCost || 0;
 
@@ -1553,6 +1582,11 @@ exports.smartAssignInternal = async (requestId, io) => {
 
   // 2. Find All Active Technicians in these Teams
   let technicians = await TeamMember.find({ teamId: { $in: teamIds }, isActive: true });
+
+  if (request.requiredCertifications && request.requiredCertifications.length > 0) {
+    technicians = technicians.filter(tech => {
+      const techCerts = tech.certifications || [];
+      return request.requiredCertifications.every(cert => techCerts.includes(cert));
   
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
@@ -1562,6 +1596,7 @@ exports.smartAssignInternal = async (requestId, io) => {
   }
 
   if (technicians.length === 0) {
+    throw new Error("No active technicians found possessing the required safety certifications for this request. Please assign manually or update certifications.");
     throw new Error("No active technicians found with the required certifications for this request. Please assign manually.");
   }
 

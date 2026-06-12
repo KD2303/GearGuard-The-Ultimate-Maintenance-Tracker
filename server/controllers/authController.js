@@ -305,6 +305,60 @@ exports.getMe = asyncHandler(async (req, res, next) => {
   });
 });
 
+// UPDATE PROFILE
+exports.updateProfile = asyncHandler(async (req, res, next) => {
+  const { name, email, currentPassword, newPassword, desktopNotifications } = req.body;
+  const user = await User.findById(req.user._id).select("+password");
+
+  if (!user) {
+    throw new ErrorHandler("User not found", ERROR_TYPES.NOT_FOUND_ERROR);
+  }
+
+  // Update password if requested
+  if (currentPassword && newPassword) {
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      throw new ErrorHandler("Incorrect current password.", ERROR_TYPES.VALIDATION_ERROR);
+    }
+    if (newPassword.length < 6) {
+      throw new ErrorHandler("New password must be at least 6 characters long.", ERROR_TYPES.VALIDATION_ERROR);
+    }
+    user.password = await bcrypt.hash(newPassword, 10);
+  }
+
+  // Update other fields
+  if (name) user.name = name.trim();
+  if (email) {
+    const emailKey = email.toLowerCase().trim();
+    if (emailKey !== user.email) {
+      const existing = await User.findOne({ email: emailKey });
+      if (existing) {
+        throw new ErrorHandler("Email is already taken.", ERROR_TYPES.DUPLICATE_ERROR);
+      }
+      user.email = emailKey;
+    }
+  }
+
+  // Update preferences
+  if (!user.preferences) {
+    user.preferences = { desktopNotifications: false };
+  }
+  if (typeof desktopNotifications === 'boolean') {
+    user.preferences.desktopNotifications = desktopNotifications;
+  }
+
+  await user.save();
+
+  const userObj = user.toObject();
+  delete userObj.password;
+
+  res.status(200).json({
+    success: true,
+    message: "Profile updated successfully",
+    user: userObj,
+  });
+});
+
 // UPDATE USER ROLE (Admin only)
 exports.updateUserRole = asyncHandler(async (req, res, next) => {
   // Only admins can change roles

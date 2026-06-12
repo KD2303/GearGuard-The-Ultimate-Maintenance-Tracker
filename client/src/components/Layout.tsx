@@ -23,6 +23,7 @@ import {
   Moon,
   Sun,
   Cloud,
+  UserCircle,
   ShieldAlert,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
@@ -377,13 +378,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <div className="p-2">
                     <button
                       onClick={() => {
-                        navigate("/settings");
+                        navigate("/profile");
                         setProfileOpen(false);
                       }}
                       className="flex w-full items-center px-4 py-2.5 rounded-xl text-sm font-semibold text-left text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                     >
-                      <Settings className="h-4 w-4 mr-3 text-slate-500" />
-                      {t("layout.settings") || "Settings"}
+                      <UserCircle className="h-4 w-4 mr-3 text-slate-500" />
+                      {t("layout.myProfile") || "My Profile"}
                     </button>
 
                     <button

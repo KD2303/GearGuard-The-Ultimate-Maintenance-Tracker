@@ -3,6 +3,7 @@ import Modal from './Modal';
 import Button from './Button';
 import { teamService } from '../services/teamService';
 import { MaintenanceTeam, TeamMember } from '../types';
+import { AVAILABLE_CERTIFICATIONS } from '../utils/constants';
 import Select from "react-select";
 import { CERTIFICATION_OPTIONS } from "../utils/certifications";
 
@@ -21,6 +22,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
 }) => {
   type MemberForm = Pick<TeamMember, 'name' | 'email' | 'phone' | 'role' | 'isActive' | 'certifications'> & {
     teamId: string;
+    certifications: string[];
   };
 
   const [formData, setFormData] = useState<MemberForm>({
@@ -31,6 +33,7 @@ const MemberModal: React.FC<MemberModalProps> = ({
     teamId: defaultTeamId || '',
     certifications: [],
     isActive: true,
+    certifications: [],
   });
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
   const [loading, setLoading] = useState(false);
@@ -140,6 +143,24 @@ const MemberModal: React.FC<MemberModalProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Certifications
           </label>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {AVAILABLE_CERTIFICATIONS.map((cert) => (
+              <label key={cert} className="flex items-center space-x-2 text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formData.certifications.includes(cert)}
+                  onChange={(e) => {
+                    const newCerts = e.target.checked
+                      ? [...formData.certifications, cert]
+                      : formData.certifications.filter((c) => c !== cert);
+                    setFormData({ ...formData, certifications: newCerts });
+                  }}
+                  className="rounded text-blue-600 focus:ring-blue-500 bg-white border-gray-300"
+                />
+                <span className="text-gray-700 dark:text-gray-300">{cert}</span>
+              </label>
+            ))}
+          </div>
           <Select
             isMulti
             options={CERTIFICATION_OPTIONS}

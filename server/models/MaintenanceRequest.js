@@ -74,6 +74,7 @@ const MaintenanceRequestSchema = new Schema({
     partId: { type: Schema.Types.ObjectId, ref: 'SparePart' },
     quantityNeeded: { type: Number, required: true, default: 1 }
   }],
+  requiredCertifications: [{ type: String }],
   isBlockedAwaitingParts: { type: Boolean, default: false },
   comments: [{
     authorId: { type: Schema.Types.ObjectId, ref: 'TeamMember', required: true },

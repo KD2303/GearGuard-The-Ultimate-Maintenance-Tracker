@@ -102,6 +102,15 @@ const TeamsPage: React.FC = () => {
                         {member.role && (
                           <p className="text-xs text-gray-500 dark:text-gray-400">{member.role}</p>
                         )}
+                        {member.certifications && member.certifications.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {member.certifications.map(cert => (
+                              <span key={cert} className="text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                                {cert}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <Badge variant={member.isActive ? 'success' : 'default'} size="sm">
                         {member.isActive ? 'Active' : 'Inactive'}

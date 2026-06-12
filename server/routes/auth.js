@@ -4,7 +4,7 @@ const router = express.Router();
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
 
-const { register, login, getMe, updateUserRole, unlockUser, refresh, logout, logoutAll } = require("../controllers/authController");
+const { register, login, getMe, updateProfile, updateUserRole, unlockUser, refresh, logout, logoutAll } = require("../controllers/authController");
 const verifyToken = require("../middleware/auth"); // default export, aliased to match main branch convention
 const { authLimiter, registerLimiter } = require("../middleware/rateLimiter");
 const adminOnly = require("../middleware/adminOnly");
@@ -40,6 +40,9 @@ router.post("/logout-all", verifyToken, logoutAll);
 
 // Get current user (protected)
 router.get("/me", verifyToken, getMe);
+
+// Update current user profile (protected)
+router.put("/profile", verifyToken, updateProfile);
 
 // Admin-only: update a user's role
 router.patch("/users/:userId/role", verifyToken, updateUserRole);

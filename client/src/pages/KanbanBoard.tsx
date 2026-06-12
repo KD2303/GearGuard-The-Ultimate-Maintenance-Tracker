@@ -435,13 +435,14 @@ interface ColumnProps {
   sortByCost: boolean;
 }
 
+const Column = ({
 const Column: React.FC<ColumnProps> = ({
   stage,
   requests,
   onDrop,
   onRequestClick,
   sortByCost
-}) => {
+}: ColumnProps) => {
   const [{ isOver }, drop] =
     useDrop(() => ({
       accept: "REQUEST",

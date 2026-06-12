@@ -6,6 +6,9 @@ interface AuthUser {
   name: string;
   email: string;
   role: 'Admin' | 'Manager' | 'Technician';
+  preferences?: {
+    desktopNotifications: boolean;
+  };
 }
 
 interface AuthContextType {
@@ -13,6 +16,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
   loginWithToken: (token: string) => Promise<void>;
+  updateProfile: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
 }
@@ -32,6 +36,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(data.user);
   };
 
+  const updateProfile = async (profileData: any) => {
+    const data = await authService.updateProfile(profileData);
+    setUser(data.user);
+  };
+
   const logout = async () => {
     await authService.logout();
     setUser(null);
@@ -43,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, loginWithToken, logout, logoutAll }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, loginWithToken, updateProfile, logout, logoutAll }}>
       {children}
     </AuthContext.Provider>
   );

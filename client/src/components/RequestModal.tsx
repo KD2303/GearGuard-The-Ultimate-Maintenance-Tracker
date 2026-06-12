@@ -3,6 +3,7 @@ import Modal from './Modal';
 import Button from './Button';
 import { CreateMaintenanceRequestDto, Equipment, MaintenanceTeam, TeamMember, SparePart } from '../types';
 import { requestService } from '../services/requestService';
+import { AVAILABLE_CERTIFICATIONS } from '../utils/constants';
 import { equipmentService } from '../services/equipmentService';
 import { teamService } from '../services/teamService';
 import { inventoryService } from '../services/inventoryService';
@@ -90,6 +91,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
     teamId: '',
     assignedToId: '',
     checklist: [],
+    requiredCertifications: [],
     expectedVendorQuote: 0,
     requiredSkills: [],
   });
@@ -198,6 +200,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
             teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
             assignedToId: typeof req.assignedToId === 'object' ? (req.assignedToId as any)._id : req.assignedToId || '',
             checklist: req.checklist || [],
+            requiredCertifications: req.requiredCertifications || [],
             expectedVendorQuote: req.expectedVendorQuote || 0,
             requiredSkills: req.requiredSkills || [],
           });
@@ -409,12 +412,9 @@ const RequestModal: React.FC<RequestModalProps> = ({
 
       onSuccess();
     } catch (error) {
-      console.error(
-        'Failed to create/update request:',
-        error
-      );
-
-      alert('Failed to save request');
+      console.error('Failed to create/update request:', error);
+      const errorMsg = (error as any).response?.data?.error || (error as any).message || 'Failed to save request';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -712,6 +712,32 @@ const RequestModal: React.FC<RequestModalProps> = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             placeholder="Describe the issue..."
           />
+        </div>
+
+        {/* Required Certifications */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Required Certifications (Safety Compliance)
+          </label>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {AVAILABLE_CERTIFICATIONS.map((cert) => (
+              <label key={cert} className="flex items-center space-x-2 text-sm bg-gray-50 dark:bg-gray-800/40 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                <input
+                  type="checkbox"
+                  checked={(formData.requiredCertifications || []).includes(cert)}
+                  onChange={(e) => {
+                    const currentCerts = formData.requiredCertifications || [];
+                    const newCerts = e.target.checked
+                      ? [...currentCerts, cert]
+                      : currentCerts.filter((c) => c !== cert);
+                    setFormData({ ...formData, requiredCertifications: newCerts });
+                  }}
+                  className="rounded text-blue-600 focus:ring-blue-500 bg-white border-gray-300"
+                />
+                <span className="text-gray-700 dark:text-gray-300">{cert}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* Checklist */}
