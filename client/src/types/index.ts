@@ -104,7 +104,6 @@ export interface MaintenanceRequest {
   description?: string;
   type: 'corrective' | 'preventive';
   stage: 'new' | 'awaiting-approval' | 'in-progress' | 'repaired' | 'scrap';
-  stage: 'new' | 'in-progress' | 'repaired' | 'scrap';
   rootCause?: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   requiredSkills?: string[];
@@ -115,11 +114,10 @@ export interface MaintenanceRequest {
   partsCost?: number;
   laborCost?: number;
   notes?: string;
-  rootCause?: string;
   rcaNodeId?: string;
   estimatedCost?: number;
   expectedVendorQuote?: number;
-  approvalStatus?: 'not-required' | 'pending' | 'approved' | 'rejected';
+  approvalStatus?: 'not-required' | 'not_required' | 'pending' | 'pending_tier1' | 'pending_tier2' | 'approved' | 'rejected';
   approvedBy?: string;
   approvalDate?: string;
   equipmentId?: string;
@@ -152,7 +150,6 @@ export interface MaintenanceRequest {
     proofImageUrl?: string;
     checklistResponses?: { step: string; checked: boolean }[];
   };
-  rcaNodeId?: string;
   vendorEscalation?: {
     isEscalated: boolean;
     vendorEmail?: string;
@@ -171,9 +168,6 @@ export interface MaintenanceRequest {
   slaBreachProbability?: number;
   preBreachWarningSent?: boolean;
   slaBreached?: boolean;
-  rootCause?: string;
-  rcaNodeId?: string;
-  approvalStatus?: 'not_required' | 'pending_tier1' | 'pending_tier2' | 'approved' | 'rejected';
   approvalHistory?: {
     tier?: string;
     approvedBy?: string;

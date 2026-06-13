@@ -33,7 +33,6 @@ const MemberModal: React.FC<MemberModalProps> = ({
     teamId: defaultTeamId || '',
     certifications: [],
     isActive: true,
-    certifications: [],
   });
   const [teams, setTeams] = useState<MaintenanceTeam[]>([]);
   const [loading, setLoading] = useState(false);
