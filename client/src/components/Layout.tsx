@@ -23,6 +23,7 @@ import {
   Moon,
   Sun,
   Cloud,
+  UserCircle,
   ShieldAlert,
   UserCircle,
 } from "lucide-react";
