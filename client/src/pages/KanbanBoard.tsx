@@ -673,11 +673,19 @@ const KanbanBoard: React.FC =
       if (newStage === "repaired" || newStage === "scrap") {
         setClosureModalData({ requestId, newStage });
       } else {
+        const prevRequests = [...requests];
+        setRequests(prevRequests.map(r => 
+          (r.id === requestId || r._id === requestId) ? { ...r, stage: newStage as MaintenanceRequest["stage"] } : r
+        ));
+
         try {
           await requestService.updateStage(requestId, newStage);
+          // Wait for backend to be fully synced
           await loadRequests();
         } catch (error) {
           console.error("Failed to update request stage:", error);
+          setRequests(prevRequests);
+          toast.error("Failed to move ticket. You might be offline.");
         }
       }
     };
