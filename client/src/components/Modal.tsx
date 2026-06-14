@@ -25,7 +25,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
         {/* Backdrop */}
         <div
           className="fixed inset-0 transition-opacity bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
         ></div>
 
         {/* Modal */}

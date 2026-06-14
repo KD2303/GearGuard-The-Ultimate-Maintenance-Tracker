@@ -78,7 +78,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ attachments, onDelete }) =>
       </div>
 
       {selectedImage && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setSelectedImage(null)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}>
           <div className="relative max-w-4xl max-h-full" onClick={e => e.stopPropagation()}>
             <button 
               className="absolute -top-10 right-0 p-2 text-white/70 hover:text-white transition-colors"
