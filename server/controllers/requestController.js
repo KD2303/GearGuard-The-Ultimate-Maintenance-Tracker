@@ -8,6 +8,7 @@ const {
   ToolAuditLog,
   Notification,
   Webhook,
+  PurchaseOrder,
 } = require("../models");
 const { logActivity } = require("../utils/logActivity");
 const { auditLog } = require("../utils/auditLogger");
@@ -82,6 +83,36 @@ const decrementInventory = async (io, partsUsed, session) => {
           { reorderStatus: 'low-stock' }, 
           { new: true, session }
         );
+        
+        // Auto-generate Purchase Order
+        const quantityNeeded = Math.max(1, (updatedPart.optimalStockLevel || (updatedPart.minReorderThreshold * 2)) - updatedPart.quantityInStock);
+        const poNumber = 'PO-' + Date.now().toString().slice(-6) + '-' + Math.floor(Math.random() * 1000);
+        
+        // Ensure a supplier is set for the part, fallback to generic missing
+        let supplierId = updatedPart.supplierId;
+        if (!supplierId) {
+          // If no supplier, we can't create a valid PO, so just notify
+          console.warn(`Cannot create auto PO for part ${partId}: No supplier attached.`);
+        } else {
+          try {
+            const newPO = new PurchaseOrder({
+              poNumber,
+              supplierId,
+              items: [{
+                partId: finalPart._id,
+                quantityNeeded,
+                unitCost: finalPart.unitCost || 0
+              }],
+              totalCost: quantityNeeded * (finalPart.unitCost || 0),
+              status: 'draft',
+              orderDate: new Date()
+            });
+            await newPO.save({ session });
+          } catch (poErr) {
+            console.error('Error auto-generating PurchaseOrder:', poErr);
+          }
+        }
+
         if (io) {
           NotificationService.notifyLowStock(io, finalPart).catch(err => console.error(err));
         }
