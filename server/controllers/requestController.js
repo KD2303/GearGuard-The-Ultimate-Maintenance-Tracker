@@ -2176,10 +2176,14 @@ exports.escalateToVendor = async (req, res) => {
     
     if (!request) return res.status(404).json({ error: "Request not found" });
 
-    // Generate magic token
-    const crypto = require('crypto');
-    const magicToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+    // Generate signed JWT token expiring in 72 hours
+    const jwt = require('jsonwebtoken');
+    const magicToken = jwt.sign(
+      { requestId: request._id },
+      process.env.JWT_SECRET || 'fallback_secret_for_vendor',
+      { expiresIn: '72h' }
+    );
+    const tokenExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours
 
     request.vendorEscalation = {
       isEscalated: true,
@@ -2194,7 +2198,7 @@ exports.escalateToVendor = async (req, res) => {
 
     res.status(200).json({ 
       message: "Escalated to vendor successfully", 
-      magicLink: `/vendor/ticket/${magicToken}`
+      magicLink: `/vendor/portal/${magicToken}`
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

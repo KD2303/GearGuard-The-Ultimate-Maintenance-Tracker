@@ -53,6 +53,24 @@ export default function VendorTicketView() {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const files = Array.from(e.target.files);
+    
+    const formData = new FormData();
+    files.forEach(file => formData.append('attachments', file));
+
+    try {
+      const response = await axios.post(`http://localhost:5001/api/vendor/ticket/${token}/attachments`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setTicket(prev => prev ? { ...prev, attachments: [...(prev.attachments || []), ...response.data.attachments] } : prev);
+      toast.success("Files uploaded successfully");
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to upload files");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -191,8 +209,42 @@ export default function VendorTicketView() {
                 <p className="text-xs text-gray-500 text-center mt-2">
                   Once marked as repaired, you will no longer be able to modify the ticket.
                 </p>
+                
+                <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <label className={`w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer ${ticket.stage === 'repaired' ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <svg className="w-5 h-5 mr-2 -ml-1 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                    Upload Diagnostic File
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileUpload}
+                      disabled={ticket.stage === 'repaired'}
+                    />
+                  </label>
+                </div>
               </div>
             </div>
+            
+            {ticket.attachments && ticket.attachments.length > 0 && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Attachments</h3>
+                <ul className="space-y-2">
+                  {ticket.attachments.map((file, idx) => (
+                    <li key={idx} className="flex items-center text-sm">
+                      <svg className="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      <a href={`http://localhost:5001${file.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline truncate">
+                        {file.filename}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
