@@ -1839,6 +1839,25 @@ exports.submitLOTO = async (req, res) => {
   }
 };
 
+exports.removeLOTO = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: "Request not found" });
+
+    if (!request.lotoAudit || !request.lotoAudit.isCompleted) {
+      return res.status(400).json({ error: "LOTO has not been applied yet." });
+    }
+
+    request.lotoAudit.lotoRemoved = true;
+    request.lotoAudit.removedAt = new Date();
+
+    await request.save();
+    res.status(200).json(request);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.checkoutTool = async (req, res) => {
   let lock;
   try {

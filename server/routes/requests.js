@@ -26,6 +26,7 @@ router.post('/:id/approve', authorizeRoles('Admin', 'Manager'), requestControlle
 router.post('/:id/reject', authorizeRoles('Admin', 'Manager'), requestController.rejectRequest);
 router.delete('/:id', authorizeRoles('Admin', 'Manager'), requestController.deleteRequest);
 router.post('/:id/loto', requestController.submitLOTO);
+router.post('/:id/remove-loto', requestController.removeLOTO);
 router.post('/:id/tools/checkout', requestController.checkoutTool);
 router.post('/:id/tools/return', requestController.returnTool);
 router.patch('/:id/approve', requestController.approveRequest);

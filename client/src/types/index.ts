@@ -17,6 +17,10 @@ export interface Equipment {
   department?: string;
   assignedTo?: string;
   location: string;
+  geoLocation?: {
+    type: string;
+    coordinates: [number, number];
+  };
   purchaseDate?: string;
   purchasePrice?: number;
   expectedLifespanYears?: number;
@@ -149,6 +153,8 @@ export interface MaintenanceRequest {
     completedBy?: string;
     proofImageUrl?: string;
     checklistResponses?: { step: string; checked: boolean }[];
+    lotoRemoved?: boolean;
+    removedAt?: string;
   };
   vendorEscalation?: {
     isEscalated: boolean;
