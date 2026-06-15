@@ -115,6 +115,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
 
     return () => {
+      newSocket.off();
       newSocket.disconnect();
     };
   }, [fetchNotifications, user, location.pathname]);

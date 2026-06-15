@@ -663,6 +663,7 @@ const KanbanBoard: React.FC =
       });
 
       return () => {
+        socket.off();
         socket.disconnect();
       };
     }, [loadRequests]);

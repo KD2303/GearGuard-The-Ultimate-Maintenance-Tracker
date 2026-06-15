@@ -57,6 +57,7 @@ const ToolCrib: React.FC = () => {
     });
 
     return () => {
+      socket.off();
       socket.disconnect();
     };
   }, []);

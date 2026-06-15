@@ -206,6 +206,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
       if (requestId) {
         socket.emit('leave_ticket', requestId);
       }
+      socket.off();
       socket.disconnect();
       discardRecording();
       if (speechRecognitionRef.current) {

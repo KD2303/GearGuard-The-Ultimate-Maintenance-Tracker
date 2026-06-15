@@ -54,6 +54,7 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ equipmentId, metricType
     setSocket(newSocket);
 
     return () => {
+      newSocket.off();
       newSocket.disconnect();
     };
   }, [equipmentId, metricType, user]);
