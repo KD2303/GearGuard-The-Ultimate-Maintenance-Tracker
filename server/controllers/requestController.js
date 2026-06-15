@@ -1616,6 +1616,8 @@ exports.smartAssignInternal = async (requestId, io) => {
     technicians = technicians.filter(tech => {
       const techCerts = tech.certifications || [];
       return request.requiredCertifications.every(cert => techCerts.includes(cert));
+    });
+  }
   
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
@@ -2271,19 +2273,35 @@ exports.approveRequest = async (req, res) => {
     const request = await MaintenanceRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
 
-    // Ensure authorized
     if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
       return res.status(403).json({ error: "Not authorized to approve financial requests." });
     }
 
-    if (request.approvalStatus !== 'pending') {
+    if (!request.approvalStatus || !request.approvalStatus.startsWith('pending')) {
       return res.status(400).json({ error: "Request is not pending approval." });
     }
 
+    if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
+    }
+    if (request.approvalStatus === 'pending_tier2' && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: "Admin approval required for Tier 2." });
+    }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
     request.approvalStatus = 'approved';
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Approved",
+      status: 'approved'
+    });
+    
     request.approvedBy = req.user._id;
     request.approvalDate = new Date();
-    request.stage = 'new'; // unlock it back to 'new' so work can begin
+    request.stage = 'in-progress'; 
 
     await request.save();
 
@@ -2299,48 +2317,32 @@ exports.approveRequest = async (req, res) => {
   }
 };
 
-    // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
-    if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
-    }
-    if (request.approvalStatus === 'pending_tier2' && req.user.role !== 'Admin') {
-      return res.status(403).json({ error: "Admin approval required for Tier 2." });
-    }
-
-    const previousTier = request.approvalStatus.replace('pending_', '');
-    request.approvalStatus = 'approved';
-    request.approvalHistory.push({
-      tier: previousTier,
-      approvedBy: req.user._id,
-      approvedAt: new Date(),
-      comments: req.body.comments || "Approved",
-      status: 'approved'
-    });
-
-    await request.save();
-
-    res.json({ message: "Request approved successfully.", request });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
 // Reject Request Costs
 exports.rejectRequest = async (req, res) => {
   try {
     const request = await MaintenanceRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
 
-    if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
-      return res.status(403).json({ error: "Not authorized to reject financial requests." });
+    if (!['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Unauthorized to reject requests." });
     }
 
-    if (request.approvalStatus !== 'pending') {
+    if (!request.approvalStatus || !request.approvalStatus.startsWith('pending')) {
       return res.status(400).json({ error: "Request is not pending approval." });
     }
 
+    const previousTier = request.approvalStatus.replace('pending_', '');
     request.approvalStatus = 'rejected';
-    request.stage = 'new'; // unlock it back to 'new' but maybe they should just modify parts
+    request.stage = 'new';
+    
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
 
     await request.save();
 
@@ -2353,25 +2355,6 @@ exports.rejectRequest = async (req, res) => {
     res.status(200).json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });
-    if (!['Admin', 'Manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Unauthorized to reject requests." });
-    }
-
-    const previousTier = request.approvalStatus.replace('pending_', '');
-    request.approvalStatus = 'rejected';
-    request.approvalHistory.push({
-      tier: previousTier,
-      approvedBy: req.user._id,
-      approvedAt: new Date(),
-      comments: req.body.comments || "Rejected",
-      status: 'rejected'
-    });
-
-    await request.save();
-
-    res.json({ message: "Request rejected successfully.", request });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
   }
 };
 
@@ -2424,5 +2407,69 @@ exports.getWorkload = async (req, res) => {
   } catch (error) {
     console.error('Workload Aggregation Error:', error);
     res.status(500).json({ message: 'Failed to fetch technician workload' });
+  }
+};
+
+exports.getLeaderboard = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const leaderboard = await MaintenanceRequest.aggregate([
+      {
+        $match: {
+          stage: { $in: ['repaired', 'scrap'] },
+          completedDate: { $gte: sevenDaysAgo },
+          assignedToId: { $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: '$assignedToId',
+          totalClosed: { $sum: 1 },
+          avgResolutionTimeMs: {
+            $avg: {
+              $subtract: [
+                { $ifNull: ['$completedDate', new Date()] },
+                '$createdAt'
+              ]
+            }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: 'teammembers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'technician'
+        }
+      },
+      {
+        $unwind: '$technician'
+      },
+      {
+        $project: {
+          _id: 0,
+          technicianId: '$_id',
+          technicianName: '$technician.name',
+          technicianEmail: '$technician.email',
+          technicianAvatar: '$technician.avatar',
+          totalClosed: 1,
+          avgResolutionTimeHours: { $divide: ['$avgResolutionTimeMs', 3600000] }
+        }
+      },
+      {
+        $sort: { totalClosed: -1, avgResolutionTimeHours: 1 }
+      },
+      {
+        $limit: 5
+      }
+    ]);
+
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Leaderboard Aggregation Error:', error);
+    res.status(500).json({ message: 'Failed to fetch leaderboard data' });
   }
 };

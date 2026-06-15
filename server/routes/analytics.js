@@ -5,5 +5,6 @@ const requestController = require("../controllers/requestController");
 
 router.use(protect);
 router.get("/", requestController.getAnalytics);
+router.get("/leaderboard", requestController.getLeaderboard);
 
 module.exports = router;
