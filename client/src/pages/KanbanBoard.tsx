@@ -727,8 +727,9 @@ const KanbanBoard: React.FC =
     const handleClosureSubmit = async (partsCost: number, laborCost: number) => {
       if (!closureModalData) return;
       try {
+        const syncId = crypto.randomUUID();
         const request = requests.find((r) => r.id === closureModalData.requestId || r._id === closureModalData.requestId);
-        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost, request?.__v);
+        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost, request?.__v, undefined, undefined, syncId);
         await loadRequests();
       } catch (error) {
         console.error("Failed to update request stage with costs:", error);

@@ -1016,14 +1016,19 @@ exports.updateRequest = async (req, res) => {
 // Update request stage (for Kanban drag-and-drop)
 exports.updateRequestStage = async (req, res) => {
   try {
-    const { stage, partsCost, laborCost, __v } = req.body;
-    const { stage, partsCost, laborCost, latitude, longitude } = req.body;
+    const { stage, partsCost, laborCost, latitude, longitude, __v, syncId } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("createdBy", "name email")
       .populate("partsUsed.partId");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
+
+    // Idempotency Check for Sync Retries
+    if (syncId && request.syncId === syncId) {
+      console.log(`[Idempotency] Request ${request._id} was already updated with syncId ${syncId}. Returning 200 OK.`);
+      return res.status(200).json(request);
+    }
 
     // Authorization Check
     const isAuthorized = 
@@ -1122,6 +1127,7 @@ exports.updateRequestStage = async (req, res) => {
     const updateData = { stage };
     if (partsCost !== undefined) updateData.partsCost = partsCost;
     if (laborCost !== undefined) updateData.laborCost = laborCost;
+    if (syncId) updateData.syncId = syncId;
 
     if (shouldProcessCompletion) {
       updateData.completionProcessed = true;
@@ -2706,6 +2712,22 @@ exports.getLeaderboard = async (req, res) => {
               ]
             }
           }
+        }
+      },
+      {
+        $sort: { totalClosed: -1, avgResolutionTimeMs: 1 }
+      },
+      {
+        $limit: 10
+      }
+    ]);
+
+    res.status(200).json({ success: true, data: leaderboard });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Server Error fetching leaderboard" });
+  }
+};
+
 exports.getRootCauseAnalytics = async (req, res) => {
   try {
     const data = await MaintenanceRequest.aggregate([
