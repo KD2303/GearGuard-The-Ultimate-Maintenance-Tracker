@@ -23,13 +23,15 @@ import {
   ChevronUp,
   Edit2,
   Eye,
+  Copy,
 } from "lucide-react";
 
 interface DetailedRequestsTableProps {
   onEdit?: (id: string) => void;
+  onClone?: (id: string) => void;
 }
 
-const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit }) => {
+const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit, onClone }) => {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -375,6 +377,19 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit })
                        >
                          <Edit2 className="w-4 h-4 mr-1" />
                          Edit
+                       </button>
+                    )}
+                    {onClone && (
+                       <button 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           onClone(request.id || request._id || '');
+                         }}
+                         className="flex items-center text-amber-600 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 font-medium transition-colors"
+                         title="Clone Request"
+                       >
+                         <Copy className="w-4 h-4 mr-1" />
+                         Clone
                        </button>
                     )}
                     <button 

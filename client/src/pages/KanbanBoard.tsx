@@ -697,7 +697,7 @@ const KanbanBoard: React.FC =
           let lat: number | undefined;
           let lng: number | undefined;
 
-          if (newStage === "in-progress" && request.equipment?.riskLevel === 'High Risk') {
+          if (newStage === "in-progress" && request?.equipment?.riskLevel === 'High Risk') {
             try {
               const position = await getCurrentPosition();
               lat = position.latitude;

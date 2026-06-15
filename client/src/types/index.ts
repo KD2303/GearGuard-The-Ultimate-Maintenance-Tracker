@@ -105,6 +105,7 @@ export interface TeamMember {
 
 export interface MaintenanceRequest {
   _id?: string;
+  __v?: number;
   id: string;
   requestNumber: string;
   subject: string;
@@ -242,6 +243,7 @@ export interface CreateMaintenanceRequestDto {
   rootCause?: string;
   rcaNodeId?: string;
   expectedVendorQuote?: number;
+  clonedFromId?: string;
 }
 
 export interface Notification {

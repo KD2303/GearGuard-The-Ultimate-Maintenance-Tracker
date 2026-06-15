@@ -83,15 +83,14 @@ export const requestService = {
     stage: string,
     partsCost?: number,
     laborCost?: number,
-    __v?: number
+    __v?: number,
     latitude?: number,
     longitude?: number
   ): Promise<MaintenanceRequest> => {
     try {
       const response = await api.patch(
         `/requests/${id}/stage`,
-        { stage, partsCost, laborCost, __v }
-        { stage, partsCost, laborCost, latitude, longitude }
+        { stage, partsCost, laborCost, __v, latitude, longitude }
       );
       toast.success("Request stage updated");
       return response.data;
@@ -248,6 +247,7 @@ export const requestService = {
     const response = await api.post(`/requests/${requestId}/escalate`, data);
     toast.success('Ticket escalated to vendor successfully');
     return response.data.request;
+  },
 
   getRootCauseAnalytics: async (): Promise<any> => {
     const response = await api.get('/analytics/root-cause');
