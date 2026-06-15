@@ -638,6 +638,11 @@ const KanbanBoard: React.FC =
         withCredentials: true,
       });
 
+      socket.off('server_ping');
+      socket.on('server_ping', () => {
+        socket.emit('client_pong');
+      });
+
       socket.on("connect", () => {
         loadRequests();
       });
