@@ -319,21 +319,19 @@ exports.createRequest = async (req, res) => {
           await Equipment.findByIdAndUpdate(
             equipmentDoc._id,
             {
-              $set: { status: "under-maintenance" },
-              $push: {
-                history: {
-                  eventType: 'STATUS_CHANGE',
-                  description: `Status changed to under-maintenance due to new request ${requestNumber}`,
-                  date: new Date(),
-                  recordedBy: req.user?._id,
-                  userId: req.user?._id,
-                  userName: req.user?.name || "System",
-                  notes: 'Status updated automatically on request creation'
-                }
-              }
+              $set: { status: "under-maintenance" }
             },
             { session }
           );
+
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: equipmentDoc._id,
+            action: 'STATUS_CHANGE',
+            description: `Status changed to under-maintenance due to new request ${requestNumber}`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          });
         }
       }
 
@@ -608,13 +606,16 @@ exports.updateRequest = async (req, res) => {
         payload.completedDate = new Date();
         if (prevRequest.equipmentId) {
           await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
-            $set: { status: "active" },
-            $push: { history: {
-              eventType: 'REPAIR_COMPLETED',
-              description: `Request marked as repaired. Status changed to active.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: "active" }
+          });
+          
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: prevRequest.equipmentId,
+            action: 'REPAIR_COMPLETED',
+            description: `Request marked as repaired. Status changed to active.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
           });
         }
       }
@@ -622,13 +623,16 @@ exports.updateRequest = async (req, res) => {
         payload.completedDate = new Date();
         if (prevRequest.equipmentId) {
           await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
-            $set: { status: "scrapped" },
-            $push: { history: {
-              eventType: 'SCRAPPED',
-              description: `Request marked as scrap. Status changed to scrapped.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: "scrapped" }
+          });
+          
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: prevRequest.equipmentId,
+            action: 'SCRAPPED',
+            description: `Request marked as scrap. Status changed to scrapped.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
           });
         }
       }
@@ -729,21 +733,18 @@ exports.updateRequest = async (req, res) => {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
               {
-                $set: { status: "active" },
-                $push: {
-                  history: {
-                    eventType: 'STATUS_CHANGE',
-                    description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
-                    date: new Date(),
-                    recordedBy: req.user?._id,
-                    userId: req.user?._id,
-                    userName: req.user?.name || "System",
-                    notes: 'Status updated automatically on request repaired'
-                  }
-                }
+                $set: { status: "active" }
               },
               { session }
             );
+            await auditLog({
+              entityType: 'Equipment',
+              entityId: prevRequest.equipmentId,
+              action: 'STATUS_CHANGE',
+              description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            });
           }
         }
         if (payload.stage === "scrap") {
@@ -751,21 +752,18 @@ exports.updateRequest = async (req, res) => {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
               {
-                $set: { status: "scrapped" },
-                $push: {
-                  history: {
-                    eventType: 'STATUS_CHANGE',
-                    description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
-                    date: new Date(),
-                    recordedBy: req.user?._id,
-                    userId: req.user?._id,
-                    userName: req.user?.name || "System",
-                    notes: 'Status updated automatically on request scrapped'
-                  }
-                }
+                $set: { status: "scrapped" }
               },
               { session }
             );
+            await auditLog({
+              entityType: 'Equipment',
+              entityId: prevRequest.equipmentId,
+              action: 'STATUS_CHANGE',
+              description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            });
           }
         }
       }
@@ -1074,14 +1072,17 @@ exports.updateRequestStage = async (req, res) => {
         if (request.equipmentId) {
           const newStatus = stage === "scrap" ? "scrapped" : "active";
           await Equipment.findByIdAndUpdate(request.equipmentId, {
-            $set: { status: newStatus },
-            $push: { history: {
-              eventType: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
-              description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: newStatus }
           }, { session });
+
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: request.equipmentId,
+            action: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
+            description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          });
         }
       }
 
@@ -1216,21 +1217,19 @@ exports.deleteRequest = async (req, res) => {
         await Equipment.findByIdAndUpdate(
           request.equipmentId,
           {
-            $set: { status: "active" },
-            $push: {
-              history: {
-                eventType: 'STATUS_CHANGE',
-                description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
-                date: new Date(),
-                recordedBy: req.user?._id,
-                userId: req.user?._id,
-                userName: req.user?.name || "System",
-                notes: 'Status reverted automatically on request deletion'
-              }
-            }
+            $set: { status: "active" }
           },
           { session }
         );
+        
+        await auditLog({
+          entityType: 'Equipment',
+          entityId: request.equipmentId,
+          action: 'STATUS_CHANGE',
+          description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
+          userId: req.user?._id,
+          userName: req.user?.name || "System"
+        });
       }
       await releaseReservations(request.requiredParts);
       await MaintenanceRequest.findByIdAndDelete(req.params.id, { session });
