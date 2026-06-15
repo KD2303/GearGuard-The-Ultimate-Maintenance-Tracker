@@ -237,5 +237,10 @@ export const requestService = {
       toast.error('Failed to load workload overview');
       throw error;
     }
+  },
+
+  getRootCauseAnalytics: async (): Promise<any> => {
+    const response = await api.get('/analytics/root-cause');
+    return response.data;
   }
 };

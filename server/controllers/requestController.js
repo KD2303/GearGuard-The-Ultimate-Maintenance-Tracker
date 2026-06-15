@@ -145,6 +145,7 @@ exports.getAllRequests = async (req, res) => {
       startDate,
       endDate,
       search,
+      ids,
       page = 1,
       limit = 20,
       sortBy = "createdAt",
@@ -152,6 +153,10 @@ exports.getAllRequests = async (req, res) => {
     } = req.query;
 
     const query = {};
+
+    if (ids) {
+      query._id = { $in: ids.split(',') };
+    }
 
     if (stage) query.stage = stage;
     if (type) query.type = type;
@@ -2492,5 +2497,62 @@ exports.getWorkload = async (req, res) => {
   } catch (error) {
     console.error('Workload Aggregation Error:', error);
     res.status(500).json({ message: 'Failed to fetch technician workload' });
+  }
+};
+
+exports.getRootCauseAnalytics = async (req, res) => {
+  try {
+    const data = await MaintenanceRequest.aggregate([
+      {
+        $match: {
+          rootCause: { $exists: true, $ne: null, $ne: "" }
+        }
+      },
+      {
+        $lookup: {
+          from: 'equipments',
+          localField: 'equipmentId',
+          foreignField: '_id',
+          as: 'equipment'
+        }
+      },
+      {
+        $unwind: '$equipment'
+      },
+      {
+        $group: {
+          _id: {
+            category: '$equipment.category',
+            rootCause: '$rootCause'
+          },
+          count: { $sum: 1 },
+          requestIds: { $push: '$_id' }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.category',
+          children: {
+            $push: {
+              name: '$_id.rootCause',
+              value: '$count',
+              requestIds: '$requestIds'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          name: '$_id',
+          children: 1
+        }
+      }
+    ]);
+
+    res.json({ name: 'Root Cause Analysis', children: data });
+  } catch (error) {
+    console.error('Root Cause Analytics Error:', error);
+    res.status(500).json({ message: 'Failed to fetch root cause analytics' });
   }
 };
