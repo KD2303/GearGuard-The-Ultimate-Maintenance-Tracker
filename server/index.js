@@ -20,6 +20,7 @@ const { startOverdueChecker } = require("./jobs/overdueChecker");
 const { startSlaChecker } = require("./jobs/slaChecker");
 const { syncDatabase } = require("./models");
 const { startCertificationChecker } = require("./jobs/certificationChecker");
+const { startWarrantyChecker } = require("./jobs/warrantyChecker");
 const swaggerSpec = require("./config/swagger");
 const passport = require("./config/passport");
 
@@ -363,6 +364,7 @@ const startServer = async () => {
     // Start SLA tracker cron job
     startSlaChecker(io);
     startCertificationChecker();
+    startWarrantyChecker();
 
     const { startHealthScoreCron } = require('./cron/healthScoreCron');
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');

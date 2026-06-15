@@ -13,6 +13,8 @@ const EquipmentSchema = new Schema({
   expectedLifespanYears: { type: Number, default: 5 },
   salvageValue: { type: Number, default: 0 },
   warrantyExpiry: { type: Date },
+  warrantyNotified: { type: Boolean, default: false },
+  warrantyExpiredNotified: { type: Boolean, default: false },
   manufacturer: { type: String },
   model: { type: String },
   status: { type: String, enum: ['active', 'inactive', 'scrapped', 'under-maintenance'], default: 'active' },
