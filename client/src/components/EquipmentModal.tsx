@@ -111,6 +111,9 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
         salvageValue: formData.salvageValue || 0,
         lotoRequired: formData.lotoRequired,
         lotoChecklist: formData.lotoChecklist?.filter(item => item.trim() !== "") || [],
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        riskLevel: formData.riskLevel,
       };
 
       await equipmentService.create(payload);
@@ -467,10 +470,10 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
             value={CERTIFICATION_OPTIONS.filter((option) =>
               formData.requiredSkills?.includes(option.value)
             )}
-            onChange={(selected) => {
+            onChange={(selected: any) => {
               setFormData({
                 ...formData,
-                requiredSkills: selected ? selected.map((s) => s.value) : [],
+                requiredSkills: selected ? selected.map((s: any) => s.value) : [],
               });
             }}
             className="text-gray-900"
@@ -493,6 +496,55 @@ const EquipmentModal: React.FC<EquipmentModalProps> = ({
             className="input-dark"
             placeholder="e.g. 150"
           />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Risk Level
+            </label>
+            <select
+              value={formData.riskLevel || "Healthy"}
+              onChange={(e) =>
+                setFormData({ ...formData, riskLevel: e.target.value })
+              }
+              className="input-dark"
+            >
+              <option value="Healthy">Healthy</option>
+              <option value="Medium Risk">Medium Risk</option>
+              <option value="High Risk">High Risk</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Latitude
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={formData.latitude || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, latitude: Number(e.target.value) })
+              }
+              className="input-dark"
+              placeholder="e.g. 40.7128"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+              Longitude
+            </label>
+            <input
+              type="number"
+              step="any"
+              value={formData.longitude || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, longitude: Number(e.target.value) })
+              }
+              className="input-dark"
+              placeholder="e.g. -74.0060"
+            />
+          </div>
         </div>
 
         <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30">

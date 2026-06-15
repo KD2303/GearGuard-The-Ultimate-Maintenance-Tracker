@@ -164,4 +164,7 @@ MaintenanceRequestSchema.index({ slaBreachProbability: -1 });
 MaintenanceRequestSchema.index({ slaBreached: 1 });
 MaintenanceRequestSchema.index({ subject: 'text', requestNumber: 'text', description: 'text' });
 
+const { updateIfCurrentPlugin } = require('mongoose-update-if-current');
+MaintenanceRequestSchema.plugin(updateIfCurrentPlugin);
+
 module.exports = mongoose.model('MaintenanceRequest', MaintenanceRequestSchema);

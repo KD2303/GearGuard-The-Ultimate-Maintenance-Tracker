@@ -54,6 +54,7 @@ function AppContent() {
         <Route path="/admin/rca-builder" element={<RCABuilder />} />
         <Route path="/admin/sync-conflicts" element={<ConflictResolution />} />
         <Route path="/requests" element={<KanbanBoard />} />
+        <Route path="/requests/new" element={<RequestsPage />} />
         <Route path="/financials" element={<FinancialDashboard />} />
         <Route path="/requests-all" element={<RequestsPage />} />
         <Route path="/activity" element={<ActivityPage />} />
