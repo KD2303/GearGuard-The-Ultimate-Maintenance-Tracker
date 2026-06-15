@@ -25,9 +25,11 @@ import {
   Cloud,
   UserCircle,
   ShieldAlert,
+  QrCode,
 } from "lucide-react";
 import NotificationCenter from "./NotificationCenter";
 import Scratchpad from "./Scratchpad";
+import QRScannerModal from "./QRScannerModal";
 import LanguageSelector from "./LanguageSelector";
 import { useTranslation } from "react-i18next";
 import { authService } from "../services/authService";
@@ -58,6 +60,7 @@ const SyncQueueIndicator = () => {
         <Cloud className="h-5 w-5 text-blue-500 dark:text-blue-400 animate-pulse" />
         <span className="text-sm font-bold text-blue-600 dark:text-blue-300">{count}</span>
       </div>
+
     </div>
   );
 };
@@ -70,6 +73,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -253,12 +257,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           </div>
 
-          {/* Header Right Actions */}
-          <div className="flex items-center space-x-2.5">
-            
+          {/* Header Right (Utilities & Profile) */}
+          <div className="flex items-center space-x-1 sm:space-x-3">
             <SyncQueueIndicator />
+            
+            <button
+              onClick={() => setQrScannerOpen(true)}
+              className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300 shadow-sm hover:text-indigo-600 dark:hover:text-white hover:border-indigo-300 transition-all duration-200 group relative"
+              title="Scan Asset QR Code"
+            >
+              <QrCode className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
+            </button>
 
-            {/* Notifications panel */}
             <NotificationCenter />
 
             {/* Quick Add Scratchpad */}
@@ -562,7 +572,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       )}
-
+      
+      <QRScannerModal isOpen={qrScannerOpen} onClose={() => setQrScannerOpen(false)} />
     </div>
   );
 };
