@@ -9,7 +9,11 @@ const TeamMemberSchema = new Schema({
   avatar: { type: String },
   points: { type: Number, default: 0 },
   badges: [{ type: String }],
-  certifications: [{ type: String }],
+  certifications: [{
+    skill: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+    isValid: { type: Boolean, default: true }
+  }],
   isActive: { type: Boolean, default: true },
   teamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   geoLocation: {

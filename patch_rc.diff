@@ -1,0 +1,53 @@
+--- server/controllers/requestController.js
++++ server/controllers/requestController.js
+@@ -51,3 +51,6 @@
+   const techCerts = tech.certifications || [];
+-  return requiredSkills.every(skill => techCerts.includes(skill));
++  return requiredSkills.every(skill => {
++    const cert = techCerts.find(c => c.skill === skill);
++    return cert && cert.isValid && new Date(cert.expiresAt) > new Date();
++  });
+ };
+@@ -296,3 +299,7 @@
+               if (payload.requiredSkills && payload.requiredSkills.length > 0) {
+-                query.certifications = { $all: payload.requiredSkills };
++                query.certifications = { 
++                  $all: payload.requiredSkills.map(skill => ({
++                    $elemMatch: { skill, isValid: true, expiresAt: { $gt: new Date() } }
++                  }))
++                };
+               }
+@@ -373,3 +380,6 @@
+           const techCerts = technician.certifications || [];
+-          const missingCerts = payload.requiredCertifications.filter(cert => !techCerts.includes(cert));
++          const missingCerts = payload.requiredCertifications.filter(cert => {
++            const found = techCerts.find(c => c.skill === cert);
++            return !(found && found.isValid && new Date(found.expiresAt) > new Date());
++          });
+           if (missingCerts.length > 0) {
+@@ -556,3 +566,6 @@
+         const techCerts = technician.certifications || [];
+-        const missingCerts = requiredCerts.filter(cert => !techCerts.includes(cert));
++        const missingCerts = requiredCerts.filter(cert => {
++          const found = techCerts.find(c => c.skill === cert);
++          return !(found && found.isValid && new Date(found.expiresAt) > new Date());
++        });
+         if (missingCerts.length > 0) {
+@@ -1616,3 +1629,6 @@
+       const techCerts = tech.certifications || [];
+-      return request.requiredCertifications.every(cert => techCerts.includes(cert));
++      return request.requiredCertifications.every(cert => {
++        const found = techCerts.find(c => c.skill === cert);
++        return found && found.isValid && new Date(found.expiresAt) > new Date();
++      });
+     });
+@@ -1623,4 +1639,7 @@
+     technicians = technicians.filter(tech => {
+-      const certs = tech.certifications || [];
+-      return request.requiredSkills.every(skill => certs.includes(skill));
++      const techCerts = tech.certifications || [];
++      return request.requiredSkills.every(skill => {
++        const found = techCerts.find(c => c.skill === skill);
++        return found && found.isValid && new Date(found.expiresAt) > new Date();
++      });
+     });

@@ -52,10 +52,7 @@ const checkCertifications = async (assignedToId, requiredSkills, session = null)
   const tech = await TeamMember.findById(assignedToId).session(session);
   if (!tech) return false;
   const techCerts = tech.certifications || [];
-  return requiredSkills.every(skill => {
-    const cert = techCerts.find(c => c.skill === skill);
-    return cert && cert.isValid && new Date(cert.expiresAt) > new Date();
-  });
+  return requiredSkills.every(skill => techCerts.includes(skill));
 };
 
 const decrementInventory = async (io, partsUsed, session) => {
@@ -297,11 +294,7 @@ exports.createRequest = async (req, res) => {
                 }
               };
               if (payload.requiredSkills && payload.requiredSkills.length > 0) {
-                query.certifications = { 
-                  $all: payload.requiredSkills.map(skill => ({
-                    $elemMatch: { skill, isValid: true, expiresAt: { $gt: new Date() } }
-                  }))
-                };
+                query.certifications = { $all: payload.requiredSkills };
               }
               const nearestTech = await TeamMember.findOne(query).session(session);
 
@@ -379,10 +372,7 @@ exports.createRequest = async (req, res) => {
         const technician = await TeamMember.findById(payload.assignedToId).session(session);
         if (technician) {
           const techCerts = technician.certifications || [];
-          const missingCerts = payload.requiredCertifications.filter(cert => {
-            const found = techCerts.find(c => c.skill === cert);
-            return !(found && found.isValid && new Date(found.expiresAt) > new Date());
-          });
+          const missingCerts = payload.requiredCertifications.filter(cert => !techCerts.includes(cert));
           if (missingCerts.length > 0) {
             const error = new Error(`Safety Compliance Error: Technician is missing required certifications (${missingCerts.join(', ')})`);
             error.status = 403;
@@ -565,10 +555,7 @@ exports.updateRequest = async (req, res) => {
       const technician = await TeamMember.findById(payload.assignedToId);
       if (technician) {
         const techCerts = technician.certifications || [];
-        const missingCerts = requiredCerts.filter(cert => {
-          const found = techCerts.find(c => c.skill === cert);
-          return !(found && found.isValid && new Date(found.expiresAt) > new Date());
-        });
+        const missingCerts = requiredCerts.filter(cert => !techCerts.includes(cert));
         if (missingCerts.length > 0) {
           return res.status(403).json({ error: `Safety Compliance Error: Technician is missing required certifications (${missingCerts.join(', ')})` });
         }
@@ -1519,20 +1506,12 @@ exports.addComment = async (req, res) => {
       return res.status(404).json({ error: "Request not found" });
     }
 
-    const TranslationService = require("../services/translationService");
-    const { content, audioUrl, audioDuration, sourceLanguage } = req.body;
-    
-    let finalContent = content || "";
-    if (finalContent && sourceLanguage && sourceLanguage !== 'en-US') {
-      finalContent = await TranslationService.translateToEnglish(finalContent, sourceLanguage);
-    }
-
     const newComment = {
       authorId: req.user.id,
       authorName: req.user.name,
-      content: finalContent,
-      audioUrl: audioUrl,
-      audioDuration: audioDuration,
+      content: req.body.content || "",
+      audioUrl: req.body.audioUrl,
+      audioDuration: req.body.audioDuration,
       timestamp: new Date()
     };
 
@@ -1636,20 +1615,12 @@ exports.smartAssignInternal = async (requestId, io) => {
   if (request.requiredCertifications && request.requiredCertifications.length > 0) {
     technicians = technicians.filter(tech => {
       const techCerts = tech.certifications || [];
-      return request.requiredCertifications.every(cert => {
-        const found = techCerts.find(c => c.skill === cert);
-        return found && found.isValid && new Date(found.expiresAt) > new Date();
-      });
-    });
-  }
+      return request.requiredCertifications.every(cert => techCerts.includes(cert));
   
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
-      const techCerts = tech.certifications || [];
-      return request.requiredSkills.every(skill => {
-        const found = techCerts.find(c => c.skill === skill);
-        return found && found.isValid && new Date(found.expiresAt) > new Date();
-      });
+      const certs = tech.certifications || [];
+      return request.requiredSkills.every(skill => certs.includes(skill));
     });
   }
 
@@ -2300,6 +2271,34 @@ exports.approveRequest = async (req, res) => {
     const request = await MaintenanceRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
 
+    // Ensure authorized
+    if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
+      return res.status(403).json({ error: "Not authorized to approve financial requests." });
+    }
+
+    if (request.approvalStatus !== 'pending') {
+      return res.status(400).json({ error: "Request is not pending approval." });
+    }
+
+    request.approvalStatus = 'approved';
+    request.approvedBy = req.user._id;
+    request.approvalDate = new Date();
+    request.stage = 'new'; // unlock it back to 'new' so work can begin
+
+    await request.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.notifyRequestChange(io, "request_updated", request, `Financial approval granted by ${req.user.name}.`);
+    }
+
+    res.status(200).json(request);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
     // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
     if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
       return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
@@ -2310,7 +2309,6 @@ exports.approveRequest = async (req, res) => {
 
     const previousTier = request.approvalStatus.replace('pending_', '');
     request.approvalStatus = 'approved';
-    if (!request.approvalHistory) request.approvalHistory = [];
     request.approvalHistory.push({
       tier: previousTier,
       approvedBy: req.user._id,
@@ -2355,6 +2353,25 @@ exports.rejectRequest = async (req, res) => {
     res.status(200).json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });
+    if (!['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Unauthorized to reject requests." });
+    }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
+    request.approvalStatus = 'rejected';
+    request.approvalHistory.push({
+      tier: previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
+
+    await request.save();
+
+    res.json({ message: "Request rejected successfully.", request });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 };
 
