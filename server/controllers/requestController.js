@@ -2840,9 +2840,64 @@ exports.escalateToVendor = async (req, res) => {
       }
     ]);
 
-    res.json({ name: 'Root Cause Analysis', children: data });
+    res.json({ name: 'Root Causes', children: data });
   } catch (error) {
-    console.error('Root Cause Analytics Error:', error);
-    res.status(500).json({ message: 'Failed to fetch root cause analytics' });
+    console.error('RCA Tree Data Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getVendorScorecards = async (req, res) => {
+  try {
+    const scorecards = await MaintenanceRequest.aggregate([
+      {
+        $match: { 'vendorEscalation.isEscalated': true }
+      },
+      {
+        $group: {
+          _id: '$vendorEscalation.vendorCompany',
+          totalEscalated: { $sum: 1 },
+          breachedTickets: {
+            $sum: { $cond: [{ $eq: ['$slaBreached', true] }, 1, 0] }
+          },
+          avgSlaProbability: { $avg: '$slaBreachProbability' },
+          totalCost: { $sum: '$expectedVendorQuote' },
+          avgDowntimeHours: { $avg: '$downtimeDurationHours' }
+        }
+      },
+      {
+        $project: {
+          vendorName: { $ifNull: ['$_id', 'Unknown Vendor'] },
+          totalEscalated: 1,
+          breachedTickets: 1,
+          complianceRate: {
+            $cond: [
+              { $eq: ['$totalEscalated', 0] },
+              100,
+              {
+                $multiply: [
+                  {
+                    $divide: [
+                      { $subtract: ['$totalEscalated', '$breachedTickets'] },
+                      '$totalEscalated'
+                    ]
+                  },
+                  100
+                ]
+              }
+            ]
+          },
+          avgSlaProbability: { $round: ['$avgSlaProbability', 2] },
+          totalCost: 1,
+          avgDowntimeHours: { $round: ['$avgDowntimeHours', 2] }
+        }
+      },
+      { $sort: { complianceRate: -1 } }
+    ]);
+
+    res.json(scorecards);
+  } catch (error) {
+    console.error('Vendor Scorecard Error:', error);
+    res.status(500).json({ error: error.message });
   }
 };

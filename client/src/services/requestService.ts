@@ -141,6 +141,11 @@ export const requestService = {
     return response.data;
   },
 
+  getVendorScorecards: async () => {
+    const response = await api.get('/requests/vendors/scorecard');
+    return response.data;
+  },
+
   getFiltered: async (
     filters: RequestFilters
   ): Promise<PaginatedResponse<MaintenanceRequest>> => {
