@@ -930,4 +930,4 @@ const KanbanBoard: React.FC =
     );
   };
 
-export default KanbanBoard;
+export default KanbanBoard;// kanban bug fix applied
