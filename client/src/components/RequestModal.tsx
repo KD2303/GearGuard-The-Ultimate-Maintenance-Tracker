@@ -1026,10 +1026,12 @@ const RequestModal: React.FC<RequestModalProps> = ({
                 let workloadBadge = "🟢 0-2 (Avail)";
                 if (count >= 6) workloadBadge = `🔴 ${count} (Overloaded)`;
                 else if (count >= 3) workloadBadge = `🟠 ${count} (Busy)`;
+                
+                const fatigueWarning = workload?.isFatigued ? " [⚠️ FATIGUED]" : "";
 
                 return (
                   <option key={memberId} value={memberId}>
-                    {member.name} {certificationStatus ? `(${certificationStatus})` : ""} - {workloadBadge}
+                    {member.name} - {workloadBadge}{certificationStatus}{fatigueWarning}
                   </option>
                 );
             })}

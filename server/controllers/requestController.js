@@ -2665,7 +2665,8 @@ exports.getWorkload = async (req, res) => {
           technicianEmail: '$technician.email',
           technicianAvatar: '$technician.avatar',
           openTicketsCount: 1,
-          highPriorityCount: 1
+          highPriorityCount: 1,
+          isFatigued: { $gte: ['$openTicketsCount', 4] }
         }
       },
       {

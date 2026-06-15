@@ -416,4 +416,5 @@ export interface TechnicianWorkload {
   technicianAvatar?: string;
   openTicketsCount: number;
   highPriorityCount: number;
+  isFatigued?: boolean;
 }
