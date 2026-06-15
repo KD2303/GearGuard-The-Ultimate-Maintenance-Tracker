@@ -377,10 +377,12 @@ exports.createRequest = async (req, res) => {
 
       let isBlocked = false;
       let estimatedPartsCost = 0;
+      let hasHighValuePart = false;
       if (payload.requiredParts && payload.requiredParts.length > 0) {
         for (const reqPart of payload.requiredParts) {
           const partDoc = await SparePart.findById(reqPart.partId).session(session);
           if (partDoc) {
+             if (partDoc.isHighValue) hasHighValuePart = true;
              estimatedPartsCost += (partDoc.unitCost || 0) * (reqPart.quantityNeeded || 1);
              const updatedPart = await SparePart.findOneAndUpdate(
                { 
@@ -408,9 +410,9 @@ exports.createRequest = async (req, res) => {
 
       payload.estimatedCost = estimatedPartsCost + (payload.expectedVendorQuote || 0);
 
-      if (payload.estimatedCost >= 5000) {
+      if (payload.estimatedCost >= 5000 || hasHighValuePart) {
         payload.stage = 'awaiting-approval';
-        payload.approvalStatus = 'pending';
+        payload.approvalStatus = 'pending_tier2';
       }
 
       // Certification Check
@@ -654,20 +656,22 @@ exports.updateRequest = async (req, res) => {
     if (payload.requiredParts || payload.expectedVendorQuote !== undefined) {
       const partsToUse = payload.requiredParts || prevRequest.requiredParts || [];
       let newPartsCost = 0;
+      let hasHighValuePart = false;
       for (const reqPart of partsToUse) {
         const partDoc = await SparePart.findById(reqPart.partId);
         if (partDoc) {
+          if (partDoc.isHighValue) hasHighValuePart = true;
           newPartsCost += (partDoc.unitCost || 0) * (reqPart.quantityNeeded || 1);
         }
       }
       currentEstimatedCost = newPartsCost + (payload.expectedVendorQuote !== undefined ? payload.expectedVendorQuote : (prevRequest.expectedVendorQuote || 0));
       payload.estimatedCost = currentEstimatedCost;
       
-      if (currentEstimatedCost >= 5000 && currentApprovalStatus !== 'approved') {
+      if ((currentEstimatedCost >= 5000 || hasHighValuePart) && currentApprovalStatus !== 'approved') {
         payload.stage = 'awaiting-approval';
-        payload.approvalStatus = 'pending';
-        currentApprovalStatus = 'pending';
-      } else if (currentEstimatedCost < 5000 && currentApprovalStatus === 'pending') {
+        payload.approvalStatus = hasHighValuePart ? 'pending_tier2' : 'pending';
+        currentApprovalStatus = payload.approvalStatus;
+      } else if (currentEstimatedCost < 5000 && !hasHighValuePart && currentApprovalStatus === 'pending') {
         if (prevRequest.stage === 'awaiting-approval' && !payload.stage) {
           payload.stage = 'new';
         }
@@ -676,8 +680,8 @@ exports.updateRequest = async (req, res) => {
       }
     }
 
-    if (payload.stage === 'in-progress' && currentApprovalStatus === 'pending') {
-      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost ticket." });
+    if (payload.stage === 'in-progress' && (currentApprovalStatus === 'pending' || currentApprovalStatus === 'pending_tier1' || currentApprovalStatus === 'pending_tier2')) {
+      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost or high-value ticket." });
     }
 
     // Handle stage side-effects (equipment status updates)
@@ -1018,12 +1022,19 @@ exports.updateRequest = async (req, res) => {
 exports.updateRequestStage = async (req, res) => {
   try {
     const { stage, partsCost, laborCost, latitude, longitude, __v, syncId, signatureBase64 } = req.body;
+    const { stage, partsCost, laborCost, latitude, longitude, __v, syncId } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("createdBy", "name email")
       .populate("partsUsed.partId");
 
     if (!request) return res.status(404).json({ error: "Request not found" });
+
+    // Idempotency Check for Sync Retries
+    if (syncId && request.syncId === syncId) {
+      console.log(`[Idempotency] Request ${request._id} was already updated with syncId ${syncId}. Returning 200 OK.`);
+      return res.status(200).json(request);
+    }
 
     // Authorization Check
     const isAuthorized = 
@@ -1037,12 +1048,24 @@ exports.updateRequestStage = async (req, res) => {
 
     const prevStage = request.stage;
 
-    if (stage === 'in-progress' && request.approvalStatus === 'pending') {
-      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost ticket." });
+    if (stage === 'in-progress' && (request.approvalStatus === 'pending' || request.approvalStatus === 'pending_tier1' || request.approvalStatus === 'pending_tier2')) {
+      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost or high-value ticket." });
     }
 
     if (stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
+    }
+
+    // DEPENDENCY CHAIN GUARD: prevent starting work if blocking requests are still open
+    if (stage === 'in-progress' && request.blockedByIds && request.blockedByIds.length > 0) {
+      const blockers = await MaintenanceRequest.find({
+        _id: { $in: request.blockedByIds },
+        stage: { $nin: ['repaired', 'scrap'] }
+      }).select('requestNumber subject');
+      if (blockers.length > 0) {
+        const blockerList = blockers.map(b => `${b.requestNumber}: ${b.subject}`).join(', ');
+        return res.status(400).json({ error: `Blocked by unresolved dependencies: ${blockerList}` });
+      }
     }
 
     // GEO-FENCING VALIDATION
@@ -2736,6 +2759,22 @@ exports.getLeaderboard = async (req, res) => {
               ]
             }
           }
+        }
+      },
+      {
+        $sort: { totalClosed: -1, avgResolutionTimeMs: 1 }
+      },
+      {
+        $limit: 10
+      }
+    ]);
+
+    res.status(200).json({ success: true, data: leaderboard });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Server Error fetching leaderboard" });
+  }
+};
+
 exports.getRootCauseAnalytics = async (req, res) => {
   try {
     const data = await MaintenanceRequest.aggregate([
@@ -2858,9 +2897,64 @@ exports.escalateToVendor = async (req, res) => {
       }
     ]);
 
-    res.json({ name: 'Root Cause Analysis', children: data });
+    res.json({ name: 'Root Causes', children: data });
   } catch (error) {
-    console.error('Root Cause Analytics Error:', error);
-    res.status(500).json({ message: 'Failed to fetch root cause analytics' });
+    console.error('RCA Tree Data Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getVendorScorecards = async (req, res) => {
+  try {
+    const scorecards = await MaintenanceRequest.aggregate([
+      {
+        $match: { 'vendorEscalation.isEscalated': true }
+      },
+      {
+        $group: {
+          _id: '$vendorEscalation.vendorCompany',
+          totalEscalated: { $sum: 1 },
+          breachedTickets: {
+            $sum: { $cond: [{ $eq: ['$slaBreached', true] }, 1, 0] }
+          },
+          avgSlaProbability: { $avg: '$slaBreachProbability' },
+          totalCost: { $sum: '$expectedVendorQuote' },
+          avgDowntimeHours: { $avg: '$downtimeDurationHours' }
+        }
+      },
+      {
+        $project: {
+          vendorName: { $ifNull: ['$_id', 'Unknown Vendor'] },
+          totalEscalated: 1,
+          breachedTickets: 1,
+          complianceRate: {
+            $cond: [
+              { $eq: ['$totalEscalated', 0] },
+              100,
+              {
+                $multiply: [
+                  {
+                    $divide: [
+                      { $subtract: ['$totalEscalated', '$breachedTickets'] },
+                      '$totalEscalated'
+                    ]
+                  },
+                  100
+                ]
+              }
+            ]
+          },
+          avgSlaProbability: { $round: ['$avgSlaProbability', 2] },
+          totalCost: 1,
+          avgDowntimeHours: { $round: ['$avgDowntimeHours', 2] }
+        }
+      },
+      { $sort: { complianceRate: -1 } }
+    ]);
+
+    res.json(scorecards);
+  } catch (error) {
+    console.error('Vendor Scorecard Error:', error);
+    res.status(500).json({ error: error.message });
   }
 };

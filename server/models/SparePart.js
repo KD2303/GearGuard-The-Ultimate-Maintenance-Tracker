@@ -11,6 +11,7 @@ const SparePartSchema = new Schema({
   minReorderThreshold: { type: Number, required: true, default: 5 },
   supplierEmail: { type: String },
   supplierId: { type: Schema.Types.ObjectId, ref: 'Supplier' },
+  isHighValue: { type: Boolean, default: false },
   leadTimeDays: { type: Number, default: 7 },
   location: { type: String }, // shelf location e.g. Shelf A-4
   reorderStatus: { type: String, enum: ['ok', 'low-stock', 'reordered'], default: 'ok' }

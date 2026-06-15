@@ -53,4 +53,10 @@ export const equipmentService = {
     await api.delete(`/equipment/${id}`);
     toast.success('Equipment deleted successfully');
   },
+
+  assignSmartSocket: async (id: string, smartSocketId: string): Promise<Equipment> => {
+    const response = await api.patch(`/equipment/${id}/smart-socket`, { smartSocketId });
+    toast.success('Smart Socket assigned successfully');
+    return response.data.data || response.data;
+  },
 };

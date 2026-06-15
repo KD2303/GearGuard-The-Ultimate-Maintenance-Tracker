@@ -693,7 +693,7 @@ const KanbanBoard: React.FC =
 
         try {
           const request = requests.find((r) => r.id === requestId || r._id === requestId);
-          await requestService.updateStage(requestId, newStage, undefined, undefined, request?.__v);
+          
           let lat: number | undefined;
           let lng: number | undefined;
 
@@ -709,7 +709,12 @@ const KanbanBoard: React.FC =
             }
           }
 
-          await requestService.updateStage(requestId, newStage, undefined, undefined, lat, lng);
+          const response = await requestService.updateStage(requestId, newStage, undefined, undefined, request?.__v, lat, lng);
+          
+          if ((response as any)?.offline) {
+             throw new Error("Network Error: Failed to move ticket");
+          }
+
           // Wait for backend to be fully synced
           await loadRequests();
         } catch (error: any) {
@@ -718,7 +723,7 @@ const KanbanBoard: React.FC =
           if (error.response?.status === 403) {
             toast.error(error.response.data.error || "Security Violation");
           } else {
-            toast.error("Failed to move ticket. You might be offline.");
+            toast.error("Network Error: Failed to move ticket");
           }
         }
       }
@@ -727,8 +732,9 @@ const KanbanBoard: React.FC =
     const handleClosureSubmit = async (partsCost: number, laborCost: number) => {
       if (!closureModalData) return;
       try {
+        const syncId = crypto.randomUUID();
         const request = requests.find((r) => r.id === closureModalData.requestId || r._id === closureModalData.requestId);
-        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost, request?.__v);
+        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost, request?.__v, undefined, undefined, syncId);
         await loadRequests();
       } catch (error) {
         console.error("Failed to update request stage with costs:", error);
@@ -925,4 +931,4 @@ const KanbanBoard: React.FC =
     );
   };
 
-export default KanbanBoard;
+export default KanbanBoard;// kanban bug fix applied

@@ -124,6 +124,7 @@ const MaintenanceRequestSchema = new Schema({
     signedAt: { type: Date },
     signedBy: { type: Schema.Types.ObjectId, ref: 'User' }
   }
+  blockedByIds: [{ type: Schema.Types.ObjectId, ref: 'MaintenanceRequest' }] // Dependency chain: this request is blocked until these are completed
 }, { timestamps: true });
 
 MaintenanceRequestSchema.virtual('equipment', {

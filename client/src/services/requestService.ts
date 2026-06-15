@@ -85,12 +85,13 @@ export const requestService = {
     laborCost?: number,
     __v?: number,
     latitude?: number,
-    longitude?: number
+    longitude?: number,
+    syncId?: string
   ): Promise<MaintenanceRequest> => {
     try {
       const response = await api.patch(
         `/requests/${id}/stage`,
-        { stage, partsCost, laborCost, __v, latitude, longitude }
+        { stage, partsCost, laborCost, __v, latitude, longitude, syncId }
       );
       toast.success("Request stage updated");
       return response.data;
@@ -138,6 +139,11 @@ export const requestService = {
   },
   getAnalytics: async (query: AnalyticsQuery): Promise<AnalyticsResponse> => {
     const response = await api.get('/analytics', { params: query });
+    return response.data;
+  },
+
+  getVendorScorecards: async () => {
+    const response = await api.get('/requests/vendors/scorecard');
     return response.data;
   },
 

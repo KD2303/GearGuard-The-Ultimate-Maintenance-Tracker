@@ -423,3 +423,31 @@ exports.deductHealthScore = asyncHandler(async (req, res, next) => {
     data: updatedEquipment
   });
 });
+
+exports.assignSmartSocket = asyncHandler(async (req, res) => {
+  const { smartSocketId } = req.body;
+  if (!smartSocketId) {
+    throw new ErrorHandler("smartSocketId is required", ERROR_TYPES.VALIDATION_ERROR);
+  }
+
+  // Ensure socket isn't already assigned to another equipment
+  const existingAssigned = await Equipment.findOne({ smartSocketId });
+  if (existingAssigned && existingAssigned._id.toString() !== req.params.id) {
+    throw new ErrorHandler("This smart socket is already assigned to another equipment.", ERROR_TYPES.CONFLICT_ERROR);
+  }
+
+  const equipment = await Equipment.findByIdAndUpdate(
+    req.params.id,
+    { smartSocketId },
+    { new: true, runValidators: true }
+  );
+
+  if (!equipment) {
+    throw new ErrorHandler("Equipment not found", ERROR_TYPES.NOT_FOUND_ERROR);
+  }
+
+  res.status(200).json({
+    success: true,
+    data: equipment
+  });
+});

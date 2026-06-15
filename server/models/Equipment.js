@@ -13,6 +13,8 @@ const EquipmentSchema = new Schema({
   expectedLifespanYears: { type: Number, default: 5 },
   salvageValue: { type: Number, default: 0 },
   warrantyExpiry: { type: Date },
+  warrantyNotified: { type: Boolean, default: false },
+  warrantyExpiredNotified: { type: Boolean, default: false },
   manufacturer: { type: String },
   model: { type: String },
   status: { type: String, enum: ['active', 'inactive', 'scrapped', 'under-maintenance'], default: 'active' },
@@ -22,6 +24,7 @@ const EquipmentSchema = new Schema({
   notes: { type: String },
   maintenanceTeamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   defaultTechnicianId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
+  smartSocketId: { type: String, unique: true, sparse: true },
   requiredSkills: [{ type: String }],
   mapCoordinates: { 
     x: { type: Number },

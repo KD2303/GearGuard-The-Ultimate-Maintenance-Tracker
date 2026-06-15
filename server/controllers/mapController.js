@@ -79,3 +79,53 @@ exports.bulkUpdateEquipmentCoordinates = asyncHandler(async (req, res) => {
     modifiedCount: result.modifiedCount ?? result.nModified ?? 0,
   });
 });
+
+exports.getDowntimeHeatmap = asyncHandler(async (req, res) => {
+  const { MaintenanceRequest } = require('../models');
+  
+  const heatmapData = await MaintenanceRequest.aggregate([
+    {
+      $match: {
+        downtimeDurationHours: { $gt: 0 }
+      }
+    },
+    {
+      $group: {
+        _id: '$equipmentId',
+        totalDowntime: { $sum: '$downtimeDurationHours' }
+      }
+    },
+    {
+      $lookup: {
+        from: 'equipments',
+        localField: '_id',
+        foreignField: '_id',
+        as: 'equipment'
+      }
+    },
+    {
+      $unwind: '$equipment'
+    },
+    {
+      $match: {
+        'equipment.latitude': { $ne: null },
+        'equipment.longitude': { $ne: null }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        equipmentId: '$_id',
+        equipmentName: '$equipment.name',
+        latitude: '$equipment.latitude',
+        longitude: '$equipment.longitude',
+        weight: '$totalDowntime'
+      }
+    }
+  ]);
+
+  return res.status(200).json({
+    success: true,
+    data: heatmapData
+  });
+});

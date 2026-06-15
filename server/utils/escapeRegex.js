@@ -1,6 +1,8 @@
+const escapeStringRegexp = require('escape-string-regexp');
+
 const escapeRegex = (string) => {
   if (typeof string !== 'string') return '';
-  return string.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+  return escapeStringRegexp(string);
 };
 
 module.exports = escapeRegex;
