@@ -21,9 +21,12 @@ import axios from 'axios';
 import RCAWizardModal from './RCAWizardModal';
 import LOTOModal from './LOTOModal';
 import CannibalizeModal from './CannibalizeModal';
+import DowntimeTicker from './DowntimeTicker';
 import Select from "react-select";
 import { CERTIFICATION_OPTIONS } from "../utils/certifications";
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import EscalateModal from './EscalateModal';
+import { Send } from 'lucide-react';
 
 interface RequestModalProps {
   isOpen: boolean;
@@ -48,6 +51,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools' | 'vendor'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
   const [showLotoRemoveModal, setShowLotoRemoveModal] = useState(false);
+  const [showEscalateModal, setShowEscalateModal] = useState(false);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
     if (!dateInput) return '';
@@ -547,6 +551,15 @@ const RequestModal: React.FC<RequestModalProps> = ({
 
       {activeTab === 'details' && (
       <div className="space-y-6">
+        {existingRequest && (
+          <DowntimeTicker 
+            createdAt={existingRequest.createdAt || new Date().toISOString()}
+            hourlyDowntimeCost={existingRequest.equipment?.hourlyDowntimeCost || 0}
+            isResolved={['repaired', 'scrap'].includes(existingRequest.stage)}
+            totalResolvedCost={existingRequest.totalDowntimeCost}
+          />
+        )}
+
         {existingRequest && (existingRequest.approvalStatus === 'pending_tier1' || existingRequest.approvalStatus === 'pending_tier2') && (
           <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50 rounded-xl">
             <div className="flex items-start justify-between">
@@ -1236,6 +1249,24 @@ const RequestModal: React.FC<RequestModalProps> = ({
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4">
+          {editRequestId && existingRequest?.vendorEscalation?.isEscalated && (
+            <div className="flex items-center text-sm text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800">
+              <Send className="w-4 h-4 mr-1.5" />
+              Escalated to Vendor
+            </div>
+          )}
+
+          {editRequestId && !existingRequest?.vendorEscalation?.isEscalated && (
+            <button
+              type="button"
+              onClick={() => setShowEscalateModal(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 rounded-md transition-colors flex items-center gap-1.5"
+            >
+              <Send className="w-4 h-4" />
+              Contact Vendor
+            </button>
+          )}
+
           <Button
             type="button"
             variant="secondary"
@@ -1412,6 +1443,18 @@ const RequestModal: React.FC<RequestModalProps> = ({
           }}
           requestRecord={existingRequest}
           mode="remove"
+        />
+      )}
+      {showEscalateModal && existingRequest && (
+        <EscalateModal
+          isOpen={showEscalateModal}
+          onClose={() => setShowEscalateModal(false)}
+          request={existingRequest}
+          onSuccess={(updatedRequest) => {
+            setExistingRequest(updatedRequest);
+            setShowEscalateModal(false);
+            onSuccess(); // bubble up
+          }}
         />
       )}
     </>

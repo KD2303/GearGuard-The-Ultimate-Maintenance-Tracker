@@ -319,21 +319,19 @@ exports.createRequest = async (req, res) => {
           await Equipment.findByIdAndUpdate(
             equipmentDoc._id,
             {
-              $set: { status: "under-maintenance" },
-              $push: {
-                history: {
-                  eventType: 'STATUS_CHANGE',
-                  description: `Status changed to under-maintenance due to new request ${requestNumber}`,
-                  date: new Date(),
-                  recordedBy: req.user?._id,
-                  userId: req.user?._id,
-                  userName: req.user?.name || "System",
-                  notes: 'Status updated automatically on request creation'
-                }
-              }
+              $set: { status: "under-maintenance" }
             },
             { session }
           );
+
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: equipmentDoc._id,
+            action: 'STATUS_CHANGE',
+            description: `Status changed to under-maintenance due to new request ${requestNumber}`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          });
         }
       }
 
@@ -540,6 +538,34 @@ exports.updateRequest = async (req, res) => {
     const prevRequest = await MaintenanceRequest.findById(req.params.id);
     if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
+    // Detect Financial Tampering post-completion
+    const isCompletedOrApproved = prevRequest.stage === 'repaired' || prevRequest.stage === 'scrap' || prevRequest.approvalStatus === 'approved';
+    if (isCompletedOrApproved) {
+      let partsCostChanged = false;
+      let laborCostChanged = false;
+
+      if ('partsCost' in payload && Number(payload.partsCost) !== Number(prevRequest.partsCost || 0)) {
+        partsCostChanged = true;
+      }
+      if ('laborCost' in payload && Number(payload.laborCost) !== Number(prevRequest.laborCost || 0)) {
+        laborCostChanged = true;
+      }
+
+      if (partsCostChanged || laborCostChanged) {
+        const { auditLog } = require('../utils/auditLogger');
+        await auditLog({
+          entityType: 'MaintenanceRequest',
+          entityId: prevRequest._id,
+          action: 'FINANCIAL_TAMPERING',
+          oldDoc: prevRequest,
+          newDoc: { ...prevRequest.toObject(), partsCost: payload.partsCost, laborCost: payload.laborCost },
+          userId: req.user?._id,
+          userName: req.user?.name || 'System'
+        });
+        return res.status(403).json({ error: 'Financial tampering detected. Costs cannot be changed after a ticket is completed or approved.' });
+      }
+    }
+
     if (payload.assignedToId) {
       const reqSkills = payload.requiredSkills || prevRequest.requiredSkills;
       const isCertified = await checkCertifications(payload.assignedToId, reqSkills);
@@ -608,13 +634,16 @@ exports.updateRequest = async (req, res) => {
         payload.completedDate = new Date();
         if (prevRequest.equipmentId) {
           await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
-            $set: { status: "active" },
-            $push: { history: {
-              eventType: 'REPAIR_COMPLETED',
-              description: `Request marked as repaired. Status changed to active.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: "active" }
+          });
+          
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: prevRequest.equipmentId,
+            action: 'REPAIR_COMPLETED',
+            description: `Request marked as repaired. Status changed to active.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
           });
         }
       }
@@ -622,13 +651,16 @@ exports.updateRequest = async (req, res) => {
         payload.completedDate = new Date();
         if (prevRequest.equipmentId) {
           await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
-            $set: { status: "scrapped" },
-            $push: { history: {
-              eventType: 'SCRAPPED',
-              description: `Request marked as scrap. Status changed to scrapped.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: "scrapped" }
+          });
+          
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: prevRequest.equipmentId,
+            action: 'SCRAPPED',
+            description: `Request marked as scrap. Status changed to scrapped.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
           });
         }
       }
@@ -729,21 +761,18 @@ exports.updateRequest = async (req, res) => {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
               {
-                $set: { status: "active" },
-                $push: {
-                  history: {
-                    eventType: 'STATUS_CHANGE',
-                    description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
-                    date: new Date(),
-                    recordedBy: req.user?._id,
-                    userId: req.user?._id,
-                    userName: req.user?.name || "System",
-                    notes: 'Status updated automatically on request repaired'
-                  }
-                }
+                $set: { status: "active" }
               },
               { session }
             );
+            await auditLog({
+              entityType: 'Equipment',
+              entityId: prevRequest.equipmentId,
+              action: 'STATUS_CHANGE',
+              description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            });
           }
         }
         if (payload.stage === "scrap") {
@@ -751,21 +780,18 @@ exports.updateRequest = async (req, res) => {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
               {
-                $set: { status: "scrapped" },
-                $push: {
-                  history: {
-                    eventType: 'STATUS_CHANGE',
-                    description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
-                    date: new Date(),
-                    recordedBy: req.user?._id,
-                    userId: req.user?._id,
-                    userName: req.user?.name || "System",
-                    notes: 'Status updated automatically on request scrapped'
-                  }
-                }
+                $set: { status: "scrapped" }
               },
               { session }
             );
+            await auditLog({
+              entityType: 'Equipment',
+              entityId: prevRequest.equipmentId,
+              action: 'STATUS_CHANGE',
+              description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            });
           }
         }
       }
@@ -1074,14 +1100,17 @@ exports.updateRequestStage = async (req, res) => {
         if (request.equipmentId) {
           const newStatus = stage === "scrap" ? "scrapped" : "active";
           await Equipment.findByIdAndUpdate(request.equipmentId, {
-            $set: { status: newStatus },
-            $push: { history: {
-              eventType: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
-              description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: newStatus }
           }, { session });
+
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: request.equipmentId,
+            action: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
+            description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          });
         }
       }
 
@@ -1216,21 +1245,19 @@ exports.deleteRequest = async (req, res) => {
         await Equipment.findByIdAndUpdate(
           request.equipmentId,
           {
-            $set: { status: "active" },
-            $push: {
-              history: {
-                eventType: 'STATUS_CHANGE',
-                description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
-                date: new Date(),
-                recordedBy: req.user?._id,
-                userId: req.user?._id,
-                userName: req.user?.name || "System",
-                notes: 'Status reverted automatically on request deletion'
-              }
-            }
+            $set: { status: "active" }
           },
           { session }
         );
+        
+        await auditLog({
+          entityType: 'Equipment',
+          entityId: request.equipmentId,
+          action: 'STATUS_CHANGE',
+          description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
+          userId: req.user?._id,
+          userName: req.user?.name || "System"
+        });
       }
       await releaseReservations(request.requiredParts);
       await MaintenanceRequest.findByIdAndDelete(req.params.id, { session });
@@ -1709,8 +1736,32 @@ exports.smartAssignInternal = async (requestId, io) => {
     });
   }
 
+  // Extract skills from text
+  const textToAnalyze = ((request.subject || '') + ' ' + (request.description || '')).toLowerCase();
+  
+  // Find all unique skills among these technicians
+  const allAvailableSkills = new Set();
+  technicians.forEach(tech => {
+    (tech.skills || []).forEach(skill => allAvailableSkills.add(skill.toLowerCase()));
+  });
+
+  // Which of these skills are actually mentioned in the request?
+  const requiredImplicitSkills = Array.from(allAvailableSkills).filter(skill => textToAnalyze.includes(skill));
+
+  if (requiredImplicitSkills.length > 0) {
+    // Filter technicians to those who have AT LEAST ONE of the required implicit skills
+    technicians = technicians.filter(tech => {
+      const techSkills = (tech.skills || []).map(s => s.toLowerCase());
+      return requiredImplicitSkills.some(reqSkill => techSkills.includes(reqSkill));
+    });
+  }
+
   if (technicians.length === 0) {
-    throw new Error("No active technicians found possessing the required safety certifications for this request. Please assign manually or update certifications.");
+    // Assign to Fallback Queue / Manager
+    request.assignedToId = null;
+    request.stage = 'new';
+    await request.save();
+    throw new Error("No skilled worker is available for the specialized tasks identified in this request. It has been routed to the Fallback Queue.");
   }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
@@ -2587,6 +2638,46 @@ exports.getRootCauseAnalytics = async (req, res) => {
   } catch (error) {
     console.error('Leaderboard Aggregation Error:', error);
     res.status(500).json({ message: 'Failed to fetch leaderboard data' });
+  }
+};
+
+exports.escalateToVendor = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id).populate('equipmentId');
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    const { vendorEmail, vendorCompany, message } = req.body;
+    if (!vendorEmail || !vendorCompany) {
+      return res.status(400).json({ error: 'Vendor email and company are required' });
+    }
+
+    // Update Request Schema
+    request.vendorEscalation = {
+      isEscalated: true,
+      vendorEmail,
+      vendorCompany,
+      message,
+      tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    };
+    
+    await request.save();
+
+    // Send the email
+    const NotificationService = require('../services/notificationService');
+    const emailHtml = NotificationService.vendorEscalationTemplate(request, request.equipmentId, message);
+    
+    await NotificationService.sendEmail(
+      vendorEmail, 
+      `[ESCALATION] Maintenance Required: ${request.equipmentId?.name || 'Equipment'} (${request.requestNumber})`, 
+      emailHtml
+    );
+
+    res.json({ message: 'Successfully escalated to vendor', request });
+  } catch (error) {
+    console.error('Vendor Escalation Error:', error);
+    res.status(500).json({ error: error.message });
           from: 'equipments',
           localField: 'equipmentId',
           foreignField: '_id',

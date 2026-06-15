@@ -376,6 +376,13 @@ const RequestCard: React.FC<
         </div>
       )}
 
+      {request.vendorEscalation?.isEscalated && (
+        <div className="text-xs text-red-600 dark:text-red-400 font-bold mt-2 flex items-center bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded w-fit border border-red-100 dark:border-red-800/50 shadow-sm">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Escalated to Vendor
+        </div>
+      )}
+
       {!request.assignedTo && (
         <button
           onClick={handleSmartAssign}

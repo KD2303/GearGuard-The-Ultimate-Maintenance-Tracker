@@ -238,6 +238,11 @@ export const requestService = {
       throw error;
     }
   },
+  
+  escalateToVendor: async (requestId: string, data: { vendorEmail: string; vendorCompany: string; message?: string }): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${requestId}/escalate`, data);
+    toast.success('Ticket escalated to vendor successfully');
+    return response.data.request;
 
   getRootCauseAnalytics: async (): Promise<any> => {
     const response = await api.get('/analytics/root-cause');

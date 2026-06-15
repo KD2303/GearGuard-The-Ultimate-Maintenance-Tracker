@@ -12,24 +12,46 @@ import Badge from '../components/Badge';
 const FloorPlan: React.FC = () => {
   const { t } = useTranslation();
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
+  const [activeRequests, setActiveRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [draggedEqId, setDraggedEqId] = useState<string | null>(null);
 
-  // Fetch equipment on mount
+  // Fetch equipment and active requests on mount
   useEffect(() => {
-    fetchEquipment();
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [eqRes, reqRes] = await Promise.all([
+        api.get('/equipment'),
+        api.get('/requests?limit=1000') // fetch enough to cover active requests
+      ]);
+      setEquipmentList(eqRes.data.data || eqRes.data.equipment || eqRes.data);
+      
+      const allReqs = reqRes.data.items || reqRes.data;
+      const active = allReqs.filter((req: any) => 
+        (req.stage === 'new' || req.stage === 'in-progress') && 
+        req.equipment && 
+        req.equipment.mapCoordinates && 
+        req.equipment.mapCoordinates.x != null
+      );
+      setActiveRequests(active);
+    } catch (error) {
+      toast.error('Failed to load map data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchEquipment = async () => {
     try {
-      setLoading(true);
       const res = await api.get('/equipment');
       setEquipmentList(res.data.data || res.data.equipment || res.data);
     } catch (error) {
       toast.error('Failed to load equipment');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -224,7 +246,7 @@ const FloorPlan: React.FC = () => {
               transform: `scale(${zoom})`,
               width: '1200px', // Base dimensions of the map image
               height: '800px',
-              backgroundImage: 'url(/floor-plan.png)',
+              backgroundImage: 'url(/assets/factory_floor.png)',
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             }}
@@ -232,7 +254,10 @@ const FloorPlan: React.FC = () => {
             onDrop={handleDropOnMap}
           >
             {/* Render Placed Pins */}
-            {placedEquipment.map((eq) => (
+            {placedEquipment.map((eq) => {
+              const activeReq = activeRequests.find(req => req.equipment?._id === eq._id || req.equipment?.id === eq._id);
+              
+              return (
               <div
                 key={eq._id}
                 draggable
@@ -245,31 +270,48 @@ const FloorPlan: React.FC = () => {
                 }}
               >
                 {/* Tooltip Popover (Shows on Hover) */}
-                <div className="absolute bottom-full mb-2 hidden group-hover:block w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-3 pointer-events-none origin-bottom animate-slide-up">
+                <div className="absolute bottom-full mb-2 hidden group-hover:block w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-3 z-50 origin-bottom animate-slide-up">
                   <p className="text-sm font-bold text-slate-800 dark:text-white truncate">{eq.name}</p>
                   <p className="text-xs text-slate-500 font-mono mt-0.5">{eq.serialNumber}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge variant={eq.status === 'under-maintenance' ? 'warning' : 'success'} size="sm">
-                      {eq.status}
-                    </Badge>
-                  </div>
+                  
+                  {activeReq ? (
+                    <div className="mt-3 p-2 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-lg">
+                      <p className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> Active Request
+                      </p>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 truncate">{activeReq.subject}</p>
+                      <button 
+                        onClick={() => window.location.href = `/requests/${activeReq._id}`}
+                        className="mt-2 w-full py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[10px] font-bold rounded shadow-sm transition-colors"
+                      >
+                        Quick View
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant={eq.status === 'under-maintenance' ? 'warning' : 'success'} size="sm">
+                        {eq.status}
+                      </Badge>
+                    </div>
+                  )}
+
                   <div className="mt-2 text-[10px] text-slate-400 flex justify-between items-center border-t border-slate-100 dark:border-slate-700 pt-2">
                     <span>Drop outside to remove</span>
                   </div>
                 </div>
 
                 {/* The Pin Icon */}
-                <div className="relative">
-                  <div className={`absolute -inset-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full blur opacity-40 group-hover:opacity-100 transition-opacity`}></div>
+                <div className="relative pointer-events-none">
+                  <div className={`absolute -inset-2 bg-gradient-to-r ${activeReq ? 'from-rose-500 to-red-500' : 'from-blue-500 to-indigo-500'} rounded-full blur opacity-40 group-hover:opacity-100 transition-opacity`}></div>
                   <MapPin 
-                    className={`relative w-8 h-8 filter drop-shadow-md transition-colors ${getStatusColor(eq.status)} fill-slate-900/50`} 
+                    className={`relative w-8 h-8 filter drop-shadow-md transition-colors ${activeReq ? 'text-rose-500' : getStatusColor(eq.status)} fill-slate-900/50`} 
                   />
-                  {eq.status === 'under-maintenance' && (
+                  {(eq.status === 'under-maintenance' || activeReq) && (
                     <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse"></div>
                   )}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
           </div>
         </div>

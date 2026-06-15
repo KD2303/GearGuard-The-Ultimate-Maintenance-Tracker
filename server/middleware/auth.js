@@ -59,6 +59,31 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
+const requireRole = (roles) => {
+  return (req, res, next) => {
+    const isDestructive = req.method === 'DELETE' || 
+                          (req.body && req.body.stage === 'scrap') || 
+                          (req.body && req.body.status === 'scrapped');
+
+    if (isDestructive) {
+      if (!req.user || !roles.includes(req.user.role)) {
+        return res.status(403).json({
+          error: "Forbidden: Destructive actions require Admin or Manager roles.",
+        });
+      }
+    } else if (req.method !== 'DELETE' && !req.body.stage && !req.body.status) {
+       // If it's used as a generic role requirement (not payload dependent)
+       if (!req.user || !roles.includes(req.user.role)) {
+        return res.status(403).json({
+          error: "Forbidden: You do not have the required permissions.",
+        });
+      }
+    }
+    next();
+  };
+};
+
 // Support BOTH import styles
 module.exports = verifyToken;
 module.exports.verifyToken = verifyToken;
+module.exports.requireRole = requireRole;
