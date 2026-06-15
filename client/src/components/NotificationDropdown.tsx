@@ -80,6 +80,10 @@ const NotificationDropdown = ({ userId }: NotificationDropdownProps) => {
     });
 
     return () => {
+      socketRef.current?.off('connect');
+      socketRef.current?.off('server_ping');
+      socketRef.current?.off('new_notification');
+      socketRef.current?.off('notification:new');
       socketRef.current?.disconnect();
     };
   }, [userId]);

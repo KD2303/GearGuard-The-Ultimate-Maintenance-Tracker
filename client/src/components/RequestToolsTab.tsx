@@ -62,6 +62,10 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
     });
 
     return () => {
+      socket.off('server_ping');
+      socket.off('tools_changed');
+      socket.off('tool_locked');
+      socket.off('tool_unlocked');
       socket.disconnect();
     };
   }, []); // Run only once on mount
