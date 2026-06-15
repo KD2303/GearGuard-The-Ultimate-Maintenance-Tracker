@@ -24,6 +24,7 @@ const EquipmentSchema = new Schema({
   notes: { type: String },
   maintenanceTeamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   defaultTechnicianId: { type: Schema.Types.ObjectId, ref: 'TeamMember' },
+  smartSocketId: { type: String, unique: true, sparse: true },
   requiredSkills: [{ type: String }],
   mapCoordinates: { 
     x: { type: Number },
