@@ -13,8 +13,13 @@ import {
   CartesianGrid,
   LineChart,
   Line,
+  Treemap,
 } from 'recharts';
 import Spinner from '../components/Spinner';
+import Modal from '../components/Modal';
+import { Link } from 'react-router-dom';
+import { MaintenanceRequest } from '../types';
+import toast from 'react-hot-toast';
 import { requestService, AnalyticsResponse } from '../services/requestService';
 
 type DateRange = '30d' | '90d' | 'custom';
@@ -38,6 +43,11 @@ const AnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<AnalyticsResponse | null>(null);
 
+  const [rcaData, setRcaData] = useState<any[]>([]);
+  const [isRcaModalOpen, setIsRcaModalOpen] = useState(false);
+  const [rcaModalRequests, setRcaModalRequests] = useState<MaintenanceRequest[]>([]);
+  const [rcaLoading, setRcaLoading] = useState(false);
+
   const loadAnalytics = async () => {
     try {
       setLoading(true);
@@ -48,10 +58,30 @@ const AnalyticsPage: React.FC = () => {
 
       const response = await requestService.getAnalytics(query);
       setData(response);
+
+      if (range === '30d' || range === '90d' || range === 'custom') { // Fetching RCA only once initially or refreshing with same frequency
+        const rcaRes = await requestService.getRootCauseAnalytics();
+        setRcaData(rcaRes.children || []);
+      }
     } catch (error) {
       console.error('Failed to load analytics:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRcaNodeClick = async (e: any) => {
+    if (e && e.requestIds && e.requestIds.length > 0) {
+      setIsRcaModalOpen(true);
+      setRcaLoading(true);
+      try {
+        const response = await requestService.getAll({ ids: e.requestIds.join(','), limit: 100 });
+        setRcaModalRequests(response.items);
+      } catch(error) {
+        toast.error('Failed to load related work orders');
+      } finally {
+        setRcaLoading(false);
+      }
     }
   };
 
@@ -336,6 +366,57 @@ const AnalyticsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <div className="mt-6 rounded-xl border border-indigo-100 bg-white p-5 shadow-sm dark:border-indigo-900/30 dark:bg-gray-800">
+        <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+          <span className="mr-2">🔍</span> Root Cause Analysis (By Equipment Category)
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">Click on any block to view associated work orders</p>
+        <div className="h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <Treemap
+              data={rcaData}
+              dataKey="value"
+              aspectRatio={4 / 3}
+              stroke="#fff"
+              fill="#8884d8"
+              onClick={handleRcaNodeClick}
+              isAnimationActive={false}
+            >
+              <Tooltip formatter={(value: any, name: any, props: any) => [
+                `${value} Work Orders`, 
+                props.payload?.name || props.name
+              ]} />
+            </Treemap>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <Modal isOpen={isRcaModalOpen} onClose={() => setIsRcaModalOpen(false)} title="Associated Work Orders" size="lg">
+        {rcaLoading ? (
+          <div className="p-8 flex justify-center"><Spinner /></div>
+        ) : (
+          <div className="max-h-96 overflow-y-auto space-y-3">
+            {rcaModalRequests.length === 0 ? (
+              <p className="text-gray-500">No work orders found.</p>
+            ) : (
+              rcaModalRequests.map(req => (
+                <div key={req._id} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white">{req.requestNumber} - {req.subject}</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Root Cause: <span className="font-semibold">{req.rootCause}</span>
+                    </p>
+                  </div>
+                  <Link to={`/kanban?request=${req._id}`} className="text-blue-500 hover:text-blue-700 text-sm font-medium">
+                    View Ticket &rarr;
+                  </Link>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

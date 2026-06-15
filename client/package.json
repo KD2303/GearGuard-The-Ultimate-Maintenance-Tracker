@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
+    "@types/react-select": "^5.0.0",
     "axios": "^1.15.1",
     "clsx": "^2.1.0",
     "date-fns": "^3.0.6",

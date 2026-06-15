@@ -82,12 +82,14 @@ export const requestService = {
     id: string,
     stage: string,
     partsCost?: number,
-    laborCost?: number
+    laborCost?: number,
+    latitude?: number,
+    longitude?: number
   ): Promise<MaintenanceRequest> => {
     try {
       const response = await api.patch(
         `/requests/${id}/stage`,
-        { stage, partsCost, laborCost }
+        { stage, partsCost, laborCost, latitude, longitude }
       );
       toast.success("Request stage updated");
       return response.data;
@@ -235,5 +237,10 @@ export const requestService = {
       toast.error('Failed to load workload overview');
       throw error;
     }
+  },
+
+  getRootCauseAnalytics: async (): Promise<any> => {
+    const response = await api.get('/analytics/root-cause');
+    return response.data;
   }
 };

@@ -31,6 +31,11 @@ const ToolCrib: React.FC = () => {
       auth: { token: localStorage.getItem('gearguard_token') }
     });
 
+    socket.off('server_ping');
+    socket.on('server_ping', () => {
+      socket.emit('client_pong');
+    });
+
     socket.on('tools_changed', () => {
       fetchTools();
     });
