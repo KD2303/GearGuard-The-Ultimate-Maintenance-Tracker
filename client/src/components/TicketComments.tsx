@@ -568,3 +568,4 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
 };
 
 export default TicketComments;
+// Voice to text integration is complete

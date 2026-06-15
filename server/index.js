@@ -22,6 +22,7 @@ const { startCalibrationChecker } = require("./jobs/calibrationChecker");
 const { startSlaChecker } = require("./jobs/slaChecker");
 const { syncDatabase } = require("./models");
 const { startCertificationChecker } = require("./jobs/certificationChecker");
+const { startWarrantyChecker } = require("./jobs/warrantyChecker");
 const swaggerSpec = require("./config/swagger");
 const passport = require("./config/passport");
 

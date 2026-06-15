@@ -117,7 +117,8 @@ const MaintenanceRequestSchema = new Schema({
     tokenExpiresAt: { type: Date }
   },
   rootCause: { type: String }, // Used by the RCA logic tree wizard
-  rcaNodeId: { type: Schema.Types.ObjectId, ref: 'DiagnosticNode' } // Final leaf node of the RCA tree
+  rcaNodeId: { type: Schema.Types.ObjectId, ref: 'DiagnosticNode' }, // Final leaf node of the RCA tree
+  blockedByIds: [{ type: Schema.Types.ObjectId, ref: 'MaintenanceRequest' }] // Dependency chain: this request is blocked until these are completed
 }, { timestamps: true });
 
 MaintenanceRequestSchema.virtual('equipment', {
