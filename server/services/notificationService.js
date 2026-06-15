@@ -399,6 +399,43 @@ NotificationService.overdueTemplate = (request) => {
     </div>
   `;
 };
+NotificationService.vendorEscalationTemplate = (request, equipment, message) => {
+  return `
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+      <h2 style="color: #ef4444;">🛠️ External Service Escalation</h2>
+      <p>A maintenance issue has been escalated to you for external support.</p>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      
+      <h3 style="color: #4b5563;">Equipment Details</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <tr><td style="padding: 8px 0; font-weight: bold; width: 150px;">Equipment Name:</td><td style="padding: 8px 0;">${equipment?.name || 'N/A'}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold;">Manufacturer:</td><td style="padding: 8px 0;">${equipment?.manufacturer || 'N/A'}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold;">Model:</td><td style="padding: 8px 0;">${equipment?.model || 'N/A'}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold;">Serial Number:</td><td style="padding: 8px 0;"><code>${equipment?.serialNumber || 'N/A'}</code></td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold;">Location:</td><td style="padding: 8px 0;">${equipment?.location || 'N/A'}</td></tr>
+      </table>
+
+      <h3 style="color: #4b5563;">Fault Description</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <tr><td style="padding: 8px 0; font-weight: bold; width: 150px;">Request Number:</td><td style="padding: 8px 0;">${request.requestNumber}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold;">Subject:</td><td style="padding: 8px 0;">${request.subject}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold; vertical-align: top;">Reported Issue:</td><td style="padding: 8px 0;">${request.description || 'N/A'}</td></tr>
+        <tr><td style="padding: 8px 0; font-weight: bold;">Priority:</td><td style="padding: 8px 0; text-transform: capitalize;">${request.priority}</td></tr>
+      </table>
+
+      ${message ? `
+      <h3 style="color: #4b5563;">Message from Maintenance Team</h3>
+      <div style="background: #f9fafb; border-left: 4px solid #ef4444; padding: 15px; margin-bottom: 20px;">
+        <p style="margin: 0;">${message.replace(/\n/g, '<br/>')}</p>
+      </div>
+      ` : ''}
+
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+      <p style="font-size: 0.9em; color: #777;">Please review this escalation and reply to this email to coordinate the repair process.</p>
+    </div>
+  `;
+};
+
 NotificationService.EMAIL_SUBJECTS = EMAIL_SUBJECTS;
 
 module.exports = NotificationService;

@@ -1700,6 +1700,7 @@ exports.smartAssignInternal = async (requestId, io) => {
       return request.requiredCertifications.every(cert => techCerts.includes(cert));
     });
   }
+  
 
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
@@ -2377,15 +2378,35 @@ exports.approveRequest = async (req, res) => {
     const request = await MaintenanceRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
 
-    // Ensure authorized
     if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
       return res.status(403).json({ error: "Not authorized to approve financial requests." });
     }
 
-    if (request.approvalStatus !== 'pending') {
+    if (!request.approvalStatus || !request.approvalStatus.startsWith('pending')) {
       return res.status(400).json({ error: "Request is not pending approval." });
     }
 
+    if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
+    }
+    if (request.approvalStatus === 'pending_tier2' && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: "Admin approval required for Tier 2." });
+    }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
+    request.approvalStatus = 'approved';
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Approved",
+      status: 'approved'
+    });
+    
+    request.approvedBy = req.user._id;
+    request.approvalDate = new Date();
+    request.stage = 'in-progress'; 
     request.approvalStatus = 'approved';
     request.approvedBy = req.user._id;
     request.approvalDate = new Date();
@@ -2412,16 +2433,26 @@ exports.rejectRequest = async (req, res) => {
     const request = await MaintenanceRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
 
-    if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
-      return res.status(403).json({ error: "Not authorized to reject financial requests." });
+    if (!['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Unauthorized to reject requests." });
     }
 
-    if (request.approvalStatus !== 'pending') {
+    if (!request.approvalStatus || !request.approvalStatus.startsWith('pending')) {
       return res.status(400).json({ error: "Request is not pending approval." });
     }
 
+    const previousTier = request.approvalStatus.replace('pending_', '');
     request.approvalStatus = 'rejected';
-    request.stage = 'new'; // unlock it back to 'new' but maybe they should just modify parts
+    request.stage = 'new';
+    
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
 
     await request.save();
 
@@ -2489,6 +2520,31 @@ exports.getWorkload = async (req, res) => {
   }
 };
 
+exports.getLeaderboard = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const leaderboard = await MaintenanceRequest.aggregate([
+      {
+        $match: {
+          stage: { $in: ['repaired', 'scrap'] },
+          completedDate: { $gte: sevenDaysAgo },
+          assignedToId: { $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: '$assignedToId',
+          totalClosed: { $sum: 1 },
+          avgResolutionTimeMs: {
+            $avg: {
+              $subtract: [
+                { $ifNull: ['$completedDate', new Date()] },
+                '$createdAt'
+              ]
+            }
+          }
 exports.getRootCauseAnalytics = async (req, res) => {
   try {
     const data = await MaintenanceRequest.aggregate([
@@ -2499,6 +2555,78 @@ exports.getRootCauseAnalytics = async (req, res) => {
       },
       {
         $lookup: {
+          from: 'teammembers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'technician'
+        }
+      },
+      {
+        $unwind: '$technician'
+      },
+      {
+        $project: {
+          _id: 0,
+          technicianId: '$_id',
+          technicianName: '$technician.name',
+          technicianEmail: '$technician.email',
+          technicianAvatar: '$technician.avatar',
+          totalClosed: 1,
+          avgResolutionTimeHours: { $divide: ['$avgResolutionTimeMs', 3600000] }
+        }
+      },
+      {
+        $sort: { totalClosed: -1, avgResolutionTimeHours: 1 }
+      },
+      {
+        $limit: 5
+      }
+    ]);
+
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Leaderboard Aggregation Error:', error);
+    res.status(500).json({ message: 'Failed to fetch leaderboard data' });
+  }
+};
+
+exports.escalateToVendor = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id).populate('equipmentId');
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    const { vendorEmail, vendorCompany, message } = req.body;
+    if (!vendorEmail || !vendorCompany) {
+      return res.status(400).json({ error: 'Vendor email and company are required' });
+    }
+
+    // Update Request Schema
+    request.vendorEscalation = {
+      isEscalated: true,
+      vendorEmail,
+      vendorCompany,
+      message,
+      tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    };
+    
+    await request.save();
+
+    // Send the email
+    const NotificationService = require('../services/notificationService');
+    const emailHtml = NotificationService.vendorEscalationTemplate(request, request.equipmentId, message);
+    
+    await NotificationService.sendEmail(
+      vendorEmail, 
+      `[ESCALATION] Maintenance Required: ${request.equipmentId?.name || 'Equipment'} (${request.requestNumber})`, 
+      emailHtml
+    );
+
+    res.json({ message: 'Successfully escalated to vendor', request });
+  } catch (error) {
+    console.error('Vendor Escalation Error:', error);
+    res.status(500).json({ error: error.message });
           from: 'equipments',
           localField: 'equipmentId',
           foreignField: '_id',
