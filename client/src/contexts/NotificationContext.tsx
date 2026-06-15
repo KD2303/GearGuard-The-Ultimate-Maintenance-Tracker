@@ -115,6 +115,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
 
     return () => {
+      newSocket.off('connect');
+      newSocket.off('server_ping');
+      newSocket.off('notification:new');
       newSocket.disconnect();
     };
   }, [fetchNotifications, user, location.pathname]);
