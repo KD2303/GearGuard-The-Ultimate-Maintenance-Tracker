@@ -9,23 +9,19 @@ class SyncManager {
     if (this.isSyncing) return;
     
     if (!navigator.onLine) {
-      console.log('[SyncManager] Cannot sync, currently offline');
       return;
     }
 
     this.isSyncing = true;
-    console.log('[SyncManager] Starting background synchronization...');
 
     try {
       const actions = await dbService.getSyncActions();
       
       if (actions.length === 0) {
-        console.log('[SyncManager] No offline actions to sync');
         this.isSyncing = false;
         return;
       }
 
-      console.log(`[SyncManager] Found ${actions.length} actions to sync`);
 
       // Attempt to sync each request individually to its original URL
       let successCount = 0;
@@ -66,7 +62,6 @@ class SyncManager {
         toast.error(`Failed to sync ${failCount} offline actions. Please check your connection.`);
       }
 
-      console.log('[SyncManager] Synchronization complete');
 
     } catch (error) {
       console.error('[SyncManager] Error during synchronization:', error);
@@ -79,7 +74,6 @@ class SyncManager {
   init() {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
-        console.log('[SyncManager] Network restored. Triggering sync...');
         this.sync();
       });
     }

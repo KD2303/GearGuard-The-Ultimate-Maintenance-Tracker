@@ -11,7 +11,7 @@ import {
 } from '../services/notificationService';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '')
-  || 'http://localhost:5000';
+  || '';
 
 interface NotificationDropdownProps {
   userId: string;
@@ -84,6 +84,11 @@ const NotificationDropdown = ({ userId }: NotificationDropdownProps) => {
         socketRef.current.off();
         socketRef.current.disconnect();
       }
+      socketRef.current?.off('connect');
+      socketRef.current?.off('server_ping');
+      socketRef.current?.off('new_notification');
+      socketRef.current?.off('notification:new');
+      socketRef.current?.disconnect();
     };
   }, [userId]);
 

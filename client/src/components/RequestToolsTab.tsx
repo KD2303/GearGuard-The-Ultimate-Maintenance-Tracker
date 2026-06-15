@@ -8,7 +8,7 @@ import { Wrench, Loader2 } from 'lucide-react';
 import Spinner from './Spinner';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || '';
 
 interface RequestToolsTabProps {
   requestRecord: MaintenanceRequest;
@@ -63,6 +63,10 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
 
     return () => {
       socket.off();
+      socket.off('server_ping');
+      socket.off('tools_changed');
+      socket.off('tool_locked');
+      socket.off('tool_unlocked');
       socket.disconnect();
     };
   }, []); // Run only once on mount

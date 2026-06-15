@@ -86,12 +86,13 @@ export const requestService = {
     __v?: number,
     latitude?: number,
     longitude?: number,
-    syncId?: string
+    syncId?: string,
+    signatureBase64?: string
   ): Promise<MaintenanceRequest> => {
     try {
       const response = await api.patch(
         `/requests/${id}/stage`,
-        { stage, partsCost, laborCost, __v, latitude, longitude, syncId }
+        { stage, partsCost, laborCost, __v, latitude, longitude, syncId, signatureBase64 }
       );
       toast.success("Request stage updated");
       return response.data;
@@ -226,8 +227,8 @@ export const requestService = {
     toast.success("Attachment deleted successfully");
   },
 
-  approveRequest: async (requestId: string): Promise<MaintenanceRequest> => {
-    const response = await api.patch(`/requests/${requestId}/approve`);
+  approveRequest: async (requestId: string, signatureBase64?: string): Promise<MaintenanceRequest> => {
+    const response = await api.patch(`/requests/${requestId}/approve`, { signatureBase64 });
     toast.success("Financial approval granted.");
     return response.data;
   },

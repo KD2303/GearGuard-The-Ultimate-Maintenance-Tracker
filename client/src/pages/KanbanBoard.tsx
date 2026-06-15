@@ -51,6 +51,7 @@ import FilterBar from "../components/FilterBar";
 
 import ExportButton from "../components/ExportButton";
 import ClosureCostModal from "../components/ClosureCostModal";
+import ApprovalSignatureModal from "../components/ApprovalSignatureModal";
 import LOTOModal from "../components/LOTOModal";
 import SlaTimer from "../components/SlaTimer";
 
@@ -124,6 +125,7 @@ interface RequestCardProps {
   request: MaintenanceRequest;
   onUpdate: () => void;
   onClick: () => void;
+  onApprove?: (requestId: string) => void;
 }
 
 const RequestCard: React.FC<
@@ -132,6 +134,7 @@ const RequestCard: React.FC<
   request,
   onUpdate: _onUpdate,
   onClick,
+  onApprove,
 }) => {
   const [{ isDragging }, drag] =
     useDrag(() => ({
@@ -396,13 +399,10 @@ const RequestCard: React.FC<
       {request.approvalStatus === 'pending' && (
         <div className="mt-3 flex gap-2">
           <button
-            onClick={async (e) => {
+            onClick={(e) => {
               e.stopPropagation();
-              try {
-                await requestService.approveRequest(request.id || request._id || "");
-                _onUpdate();
-              } catch (err: any) {
-                toast.error(err.response?.data?.error || "Failed to approve");
+              if (onApprove) {
+                onApprove(request.id || request._id || "");
               }
             }}
             className="flex-1 px-2 py-1.5 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/30 dark:hover:bg-green-800/50 dark:text-green-400 rounded text-xs font-medium border border-green-200 dark:border-green-800/50 transition-colors"
@@ -442,6 +442,7 @@ interface ColumnProps {
   onUpdate: () => void;
 
   onRequestClick: (requestId: string) => void;
+  onApprove?: (requestId: string) => void;
   
   sortByCost: boolean;
 }
@@ -451,6 +452,7 @@ const Column: React.FC<ColumnProps> = ({
   requests,
   onDrop,
   onRequestClick,
+  onApprove,
   sortByCost
 }: ColumnProps) => {
   const [{ isOver }, drop] =
@@ -521,6 +523,7 @@ const Column: React.FC<ColumnProps> = ({
               }
               onUpdate={() => {}}
               onClick={() => onRequestClick(request.id || request._id || '')}
+              onApprove={onApprove}
             />
           )
         )}
@@ -558,6 +561,7 @@ const KanbanBoard: React.FC =
 
     const [sortByCost, setSortByCost] = useState(false);
     const [closureModalData, setClosureModalData] = useState<{ requestId: string, newStage: string } | null>(null);
+    const [approvalModalData, setApprovalModalData] = useState<{ requestId: string } | null>(null);
     const [lotoModalData, setLotoModalData] = useState<{ request: MaintenanceRequest } | null>(null);
 
     const loadRequests = useCallback(async () => {
@@ -641,7 +645,7 @@ const KanbanBoard: React.FC =
     }, [loadRequests]);
 
     useEffect(() => {
-      const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000", {
+      const socket = io(import.meta.env.VITE_API_URL || "", {
         withCredentials: true,
       });
 
@@ -664,6 +668,10 @@ const KanbanBoard: React.FC =
 
       return () => {
         socket.off();
+        socket.off('server_ping');
+        socket.off('connect');
+        socket.off('request_updated');
+        socket.off('request_created');
         socket.disconnect();
       };
     }, [loadRequests]);
@@ -730,17 +738,29 @@ const KanbanBoard: React.FC =
       }
     };
 
-    const handleClosureSubmit = async (partsCost: number, laborCost: number) => {
+    const handleClosureSubmit = async (partsCost: number, laborCost: number, signatureBase64: string) => {
       if (!closureModalData) return;
       try {
         const syncId = crypto.randomUUID();
         const request = requests.find((r) => r.id === closureModalData.requestId || r._id === closureModalData.requestId);
-        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost, request?.__v, undefined, undefined, syncId);
+        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost, request?.__v, undefined, undefined, syncId, signatureBase64);
         await loadRequests();
       } catch (error) {
         console.error("Failed to update request stage with costs:", error);
       } finally {
         setClosureModalData(null);
+      }
+    };
+
+    const handleApprovalSubmit = async (signatureBase64: string) => {
+      if (!approvalModalData) return;
+      try {
+        await requestService.approveRequest(approvalModalData.requestId, signatureBase64);
+        await loadRequests();
+      } catch (error: any) {
+        toast.error(error.response?.data?.error || "Failed to approve request.");
+      } finally {
+        setApprovalModalData(null);
       }
     };
 
@@ -857,6 +877,7 @@ const KanbanBoard: React.FC =
                       setEditRequestId(id);
                       setIsModalOpen(true);
                     }}
+                    onApprove={(id) => setApprovalModalData({ requestId: id })}
                     sortByCost={sortByCost}
                   />
                 )
@@ -892,6 +913,15 @@ const KanbanBoard: React.FC =
               onClose={() => setClosureModalData(null)}
               onSubmit={handleClosureSubmit}
               title={`Close Request (${closureModalData.newStage === 'scrap' ? 'Scrap' : 'Repaired'})`}
+            />
+          )}
+
+          {approvalModalData && (
+            <ApprovalSignatureModal
+              isOpen={!!approvalModalData}
+              onClose={() => setApprovalModalData(null)}
+              onSubmit={handleApprovalSubmit}
+              title="Financial Approval — Digital Signature Required"
             />
           )}
 

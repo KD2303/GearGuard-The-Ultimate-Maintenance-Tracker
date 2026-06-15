@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import api from '../services/api';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || '';
 
 const ToolCrib: React.FC = () => {
   const { t } = useTranslation();
@@ -58,6 +58,10 @@ const ToolCrib: React.FC = () => {
 
     return () => {
       socket.off();
+      socket.off('server_ping');
+      socket.off('tools_changed');
+      socket.off('tool_locked');
+      socket.off('tool_unlocked');
       socket.disconnect();
     };
   }, []);

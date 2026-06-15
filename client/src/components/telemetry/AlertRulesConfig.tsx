@@ -12,7 +12,6 @@ const AlertRulesConfig: React.FC<AlertRulesConfigProps> = ({ equipmentId }) => {
   
   const handleSave = () => {
     // In a real app, send this to the backend
-    console.log(`Saved rule: IF ${metric} ${condition} ${threshold} THEN Create High Priority Request`);
     setThreshold('');
   };
 

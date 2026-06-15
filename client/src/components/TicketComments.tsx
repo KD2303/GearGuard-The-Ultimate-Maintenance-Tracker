@@ -9,7 +9,7 @@ interface TicketCommentsProps {
   currentUser: { _id?: string; id?: string; name: string } | null;
 }
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || '';
 
 // Custom sleek, glassmorphic Audio Player component
 const AudioPlayer: React.FC<{ src: string; duration?: number; isMe?: boolean }> = ({ src, duration, isMe }) => {
@@ -207,6 +207,11 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
         socket.emit('leave_ticket', requestId);
       }
       socket.off();
+      socket.off('server_ping');
+      socket.off('new_comment');
+      socket.off('delete_comment');
+      socket.off('user_typing');
+      socket.off('user_stop_typing');
       socket.disconnect();
       discardRecording();
       if (speechRecognitionRef.current) {

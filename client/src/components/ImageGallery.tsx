@@ -21,8 +21,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ attachments, onDelete }) =>
   }
 
   const getFullUrl = (url: string) => {
-    if (url.startsWith('http')) return url;
-    return `http://localhost:5000${url}`;
+    if (url.startsWith('http') || url.startsWith('blob:')) return url;
+    const baseUrl = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || '';
+    return `${baseUrl}${url}`;
   };
 
   return (
