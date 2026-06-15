@@ -54,4 +54,11 @@ router.delete(
   equipmentController.deleteEquipment
 );
 
+// DEDUCT HEALTH SCORE (Any technician, manager, or admin)
+router.patch(
+  '/:id/health-deduction',
+  authorizeRoles("Admin", "Manager", "Technician"),
+  equipmentController.deductHealthScore
+);
+
 module.exports = router;
