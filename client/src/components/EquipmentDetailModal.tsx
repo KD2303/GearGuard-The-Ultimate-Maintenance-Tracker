@@ -17,7 +17,8 @@ import { QrCode } from 'lucide-react';
 import TelemetryChart from './telemetry/TelemetryChart';
 import AlertRulesConfig from './telemetry/AlertRulesConfig';
 import EquipmentDocumentsTab from './EquipmentDocumentsTab';
-import { FileText } from 'lucide-react';
+import TelemetryPlayback from './telemetry/TelemetryPlayback';
+import { FileText, Video } from 'lucide-react';
 
 interface EquipmentDetailModalProps {
   equipment: Equipment;
@@ -78,7 +79,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
   const openRequests = maintenanceHistory.filter((req) => req.stage !== 'repaired' && req.stage !== 'scrap');
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'blackbox'>('overview');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={equipment.name} size="xl">
@@ -101,6 +102,13 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
               {equipment.documents.length}
             </span>
           )}
+        </button>
+        <button 
+          onClick={() => setActiveTab('blackbox')} 
+          className={`pb-2 px-2 text-sm font-medium flex items-center transition-colors ${activeTab === 'blackbox' ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+        >
+          <Video className="h-4 w-4 mr-2" />
+          Black Box
         </button>
       </div>
 
@@ -313,6 +321,10 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
 
       <div className={activeTab === 'documents' ? 'py-2' : 'hidden'}>
         <EquipmentDocumentsTab equipment={equipment} onUpdate={onUpdate || (() => {})} />
+      </div>
+
+      <div className={activeTab === 'blackbox' ? 'py-2' : 'hidden'}>
+        <TelemetryPlayback equipmentId={equipment.id || (equipment as any)._id || ''} />
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700 mt-6">

@@ -24,3 +24,36 @@ exports.ingestTelemetry = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.getTelemetryPlayback = async (req, res, next) => {
+  try {
+    const { equipmentId } = req.params;
+    const { startTime, endTime } = req.query;
+    
+    const Equipment = require("../models/Equipment");
+    const TelemetryData = require("../models/TelemetryData");
+    
+    let queryEndTime = endTime ? new Date(endTime) : new Date();
+    let queryStartTime = startTime ? new Date(startTime) : null;
+    
+    if (!startTime && !endTime) {
+      const equipment = await Equipment.findById(equipmentId);
+      if (equipment && equipment.lastFailureDate) {
+        queryEndTime = new Date(equipment.lastFailureDate);
+      }
+      queryStartTime = new Date(queryEndTime.getTime() - 60 * 60 * 1000); // 1 hour prior
+    }
+
+    const data = await TelemetryData.find({
+      "metadata.equipmentId": equipmentId,
+      timestamp: { $gte: queryStartTime, $lte: queryEndTime }
+    }).sort("timestamp").lean();
+
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    next(error);
+  }
+};
