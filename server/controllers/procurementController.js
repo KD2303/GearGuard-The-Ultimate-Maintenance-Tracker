@@ -1,13 +1,15 @@
-const { MaintenanceRequest, SparePart, PurchaseOrder, Supplier } = require('../models');
+const { MaintenanceRequest, SparePart, PurchaseOrder, Supplier, PreventiveSchedule, Equipment } = require('../models');
 const { ErrorHandler, ERROR_TYPES } = require('../utils/errorHandler');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-// Get 30-day inventory demand forecast
-exports.getForecast = asyncHandler(async (req, res, next) => {
+const calculateProjectedDemand = async () => {
   const thirtyDaysFromNow = new Date();
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+  const now = new Date();
 
-  // 1. Find all incomplete requests scheduled or created within the next 30 days that have parts
+  const demandMap = {}; // partId -> { demand, part }
+
+  // 1. Demand from open MaintenanceRequests
   const upcomingRequests = await MaintenanceRequest.find({
     stage: { $nin: ['repaired', 'scrap'] },
     $or: [
@@ -17,8 +19,6 @@ exports.getForecast = asyncHandler(async (req, res, next) => {
     'partsUsed.0': { $exists: true }
   }).populate('partsUsed.partId');
 
-  // 2. Aggregate demand
-  const demandMap = {}; // partId -> { demand, part }
   upcomingRequests.forEach(req => {
     req.partsUsed.forEach(pu => {
       if (pu.partId) {
@@ -30,6 +30,61 @@ exports.getForecast = asyncHandler(async (req, res, next) => {
       }
     });
   });
+
+  // 2. Predictive Demand from PreventiveSchedule
+  const activeSchedules = await PreventiveSchedule.find({
+    isActive: true,
+    nextRunAt: { $lte: thirtyDaysFromNow }
+  }).populate({
+    path: 'equipmentId',
+    populate: { path: 'compatibleParts' } // populate the parts themselves so we have the part objects
+  });
+
+  activeSchedules.forEach(schedule => {
+    if (!schedule.equipmentId || !schedule.equipmentId.compatibleParts || schedule.equipmentId.compatibleParts.length === 0) {
+      return;
+    }
+
+    // Calculate how many times it runs in the next 30 days
+    let runCount = 0;
+    let currentRunDate = new Date(schedule.nextRunAt);
+    
+    while (currentRunDate <= thirtyDaysFromNow) {
+      runCount++;
+      
+      if (schedule.frequency === 'daily') {
+        currentRunDate.setDate(currentRunDate.getDate() + 1);
+      } else if (schedule.frequency === 'weekly') {
+        currentRunDate.setDate(currentRunDate.getDate() + 7);
+      } else if (schedule.frequency === 'monthly') {
+        currentRunDate.setMonth(currentRunDate.getMonth() + 1);
+      } else if (schedule.frequency === 'custom' && schedule.intervalDays) {
+        currentRunDate.setDate(currentRunDate.getDate() + schedule.intervalDays);
+      } else {
+        break; // safety break
+      }
+    }
+
+    if (runCount > 0) {
+      schedule.equipmentId.compatibleParts.forEach(part => {
+        if (part) {
+          const id = String(part._id);
+          if (!demandMap[id]) {
+            demandMap[id] = { demand: 0, part: part };
+          }
+          // Assuming 1 of each compatible part is consumed per PM run
+          demandMap[id].demand += runCount;
+        }
+      });
+    }
+  });
+
+  return demandMap;
+};
+
+// Get 30-day inventory demand forecast
+exports.getForecast = asyncHandler(async (req, res, next) => {
+  const demandMap = await calculateProjectedDemand();
 
   // 3. Compare with stock and identify shortages
   const shortages = [];
@@ -63,31 +118,7 @@ exports.getForecast = asyncHandler(async (req, res, next) => {
 
 // Auto-draft POs based on shortages
 exports.autoDraftPO = asyncHandler(async (req, res, next) => {
-  // We can just call getForecast logic internally
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
-  const upcomingRequests = await MaintenanceRequest.find({
-    stage: { $nin: ['repaired', 'scrap'] },
-    $or: [
-      { scheduledDate: { $lte: thirtyDaysFromNow } },
-      { type: 'corrective' }
-    ],
-    'partsUsed.0': { $exists: true }
-  }).populate('partsUsed.partId');
-
-  const demandMap = {};
-  upcomingRequests.forEach(req => {
-    req.partsUsed.forEach(pu => {
-      if (pu.partId) {
-        const id = String(pu.partId._id || pu.partId);
-        if (!demandMap[id]) {
-          demandMap[id] = { demand: 0, part: pu.partId };
-        }
-        demandMap[id].demand += pu.quantityUsed;
-      }
-    });
-  });
+  const demandMap = await calculateProjectedDemand();
 
   const shortagesBySupplier = {}; // supplierId -> array of items
 
@@ -117,7 +148,6 @@ exports.autoDraftPO = asyncHandler(async (req, res, next) => {
     const existingDraft = await PurchaseOrder.findOne({ supplierId: sId, status: 'draft' });
     if (existingDraft) {
       // For simplicity, we just skip if a draft exists. 
-      // A more complex system would merge the items into the draft.
       continue; 
     }
 

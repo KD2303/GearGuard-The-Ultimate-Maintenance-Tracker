@@ -77,14 +77,14 @@ const ProcurementDashboard: React.FC = () => {
           className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition-colors"
         >
           <PackageSearch className="w-5 h-5 mr-2" />
-          Run Auto-Draft Engine
+          1-Click Generate PO
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Forecast Chart */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">30-Day Demand vs Stock</h2>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Smart Forecast: 30-Day Demand vs Stock</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
