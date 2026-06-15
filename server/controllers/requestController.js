@@ -1616,7 +1616,9 @@ exports.smartAssignInternal = async (requestId, io) => {
     technicians = technicians.filter(tech => {
       const techCerts = tech.certifications || [];
       return request.requiredCertifications.every(cert => techCerts.includes(cert));
-  
+    });
+  }
+
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
       const certs = tech.certifications || [];
@@ -1624,9 +1626,32 @@ exports.smartAssignInternal = async (requestId, io) => {
     });
   }
 
+  // Extract skills from text
+  const textToAnalyze = ((request.subject || '') + ' ' + (request.description || '')).toLowerCase();
+  
+  // Find all unique skills among these technicians
+  const allAvailableSkills = new Set();
+  technicians.forEach(tech => {
+    (tech.skills || []).forEach(skill => allAvailableSkills.add(skill.toLowerCase()));
+  });
+
+  // Which of these skills are actually mentioned in the request?
+  const requiredImplicitSkills = Array.from(allAvailableSkills).filter(skill => textToAnalyze.includes(skill));
+
+  if (requiredImplicitSkills.length > 0) {
+    // Filter technicians to those who have AT LEAST ONE of the required implicit skills
+    technicians = technicians.filter(tech => {
+      const techSkills = (tech.skills || []).map(s => s.toLowerCase());
+      return requiredImplicitSkills.some(reqSkill => techSkills.includes(reqSkill));
+    });
+  }
+
   if (technicians.length === 0) {
-    throw new Error("No active technicians found possessing the required safety certifications for this request. Please assign manually or update certifications.");
-    throw new Error("No active technicians found with the required certifications for this request. Please assign manually.");
+    // Assign to Fallback Queue / Manager
+    request.assignedToId = null;
+    request.stage = 'new';
+    await request.save();
+    throw new Error("No skilled worker is available for the specialized tasks identified in this request. It has been routed to the Fallback Queue.");
   }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
