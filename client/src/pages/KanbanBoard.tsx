@@ -686,7 +686,8 @@ const KanbanBoard: React.FC =
         ));
 
         try {
-          await requestService.updateStage(requestId, newStage);
+          const request = requests.find((r) => r.id === requestId || r._id === requestId);
+          await requestService.updateStage(requestId, newStage, undefined, undefined, request?.__v);
           // Wait for backend to be fully synced
           await loadRequests();
         } catch (error) {
@@ -700,7 +701,8 @@ const KanbanBoard: React.FC =
     const handleClosureSubmit = async (partsCost: number, laborCost: number) => {
       if (!closureModalData) return;
       try {
-        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost);
+        const request = requests.find((r) => r.id === closureModalData.requestId || r._id === closureModalData.requestId);
+        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost, request?.__v);
         await loadRequests();
       } catch (error) {
         console.error("Failed to update request stage with costs:", error);
@@ -868,7 +870,7 @@ const KanbanBoard: React.FC =
                 setLotoModalData(null);
                 // After successful LOTO, we can automatically transition to in-progress
                 try {
-                  await requestService.updateStage(lotoModalData.request.id || lotoModalData.request._id || "", "in-progress");
+                  await requestService.updateStage(lotoModalData.request.id || lotoModalData.request._id || "", "in-progress", undefined, undefined, lotoModalData.request.__v);
                   await loadRequests();
                 } catch (e) {
                   console.error("Failed to move to in-progress after LOTO", e);

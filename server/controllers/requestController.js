@@ -571,6 +571,12 @@ exports.updateRequest = async (req, res) => {
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
 
+    if (payload.priority && payload.priority !== prevPriority) {
+      payload.slaDeadline = calculateSLA(payload.priority);
+      payload.slaBreached = false;
+      payload.slaNotified = false;
+    }
+
     if (payload.stage === 'in-progress' && prevStage === 'new' && prevRequest.isBlockedAwaitingParts) {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
     }
@@ -763,11 +769,20 @@ exports.updateRequest = async (req, res) => {
         payload.completionProcessed = true;
       }
 
-      const updatedReq = await MaintenanceRequest.findByIdAndUpdate(
-        req.params.id,
-        payload,
-        { new: true, session }
-      ).populate("equipment").populate("createdBy", "name email");
+      const reqDoc = await MaintenanceRequest.findById(req.params.id).session(session);
+      if (!reqDoc) throw new Error("Request not found during update");
+      
+      if ('__v' in payload) {
+        reqDoc.__v = payload.__v;
+      }
+      
+      Object.assign(reqDoc, payload);
+      await reqDoc.save({ session });
+
+      const updatedReq = await MaintenanceRequest.findById(req.params.id)
+        .session(session)
+        .populate("equipment")
+        .populate("createdBy", "name email");
 
       if (shouldProcessCompletion) {
         const io = req.app.get("socketio");
@@ -816,13 +831,7 @@ exports.updateRequest = async (req, res) => {
       userName: request.createdBy?.name || ""
     });
 
-    if (payload.priority && payload.priority !== request.priority) {
-      payload.slaDeadline = calculateSLA(payload.priority);
-      payload.slaBreached = false;
-      payload.slaNotified = false;
-    }
-
-    await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload);
+    // The final redundant findByIdAndUpdate and priority logic was moved/removed.
 
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = request.stage === "repaired" || request.stage === "scrap";
@@ -903,6 +912,15 @@ exports.updateRequest = async (req, res) => {
 
     res.json(updatedRequest);
   } catch (error) {
+    if (error.name === 'VersionError') {
+      // Find the current version of the document from the DB to send back for merging
+      const currentDoc = await MaintenanceRequest.findById(req.params.id);
+      return res.status(409).json({
+        error: "Conflict: This ticket was modified by someone else while you were editing.",
+        dbVersion: currentDoc,
+        clientVersion: req.body
+      });
+    }
     res.status(400).json({ error: error.message });
   }
 };
@@ -910,7 +928,7 @@ exports.updateRequest = async (req, res) => {
 // Update request stage (for Kanban drag-and-drop)
 exports.updateRequestStage = async (req, res) => {
   try {
-    const { stage, partsCost, laborCost } = req.body;
+    const { stage, partsCost, laborCost, __v } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("createdBy", "name email")
@@ -999,7 +1017,9 @@ exports.updateRequestStage = async (req, res) => {
           updateData.approvalStatus = 'pending_tier1';
         }
         updateData.stage = 'in-progress'; // Keep it in progress
-        await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData);
+        if (__v !== undefined) request.__v = __v;
+        Object.assign(request, updateData);
+        await request.save();
         return res.status(403).json({ 
           error: "High-cost repairs require management approval. The ticket has been flagged for approval and remains in-progress.",
           requiresApproval: true
@@ -1017,7 +1037,9 @@ exports.updateRequestStage = async (req, res) => {
     }
 
     await withTransactionFallback(async (session) => {
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData, { session });
+      if (__v !== undefined) request.__v = __v;
+      Object.assign(request, updateData);
+      await request.save({ session });
 
       if (stage === "repaired" || stage === "scrap") {
         if (request.equipmentId) {
@@ -1113,6 +1135,16 @@ exports.updateRequestStage = async (req, res) => {
 
     res.json(updatedRequest);
   } catch (error) {
+    if (error.name === 'VersionError') {
+      console.error("OCC VersionError:", error.message, error);
+      const currentDoc = await MaintenanceRequest.findById(req.params.id);
+      return res.status(409).json({
+        error: "Conflict: This ticket was modified by someone else while you were offline.",
+        dbVersion: currentDoc,
+        clientVersion: req.body
+      });
+    }
+    console.error("Other Error:", error);
     res.status(400).json({ error: error.message });
   }
 };
