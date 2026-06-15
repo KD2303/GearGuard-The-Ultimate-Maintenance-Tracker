@@ -38,4 +38,13 @@ describe('Search API', () => {
     expect(Array.isArray(res.body.equipment)).toBe(true);
     expect(Array.isArray(res.body.requests)).toBe(true);
   });
+
+  it('should prevent ReDoS attacks with deeply nested wildcards', async () => {
+    const maliciousQuery = '((((.*)+)*)+)+';
+    const res = await request(app).get(`/api/v1/search?q=${encodeURIComponent(maliciousQuery)}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.equipment)).toBe(true);
+    expect(Array.isArray(res.body.requests)).toBe(true);
+  });
 });
