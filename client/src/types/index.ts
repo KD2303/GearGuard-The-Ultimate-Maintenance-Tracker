@@ -105,6 +105,7 @@ export interface TeamMember {
 
 export interface MaintenanceRequest {
   _id?: string;
+  __v?: number;
   id: string;
   requestNumber: string;
   subject: string;
@@ -414,4 +415,5 @@ export interface TechnicianWorkload {
   technicianAvatar?: string;
   openTicketsCount: number;
   highPriorityCount: number;
+  isFatigued?: boolean;
 }
