@@ -185,6 +185,7 @@ export interface MaintenanceRequest {
     comments?: string;
     status?: string;
   }[];
+  blockedByIds?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -244,6 +245,7 @@ export interface CreateMaintenanceRequestDto {
   rcaNodeId?: string;
   expectedVendorQuote?: number;
   clonedFromId?: string;
+  blockedByIds?: string[];
 }
 
 export interface Notification {

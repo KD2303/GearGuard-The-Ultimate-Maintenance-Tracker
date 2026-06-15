@@ -1045,6 +1045,18 @@ exports.updateRequestStage = async (req, res) => {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
     }
 
+    // DEPENDENCY CHAIN GUARD: prevent starting work if blocking requests are still open
+    if (stage === 'in-progress' && request.blockedByIds && request.blockedByIds.length > 0) {
+      const blockers = await MaintenanceRequest.find({
+        _id: { $in: request.blockedByIds },
+        stage: { $nin: ['repaired', 'scrap'] }
+      }).select('requestNumber subject');
+      if (blockers.length > 0) {
+        const blockerList = blockers.map(b => `${b.requestNumber}: ${b.subject}`).join(', ');
+        return res.status(400).json({ error: `Blocked by unresolved dependencies: ${blockerList}` });
+      }
+    }
+
     // GEO-FENCING VALIDATION
     if (stage === 'in-progress' && request.equipment && request.equipment.riskLevel === 'High Risk') {
       if (latitude === undefined || longitude === undefined) {
