@@ -298,15 +298,16 @@ export interface RequestFilters {
   stage?: string;
   type?: string;
   priority?: string;
-  teamId?: string;
-  assignedToId?: string;
+  search?: string;
   startDate?: string;
   endDate?: string;
-  search?: string;
+  teamId?: string;
+  assignedToId?: string;
   page?: number;
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  ids?: string;
 }
 
 export const defaultFilters: RequestFilters = {
