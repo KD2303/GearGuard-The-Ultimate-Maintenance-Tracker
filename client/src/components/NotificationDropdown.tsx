@@ -63,6 +63,11 @@ const NotificationDropdown = ({ userId }: NotificationDropdownProps) => {
       socketRef.current?.emit('join', userId);
     });
 
+    socketRef.current.off('server_ping');
+    socketRef.current.on('server_ping', () => {
+      socketRef.current?.emit('client_pong');
+    });
+
     socketRef.current.on('new_notification', (notification: Notification) => {
       setNotifications((prev) => [notification, ...prev].slice(0, 20));
       setUnreadCount((prev) => prev + 1);

@@ -14,6 +14,8 @@ const TeamMemberSchema = new Schema({
     expiresAt: { type: Date, required: true },
     isValid: { type: Boolean, default: true }
   }],
+  certifications: [{ type: String }],
+  skills: [{ type: String }],
   isActive: { type: Boolean, default: true },
   teamId: { type: Schema.Types.ObjectId, ref: 'MaintenanceTeam' },
   geoLocation: {

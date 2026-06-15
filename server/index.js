@@ -168,7 +168,14 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Custom Application-Level Heartbeat to reap ghost sockets
+  socket.isAlive = true;
+  socket.on("client_pong", () => {
+    socket.isAlive = true;
+  });
+
   socket.on("disconnect", () => {
+    clearInterval(heartbeatTimer);
     // Aggressive garbage collection of custom rooms
     if (socket.rooms && socket.rooms.size > 0) {
       for (const room of socket.rooms) {
@@ -180,6 +187,19 @@ io.on("connection", (socket) => {
     console.log(`❌ User disconnected: ${socket.id}`);
   });
 });
+
+// Periodic Heartbeat check to terminate ghost connections
+setInterval(() => {
+  if (!io || !io.sockets || !io.sockets.sockets) return;
+  io.sockets.sockets.forEach((socket) => {
+    if (socket.isAlive === false) {
+      console.log(`🔌 Heartbeat failed. Force disconnecting ghost socket: ${socket.id}`);
+      return socket.disconnect(true);
+    }
+    socket.isAlive = false;
+    socket.emit("server_ping");
+  });
+}, 30000);
 
 // Admin Audit Tooling: Socket Health Check
 app.get('/api/health/sockets', async (req, res) => {
@@ -348,11 +368,13 @@ const startServer = async () => {
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');
     const webhookDispatcher = require('./jobs/webhookDispatcher');
     const { startTelemetryIngest } = require('./jobs/telemetryIngest');
+    const { startAutomatedHandovers } = require('./services/shiftHandoverService');
     
     startHealthScoreCron();
     startPreventiveSchedulerCron(io);
     webhookDispatcher.start();
     startTelemetryIngest(io);
+    startAutomatedHandovers(io);
 
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`\n🚀 GearGuard Server Running!`);

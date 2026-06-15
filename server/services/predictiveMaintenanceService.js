@@ -70,23 +70,34 @@ const analyzeEquipmentFailures = async (equipment, io) => {
   equipment.failureCount = failureCount;
   await equipment.save();
 
-  // Dispatch work order if health score is critical
+  const thresholds = equipment.criticalThresholds || { maxHours: 2000, maxTemp: 85, maxVibration: 4.5 };
+  const tempBreached = equipment.temperatureCelsius > thresholds.maxTemp;
+  const vibBreached = equipment.vibrationAmplitude > thresholds.maxVibration;
+  
+  const requiresAutoDispatch = healthScore <= 40 || tempBreached || vibBreached;
+
+  // Dispatch work order if health score is critical or direct threshold breached
   let autoDispatchedRequest = null;
-  if (healthScore <= 40) {
+  if (requiresAutoDispatch) {
+    // Cooldown mechanism: Don't spam if there's already an active request
     const openRequest = await MaintenanceRequest.findOne({
       equipmentId: equipment._id,
       stage: { $in: ['new', 'in-progress'] }
     });
 
     if (!openRequest) {
+      let reason = `health score has dropped to critical (${healthScore}%)`;
+      if (tempBreached) reason = `temperature breached threshold (${equipment.temperatureCelsius}°C > ${thresholds.maxTemp}°C)`;
+      else if (vibBreached) reason = `vibration breached threshold (${equipment.vibrationAmplitude} mm/s > ${thresholds.maxVibration} mm/s)`;
+
       const requestNumber = await generateRequestNumber();
       autoDispatchedRequest = await MaintenanceRequest.create({
         requestNumber,
         subject: `[Auto-Dispatch] Preemptive Service Required for ${equipment.name}`,
-        description: `AUTOMATED PREDICTIVE DISPATCH: ${equipment.name} health score has dropped to critical (${healthScore}%).\n\nReal-time Telemetry Metrics:\n- Running Time: ${equipment.operatingHours} hrs (Threshold: ${equipment.criticalThresholds?.maxHours || 2000} hrs)\n- Temperature: ${equipment.temperatureCelsius}°C (Threshold: ${equipment.criticalThresholds?.maxTemp || 85}°C)\n- Vibration: ${equipment.vibrationAmplitude} mm/s (Threshold: ${equipment.criticalThresholds?.maxVibration || 4.5} mm/s)`,
-        type: 'preventive',
+        description: `AUTOMATED PREDICTIVE DISPATCH: ${equipment.name} ${reason}.\n\nReal-time Telemetry Metrics:\n- Running Time: ${equipment.operatingHours} hrs (Threshold: ${thresholds.maxHours} hrs)\n- Temperature: ${equipment.temperatureCelsius}°C (Threshold: ${thresholds.maxTemp}°C)\n- Vibration: ${equipment.vibrationAmplitude} mm/s (Threshold: ${thresholds.maxVibration} mm/s)`,
+        type: 'preventative',
         stage: 'new',
-        priority: 'urgent',
+        priority: 'high',
         equipmentId: equipment._id,
         teamId: equipment.maintenanceTeamId,
         assignedToId: equipment.defaultTechnicianId,

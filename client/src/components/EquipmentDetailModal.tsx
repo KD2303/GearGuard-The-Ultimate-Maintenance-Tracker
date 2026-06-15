@@ -3,6 +3,7 @@ import Modal from './Modal';
 import Button from './Button';
 import { Equipment, MaintenanceRequest } from '../types';
 import { equipmentService } from '../services/equipmentService';
+import { auditService } from '../services/auditService';
 import { getRelativeDateLabel } from '../utils/dateUtils';
 import Badge from './Badge';
 import { Calendar, MapPin, Wrench, AlertCircle } from 'lucide-react';
@@ -34,14 +35,28 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   onUpdate,
 }) => {
   const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceRequest[]>([]);
+  const [auditHistory, setAuditHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
 
   const loadHistory = async () => {
     try {
       setLoading(true);
-      const history = await equipmentService.getMaintenanceHistory(equipment.id);
+      const [history, audits] = await Promise.all([
+        equipmentService.getMaintenanceHistory(equipment.id || (equipment as any)._id),
+        auditService.getAuditTrail('Equipment', equipment.id || (equipment as any)._id)
+      ]);
       setMaintenanceHistory(history);
+      
+      const mappedAudits = audits.map((audit: any) => ({
+        _id: audit._id,
+        eventType: audit.action,
+        description: audit.description || `Action: ${audit.action}`,
+        timestamp: audit.createdAt,
+        userId: audit.userId?._id || audit.userId,
+        userName: audit.userName || (audit.userId ? audit.userId.name : 'System')
+      }));
+      setAuditHistory(mappedAudits);
     } catch (error) {
       console.error('Failed to load maintenance history:', error);
     } finally {
@@ -65,10 +80,11 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
   };
 
   useEffect(() => {
-    if (equipment.id && isOpen) {
+    const id = equipment.id || (equipment as any)._id;
+    if (id && isOpen) {
       loadHistory();
     }
-  }, [equipment.id, isOpen]);
+  }, [equipment.id, (equipment as any)._id, isOpen]);
 
   const statusColors = {
     active: 'success',
@@ -136,9 +152,22 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             <MapPin className="h-4 w-4 mr-2 text-gray-600 dark:text-gray-400" />
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Location</p>
-              <p className="font-medium text-gray-900 dark:text-white">{equipment.location}</p>
+              <p className="font-medium text-gray-900 dark:text-white">
+                {equipment.location} 
+                {equipment.latitude !== undefined && equipment.longitude !== undefined && (
+                  <span className="text-xs text-gray-500 ml-2">({equipment.latitude}, {equipment.longitude})</span>
+                )}
+              </p>
             </div>
           </div>
+          {equipment.riskLevel && (
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Risk Level</p>
+              <Badge variant={equipment.riskLevel === 'High Risk' ? 'danger' : equipment.riskLevel === 'Medium Risk' ? 'warning' : 'success'}>
+                {equipment.riskLevel}
+              </Badge>
+            </div>
+          )}
           {equipment.department && (
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Department</p>
@@ -314,7 +343,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             </h4>
           </div>
           <div className="bg-slate-900 rounded-lg p-6 max-h-[400px] overflow-y-auto">
-            <EquipmentHistoryTimeline history={equipment.history || []} />
+            <EquipmentHistoryTimeline history={auditHistory} />
           </div>
         </div>
       </div>
@@ -331,7 +360,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           <div style={{ display: 'none' }}>
             <QRCodeCanvas
               id="qr-gen"
-              value={`${window.location.origin}/requests?action=newRequest&equipmentId=${equipment.id || (equipment as any)._id}`}
+              value={`${window.location.origin}/requests/new?equipmentId=${equipment.id || (equipment as any)._id}`}
               size={512}
               level={"H"}
               includeMargin={true}

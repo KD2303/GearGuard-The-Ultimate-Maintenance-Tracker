@@ -8,6 +8,7 @@ const {
   ToolAuditLog,
   Notification,
   Webhook,
+  PurchaseOrder,
 } = require("../models");
 const { logActivity } = require("../utils/logActivity");
 const { auditLog } = require("../utils/auditLogger");
@@ -72,7 +73,10 @@ const decrementInventory = async (io, partsUsed, session) => {
     );
 
     if (!updatedPart) {
-      throw new Error(`Insufficient stock for part allocation (ID: ${partId})`);
+      const err = new Error(`Concurrency Conflict: Insufficient stock for part allocation (ID: ${partId}). Please refresh and try again.`);
+      err.statusCode = 409;
+      err.code = "INSUFFICIENT_STOCK";
+      throw err;
     }
 
     if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
@@ -82,6 +86,36 @@ const decrementInventory = async (io, partsUsed, session) => {
           { reorderStatus: 'low-stock' }, 
           { new: true, session }
         );
+        
+        // Auto-generate Purchase Order
+        const quantityNeeded = Math.max(1, (updatedPart.optimalStockLevel || (updatedPart.minReorderThreshold * 2)) - updatedPart.quantityInStock);
+        const poNumber = 'PO-' + Date.now().toString().slice(-6) + '-' + Math.floor(Math.random() * 1000);
+        
+        // Ensure a supplier is set for the part, fallback to generic missing
+        let supplierId = updatedPart.supplierId;
+        if (!supplierId) {
+          // If no supplier, we can't create a valid PO, so just notify
+          console.warn(`Cannot create auto PO for part ${partId}: No supplier attached.`);
+        } else {
+          try {
+            const newPO = new PurchaseOrder({
+              poNumber,
+              supplierId,
+              items: [{
+                partId: finalPart._id,
+                quantityNeeded,
+                unitCost: finalPart.unitCost || 0
+              }],
+              totalCost: quantityNeeded * (finalPart.unitCost || 0),
+              status: 'draft',
+              orderDate: new Date()
+            });
+            await newPO.save({ session });
+          } catch (poErr) {
+            console.error('Error auto-generating PurchaseOrder:', poErr);
+          }
+        }
+
         if (io) {
           NotificationService.notifyLowStock(io, finalPart).catch(err => console.error(err));
         }
@@ -148,6 +182,7 @@ exports.getAllRequests = async (req, res) => {
       startDate,
       endDate,
       search,
+      ids,
       page = 1,
       limit = 20,
       sortBy = "createdAt",
@@ -155,6 +190,10 @@ exports.getAllRequests = async (req, res) => {
     } = req.query;
 
     const query = {};
+
+    if (ids) {
+      query._id = { $in: ids.split(',') };
+    }
 
     if (stage) query.stage = stage;
     if (type) query.type = type;
@@ -318,21 +357,19 @@ exports.createRequest = async (req, res) => {
           await Equipment.findByIdAndUpdate(
             equipmentDoc._id,
             {
-              $set: { status: "under-maintenance" },
-              $push: {
-                history: {
-                  eventType: 'STATUS_CHANGE',
-                  description: `Status changed to under-maintenance due to new request ${requestNumber}`,
-                  date: new Date(),
-                  recordedBy: req.user?._id,
-                  userId: req.user?._id,
-                  userName: req.user?.name || "System",
-                  notes: 'Status updated automatically on request creation'
-                }
-              }
+              $set: { status: "under-maintenance" }
             },
             { session }
           );
+
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: equipmentDoc._id,
+            action: 'STATUS_CHANGE',
+            description: `Status changed to under-maintenance due to new request ${requestNumber}`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          });
         }
       }
 
@@ -542,6 +579,34 @@ exports.updateRequest = async (req, res) => {
     const prevRequest = await MaintenanceRequest.findById(req.params.id);
     if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
+    // Detect Financial Tampering post-completion
+    const isCompletedOrApproved = prevRequest.stage === 'repaired' || prevRequest.stage === 'scrap' || prevRequest.approvalStatus === 'approved';
+    if (isCompletedOrApproved) {
+      let partsCostChanged = false;
+      let laborCostChanged = false;
+
+      if ('partsCost' in payload && Number(payload.partsCost) !== Number(prevRequest.partsCost || 0)) {
+        partsCostChanged = true;
+      }
+      if ('laborCost' in payload && Number(payload.laborCost) !== Number(prevRequest.laborCost || 0)) {
+        laborCostChanged = true;
+      }
+
+      if (partsCostChanged || laborCostChanged) {
+        const { auditLog } = require('../utils/auditLogger');
+        await auditLog({
+          entityType: 'MaintenanceRequest',
+          entityId: prevRequest._id,
+          action: 'FINANCIAL_TAMPERING',
+          oldDoc: prevRequest,
+          newDoc: { ...prevRequest.toObject(), partsCost: payload.partsCost, laborCost: payload.laborCost },
+          userId: req.user?._id,
+          userName: req.user?.name || 'System'
+        });
+        return res.status(403).json({ error: 'Financial tampering detected. Costs cannot be changed after a ticket is completed or approved.' });
+      }
+    }
+
     if (payload.assignedToId) {
       const reqSkills = payload.requiredSkills || prevRequest.requiredSkills;
       const isCertified = await checkCertifications(payload.assignedToId, reqSkills);
@@ -552,6 +617,12 @@ exports.updateRequest = async (req, res) => {
 
     const prevStage = prevRequest.stage;
     const prevPriority = prevRequest.priority;
+
+    if (payload.priority && payload.priority !== prevPriority) {
+      payload.slaDeadline = calculateSLA(payload.priority);
+      payload.slaBreached = false;
+      payload.slaNotified = false;
+    }
 
     if (payload.stage === 'in-progress' && prevStage === 'new' && prevRequest.isBlockedAwaitingParts) {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
@@ -613,13 +684,16 @@ exports.updateRequest = async (req, res) => {
         payload.completedDate = new Date();
         if (prevRequest.equipmentId) {
           await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
-            $set: { status: "active" },
-            $push: { history: {
-              eventType: 'REPAIR_COMPLETED',
-              description: `Request marked as repaired. Status changed to active.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: "active" }
+          });
+          
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: prevRequest.equipmentId,
+            action: 'REPAIR_COMPLETED',
+            description: `Request marked as repaired. Status changed to active.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
           });
         }
       }
@@ -627,13 +701,16 @@ exports.updateRequest = async (req, res) => {
         payload.completedDate = new Date();
         if (prevRequest.equipmentId) {
           await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
-            $set: { status: "scrapped" },
-            $push: { history: {
-              eventType: 'SCRAPPED',
-              description: `Request marked as scrap. Status changed to scrapped.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: "scrapped" }
+          });
+          
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: prevRequest.equipmentId,
+            action: 'SCRAPPED',
+            description: `Request marked as scrap. Status changed to scrapped.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
           });
         }
       }
@@ -643,6 +720,41 @@ exports.updateRequest = async (req, res) => {
     // NEW LOTO CHECK
     if (payload.stage === "in-progress" && prevStage !== "in-progress") {
       const prevRequestWithEq = await MaintenanceRequest.findById(req.params.id).populate('equipment');
+      
+      // GEO-FENCING VALIDATION
+      if (prevRequestWithEq && prevRequestWithEq.equipment?.riskLevel === 'High Risk') {
+        const lat = req.body.latitude;
+        const lng = req.body.longitude;
+        if (lat === undefined || lng === undefined) {
+          return res.status(403).json({ error: "Location coordinates required to start High Risk equipment work order." });
+        }
+
+        if (prevRequestWithEq.equipment.latitude && prevRequestWithEq.equipment.longitude) {
+          const deg2rad = (deg) => deg * (Math.PI / 180);
+          const R = 6371; // Radius of the earth in km
+          const dLat = deg2rad(prevRequestWithEq.equipment.latitude - lat);
+          const dLon = deg2rad(prevRequestWithEq.equipment.longitude - lng);
+          const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(deg2rad(lat)) * Math.cos(deg2rad(prevRequestWithEq.equipment.latitude)) * 
+            Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+          const distanceInMeters = R * c * 1000;
+
+          if (distanceInMeters > 500) {
+            await auditLog({
+              entityType: 'SecurityAudit',
+              entityId: prevRequestWithEq._id,
+              action: 'CREATE',
+              userId: req.user?._id,
+              userName: req.user?.name || "Unknown",
+              newDoc: { event: 'GEO_FENCE_VIOLATION', distance: distanceInMeters, technicianCoords: { latitude: lat, longitude: lng } }
+            });
+            return res.status(403).json({ error: `Security Violation: You are ${Math.round(distanceInMeters)} meters away. Must be within 500m of equipment.` });
+          }
+        }
+      }
+
       if (prevRequestWithEq && prevRequestWithEq.equipment?.lotoRequired) {
         if (!prevRequestWithEq.lotoAudit || !prevRequestWithEq.lotoAudit.isCompleted) {
           return res.status(400).json({ error: "LOTO Safety Audit is required before starting work on this equipment." });
@@ -699,21 +811,18 @@ exports.updateRequest = async (req, res) => {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
               {
-                $set: { status: "active" },
-                $push: {
-                  history: {
-                    eventType: 'STATUS_CHANGE',
-                    description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
-                    date: new Date(),
-                    recordedBy: req.user?._id,
-                    userId: req.user?._id,
-                    userName: req.user?.name || "System",
-                    notes: 'Status updated automatically on request repaired'
-                  }
-                }
+                $set: { status: "active" }
               },
               { session }
             );
+            await auditLog({
+              entityType: 'Equipment',
+              entityId: prevRequest.equipmentId,
+              action: 'STATUS_CHANGE',
+              description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            });
           }
         }
         if (payload.stage === "scrap") {
@@ -721,21 +830,18 @@ exports.updateRequest = async (req, res) => {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
               {
-                $set: { status: "scrapped" },
-                $push: {
-                  history: {
-                    eventType: 'STATUS_CHANGE',
-                    description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
-                    date: new Date(),
-                    recordedBy: req.user?._id,
-                    userId: req.user?._id,
-                    userName: req.user?.name || "System",
-                    notes: 'Status updated automatically on request scrapped'
-                  }
-                }
+                $set: { status: "scrapped" }
               },
               { session }
             );
+            await auditLog({
+              entityType: 'Equipment',
+              entityId: prevRequest.equipmentId,
+              action: 'STATUS_CHANGE',
+              description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            });
           }
         }
       }
@@ -748,11 +854,20 @@ exports.updateRequest = async (req, res) => {
         payload.completionProcessed = true;
       }
 
-      const updatedReq = await MaintenanceRequest.findByIdAndUpdate(
-        req.params.id,
-        payload,
-        { new: true, session }
-      ).populate("equipment").populate("createdBy", "name email");
+      const reqDoc = await MaintenanceRequest.findById(req.params.id).session(session);
+      if (!reqDoc) throw new Error("Request not found during update");
+      
+      if ('__v' in payload) {
+        reqDoc.__v = payload.__v;
+      }
+      
+      Object.assign(reqDoc, payload);
+      await reqDoc.save({ session });
+
+      const updatedReq = await MaintenanceRequest.findById(req.params.id)
+        .session(session)
+        .populate("equipment")
+        .populate("createdBy", "name email");
 
       if (shouldProcessCompletion) {
         const io = req.app.get("socketio");
@@ -801,13 +916,7 @@ exports.updateRequest = async (req, res) => {
       userName: request.createdBy?.name || ""
     });
 
-    if (payload.priority && payload.priority !== request.priority) {
-      payload.slaDeadline = calculateSLA(payload.priority);
-      payload.slaBreached = false;
-      payload.slaNotified = false;
-    }
-
-    await MaintenanceRequest.findByIdAndUpdate(req.params.id, payload);
+    // The final redundant findByIdAndUpdate and priority logic was moved/removed.
 
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
     const nowCompleted = request.stage === "repaired" || request.stage === "scrap";
@@ -888,6 +997,17 @@ exports.updateRequest = async (req, res) => {
 
     res.json(updatedRequest);
   } catch (error) {
+    if (error.name === 'VersionError') {
+      // Find the current version of the document from the DB to send back for merging
+      const currentDoc = await MaintenanceRequest.findById(req.params.id);
+      return res.status(409).json({
+        error: "Conflict: This ticket was modified by someone else while you were editing.",
+        dbVersion: currentDoc,
+        clientVersion: req.body
+      });
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.code });
+    }
     res.status(400).json({ error: error.message });
   }
 };
@@ -895,7 +1015,8 @@ exports.updateRequest = async (req, res) => {
 // Update request stage (for Kanban drag-and-drop)
 exports.updateRequestStage = async (req, res) => {
   try {
-    const { stage, partsCost, laborCost } = req.body;
+    const { stage, partsCost, laborCost, __v } = req.body;
+    const { stage, partsCost, laborCost, latitude, longitude } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("createdBy", "name email")
@@ -921,6 +1042,39 @@ exports.updateRequestStage = async (req, res) => {
 
     if (stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
+    }
+
+    // GEO-FENCING VALIDATION
+    if (stage === 'in-progress' && request.equipment && request.equipment.riskLevel === 'High Risk') {
+      if (latitude === undefined || longitude === undefined) {
+        return res.status(403).json({ error: "Location coordinates required to start High Risk equipment work order." });
+      }
+
+      if (request.equipment.latitude && request.equipment.longitude) {
+        const deg2rad = (deg) => deg * (Math.PI / 180);
+        const R = 6371; // Radius of the earth in km
+        const dLat = deg2rad(request.equipment.latitude - latitude);
+        const dLon = deg2rad(request.equipment.longitude - longitude);
+        const a = 
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(deg2rad(latitude)) * Math.cos(deg2rad(request.equipment.latitude)) * 
+          Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+        const distanceInMeters = R * c * 1000;
+
+        if (distanceInMeters > 500) {
+          // Log security audit event
+          await auditLog({
+            entityType: 'SecurityAudit',
+            entityId: request._id,
+            action: 'CREATE',
+            userId: req.user?._id,
+            userName: req.user?.name || "Unknown",
+            newDoc: { event: 'GEO_FENCE_VIOLATION', distance: distanceInMeters, technicianCoords: { latitude, longitude } }
+          });
+          return res.status(403).json({ error: `Security Violation: You are ${Math.round(distanceInMeters)} meters away. Must be within 500m of equipment.` });
+        }
+      }
     }
 
     await auditLog({
@@ -984,7 +1138,9 @@ exports.updateRequestStage = async (req, res) => {
           updateData.approvalStatus = 'pending_tier1';
         }
         updateData.stage = 'in-progress'; // Keep it in progress
-        await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData);
+        if (__v !== undefined) request.__v = __v;
+        Object.assign(request, updateData);
+        await request.save();
         return res.status(403).json({ 
           error: "High-cost repairs require management approval. The ticket has been flagged for approval and remains in-progress.",
           requiresApproval: true
@@ -1002,20 +1158,25 @@ exports.updateRequestStage = async (req, res) => {
     }
 
     await withTransactionFallback(async (session) => {
-      await MaintenanceRequest.findByIdAndUpdate(req.params.id, updateData, { session });
+      if (__v !== undefined) request.__v = __v;
+      Object.assign(request, updateData);
+      await request.save({ session });
 
       if (stage === "repaired" || stage === "scrap") {
         if (request.equipmentId) {
           const newStatus = stage === "scrap" ? "scrapped" : "active";
           await Equipment.findByIdAndUpdate(request.equipmentId, {
-            $set: { status: newStatus },
-            $push: { history: {
-              eventType: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
-              description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: newStatus }
           }, { session });
+
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: request.equipmentId,
+            action: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
+            description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          });
         }
       }
 
@@ -1098,6 +1259,19 @@ exports.updateRequestStage = async (req, res) => {
 
     res.json(updatedRequest);
   } catch (error) {
+    if (error.name === 'VersionError') {
+      console.error("OCC VersionError:", error.message, error);
+      const currentDoc = await MaintenanceRequest.findById(req.params.id);
+      return res.status(409).json({
+        error: "Conflict: This ticket was modified by someone else while you were offline.",
+        dbVersion: currentDoc,
+        clientVersion: req.body
+      });
+    }
+    console.error("Other Error:", error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.code });
+    }
     res.status(400).json({ error: error.message });
   }
 };
@@ -1147,21 +1321,19 @@ exports.deleteRequest = async (req, res) => {
         await Equipment.findByIdAndUpdate(
           request.equipmentId,
           {
-            $set: { status: "active" },
-            $push: {
-              history: {
-                eventType: 'STATUS_CHANGE',
-                description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
-                date: new Date(),
-                recordedBy: req.user?._id,
-                userId: req.user?._id,
-                userName: req.user?.name || "System",
-                notes: 'Status reverted automatically on request deletion'
-              }
-            }
+            $set: { status: "active" }
           },
           { session }
         );
+        
+        await auditLog({
+          entityType: 'Equipment',
+          entityId: request.equipmentId,
+          action: 'STATUS_CHANGE',
+          description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
+          userId: req.user?._id,
+          userName: req.user?.name || "System"
+        });
       }
       await releaseReservations(request.requiredParts);
       await MaintenanceRequest.findByIdAndDelete(req.params.id, { session });
@@ -1640,9 +1812,11 @@ exports.smartAssignInternal = async (requestId, io) => {
         const found = techCerts.find(c => c.skill === cert);
         return found && found.isValid && new Date(found.expiresAt) > new Date();
       });
+      return request.requiredCertifications.every(cert => techCerts.includes(cert));
     });
   }
   
+
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
       const techCerts = tech.certifications || [];
@@ -1653,9 +1827,33 @@ exports.smartAssignInternal = async (requestId, io) => {
     });
   }
 
+  // Extract skills from text
+  const textToAnalyze = ((request.subject || '') + ' ' + (request.description || '')).toLowerCase();
+  
+  // Find all unique skills among these technicians
+  const allAvailableSkills = new Set();
+  technicians.forEach(tech => {
+    (tech.skills || []).forEach(skill => allAvailableSkills.add(skill.toLowerCase()));
+  });
+
+  // Which of these skills are actually mentioned in the request?
+  const requiredImplicitSkills = Array.from(allAvailableSkills).filter(skill => textToAnalyze.includes(skill));
+
+  if (requiredImplicitSkills.length > 0) {
+    // Filter technicians to those who have AT LEAST ONE of the required implicit skills
+    technicians = technicians.filter(tech => {
+      const techSkills = (tech.skills || []).map(s => s.toLowerCase());
+      return requiredImplicitSkills.some(reqSkill => techSkills.includes(reqSkill));
+    });
+  }
+
   if (technicians.length === 0) {
     throw new Error("No active technicians found possessing the required safety certifications for this request. Please assign manually or update certifications.");
-    throw new Error("No active technicians found with the required certifications for this request. Please assign manually.");
+    // Assign to Fallback Queue / Manager
+    request.assignedToId = null;
+    request.stage = 'new';
+    await request.save();
+    throw new Error("No skilled worker is available for the specialized tasks identified in this request. It has been routed to the Fallback Queue.");
   }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
@@ -1820,38 +2018,53 @@ exports.predictSpareParts = async (req, res) => {
 exports.addPartToRequest = async (req, res) => {
   try {
     const { partId, quantityUsed } = req.body;
+    
+    await withTransactionFallback(async (session) => {
+      const request = await MaintenanceRequest.findById(req.params.id).session(session);
+      if (!request) {
+        const err = new Error("Request not found");
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const qty = quantityUsed || 1;
+
+      // Use findOneAndUpdate to atomically check and decrement stock to prevent race conditions
+      const updatedPart = await SparePart.findOneAndUpdate(
+        { _id: partId, quantityInStock: { $gte: qty } },
+        { $inc: { quantityInStock: -qty } },
+        { new: true, session }
+      );
+
+      if (!updatedPart) {
+        // Check if the part exists to return an appropriate error
+        const partExists = await SparePart.findById(partId).session(session);
+        if (!partExists) {
+          const err = new Error("Part not found");
+          err.statusCode = 404;
+          throw err;
+        }
+        const conflictErr = new Error("Concurrency Conflict: This spare part ran out of stock midway. Please refresh and try again.");
+        conflictErr.statusCode = 409;
+        throw conflictErr;
+      }
+
+      const existingIndex = request.partsUsed.findIndex(p => p.partId.toString() === partId);
+      if (existingIndex > -1) {
+        request.partsUsed[existingIndex].quantityUsed += qty;
+      } else {
+        request.partsUsed.push({ partId, quantityUsed: qty });
+      }
+
+      await request.save({ session });
+
+      if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold && updatedPart.reorderStatus === 'ok') {
+        updatedPart.reorderStatus = 'low-stock';
+        await updatedPart.save({ session });
+      }
+    });
+
     const request = await MaintenanceRequest.findById(req.params.id);
-    if (!request) return res.status(404).json({ error: "Request not found" });
-
-    const qty = quantityUsed || 1;
-
-    // Use findOneAndUpdate to atomically check and decrement stock to prevent race conditions
-    const updatedPart = await SparePart.findOneAndUpdate(
-      { _id: partId, quantityInStock: { $gte: qty } },
-      { $inc: { quantityInStock: -qty } },
-      { new: true }
-    );
-
-    if (!updatedPart) {
-      // Check if the part exists to return an appropriate error
-      const partExists = await SparePart.findById(partId);
-      if (!partExists) return res.status(404).json({ error: "Part not found" });
-      return res.status(400).json({ error: "Insufficient stock" });
-    }
-
-    const existingIndex = request.partsUsed.findIndex(p => p.partId.toString() === partId);
-    if (existingIndex > -1) {
-      request.partsUsed[existingIndex].quantityUsed += qty;
-    } else {
-      request.partsUsed.push({ partId, quantityUsed: qty });
-    }
-
-    await request.save();
-
-    if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold && updatedPart.reorderStatus === 'ok') {
-      updatedPart.reorderStatus = 'low-stock';
-      await updatedPart.save();
-    }
 
     const io = req.app.get("socketio");
     if (io) {
@@ -1863,11 +2076,15 @@ exports.addPartToRequest = async (req, res) => {
       // Ensure partsUsed is populated for the frontend to re-render properly if needed
       await updatedReq.populate('partsUsed.partId');
         
-      await NotificationService.notifyRequestChange(io, "request_updated", updatedReq, `Part ${part.name} added and checked out.`);
+      const addedPart = updatedReq.partsUsed.find(p => p.partId._id.toString() === partId)?.partId;
+      await NotificationService.notifyRequestChange(io, "request_updated", updatedReq, `Part ${addedPart?.name || 'added'} added and checked out.`);
     }
 
     res.status(200).json(request);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -2176,10 +2393,14 @@ exports.escalateToVendor = async (req, res) => {
     
     if (!request) return res.status(404).json({ error: "Request not found" });
 
-    // Generate magic token
-    const crypto = require('crypto');
-    const magicToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+    // Generate signed JWT token expiring in 72 hours
+    const jwt = require('jsonwebtoken');
+    const magicToken = jwt.sign(
+      { requestId: request._id },
+      process.env.JWT_SECRET || 'fallback_secret_for_vendor',
+      { expiresIn: '72h' }
+    );
+    const tokenExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours
 
     request.vendorEscalation = {
       isEscalated: true,
@@ -2194,7 +2415,7 @@ exports.escalateToVendor = async (req, res) => {
 
     res.status(200).json({ 
       message: "Escalated to vendor successfully", 
-      magicLink: `/vendor/ticket/${magicToken}`
+      magicLink: `/vendor/portal/${magicToken}`
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -2300,6 +2521,14 @@ exports.approveRequest = async (req, res) => {
     const request = await MaintenanceRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
 
+    if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
+      return res.status(403).json({ error: "Not authorized to approve financial requests." });
+    }
+
+    if (!request.approvalStatus || !request.approvalStatus.startsWith('pending')) {
+      return res.status(400).json({ error: "Request is not pending approval." });
+    }
+
     // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
     if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
       return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
@@ -2312,20 +2541,39 @@ exports.approveRequest = async (req, res) => {
     request.approvalStatus = 'approved';
     if (!request.approvalHistory) request.approvalHistory = [];
     request.approvalHistory.push({
-      tier: previousTier,
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
       approvedBy: req.user._id,
       approvedAt: new Date(),
       comments: req.body.comments || "Approved",
       status: 'approved'
     });
+    
+    request.approvedBy = req.user._id;
+    request.approvalDate = new Date();
+    request.stage = 'in-progress'; 
+    request.approvalStatus = 'approved';
+    request.approvedBy = req.user._id;
+    request.approvalDate = new Date();
+    request.stage = 'new'; // unlock it back to 'new' so work can begin
+
+    request.approvedBy = req.user._id;
+    request.approvalDate = new Date();
+    request.stage = 'new'; // unlock it back to 'new' so work can begin
 
     await request.save();
 
-    res.json({ message: "Request approved successfully.", request });
+    const io = req.app.get("socketio");
+    if (io) {
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.notifyRequestChange(io, "request_updated", request, `Financial approval granted by ${req.user.name}.`);
+    }
+
+    res.status(200).json(request);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
+
 
 // Reject Request Costs
 exports.rejectRequest = async (req, res) => {
@@ -2333,16 +2581,37 @@ exports.rejectRequest = async (req, res) => {
     const request = await MaintenanceRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
 
-    if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
-      return res.status(403).json({ error: "Not authorized to reject financial requests." });
+    if (!['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Unauthorized to reject requests." });
     }
 
-    if (request.approvalStatus !== 'pending') {
+    if (!request.approvalStatus || !request.approvalStatus.startsWith('pending')) {
       return res.status(400).json({ error: "Request is not pending approval." });
     }
 
+    const previousTier = request.approvalStatus.replace('pending_', '');
     request.approvalStatus = 'rejected';
     request.stage = 'new'; // unlock it back to 'new' but maybe they should just modify parts
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
+
+    request.approvalStatus = 'rejected';
+    request.stage = 'new';
+    
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
 
     await request.save();
 
@@ -2407,5 +2676,159 @@ exports.getWorkload = async (req, res) => {
   } catch (error) {
     console.error('Workload Aggregation Error:', error);
     res.status(500).json({ message: 'Failed to fetch technician workload' });
+  }
+};
+
+exports.getLeaderboard = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const leaderboard = await MaintenanceRequest.aggregate([
+      {
+        $match: {
+          stage: { $in: ['repaired', 'scrap'] },
+          completedDate: { $gte: sevenDaysAgo },
+          assignedToId: { $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: '$assignedToId',
+          totalClosed: { $sum: 1 },
+          avgResolutionTimeMs: {
+            $avg: {
+              $subtract: [
+                { $ifNull: ['$completedDate', new Date()] },
+                '$createdAt'
+              ]
+            }
+          }
+exports.getRootCauseAnalytics = async (req, res) => {
+  try {
+    const data = await MaintenanceRequest.aggregate([
+      {
+        $match: {
+          rootCause: { $exists: true, $ne: null, $ne: "" }
+        }
+      },
+      {
+        $lookup: {
+          from: 'teammembers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'technician'
+        }
+      },
+      {
+        $unwind: '$technician'
+      },
+      {
+        $project: {
+          _id: 0,
+          technicianId: '$_id',
+          technicianName: '$technician.name',
+          technicianEmail: '$technician.email',
+          technicianAvatar: '$technician.avatar',
+          totalClosed: 1,
+          avgResolutionTimeHours: { $divide: ['$avgResolutionTimeMs', 3600000] }
+        }
+      },
+      {
+        $sort: { totalClosed: -1, avgResolutionTimeHours: 1 }
+      },
+      {
+        $limit: 5
+      }
+    ]);
+
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Leaderboard Aggregation Error:', error);
+    res.status(500).json({ message: 'Failed to fetch leaderboard data' });
+  }
+};
+
+exports.escalateToVendor = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id).populate('equipmentId');
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    const { vendorEmail, vendorCompany, message } = req.body;
+    if (!vendorEmail || !vendorCompany) {
+      return res.status(400).json({ error: 'Vendor email and company are required' });
+    }
+
+    // Update Request Schema
+    request.vendorEscalation = {
+      isEscalated: true,
+      vendorEmail,
+      vendorCompany,
+      message,
+      tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    };
+    
+    await request.save();
+
+    // Send the email
+    const NotificationService = require('../services/notificationService');
+    const emailHtml = NotificationService.vendorEscalationTemplate(request, request.equipmentId, message);
+    
+    await NotificationService.sendEmail(
+      vendorEmail, 
+      `[ESCALATION] Maintenance Required: ${request.equipmentId?.name || 'Equipment'} (${request.requestNumber})`, 
+      emailHtml
+    );
+
+    res.json({ message: 'Successfully escalated to vendor', request });
+  } catch (error) {
+    console.error('Vendor Escalation Error:', error);
+    res.status(500).json({ error: error.message });
+          from: 'equipments',
+          localField: 'equipmentId',
+          foreignField: '_id',
+          as: 'equipment'
+        }
+      },
+      {
+        $unwind: '$equipment'
+      },
+      {
+        $group: {
+          _id: {
+            category: '$equipment.category',
+            rootCause: '$rootCause'
+          },
+          count: { $sum: 1 },
+          requestIds: { $push: '$_id' }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.category',
+          children: {
+            $push: {
+              name: '$_id.rootCause',
+              value: '$count',
+              requestIds: '$requestIds'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          name: '$_id',
+          children: 1
+        }
+      }
+    ]);
+
+    res.json({ name: 'Root Cause Analysis', children: data });
+  } catch (error) {
+    console.error('Root Cause Analytics Error:', error);
+    res.status(500).json({ message: 'Failed to fetch root cause analytics' });
   }
 };

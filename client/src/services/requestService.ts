@@ -82,18 +82,25 @@ export const requestService = {
     id: string,
     stage: string,
     partsCost?: number,
-    laborCost?: number
+    laborCost?: number,
+    __v?: number
+    latitude?: number,
+    longitude?: number
   ): Promise<MaintenanceRequest> => {
     try {
       const response = await api.patch(
         `/requests/${id}/stage`,
-        { stage, partsCost, laborCost }
+        { stage, partsCost, laborCost, __v }
+        { stage, partsCost, laborCost, latitude, longitude }
       );
       toast.success("Request stage updated");
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.requiresApproval) {
         toast.error("Cost exceeded limit. Forwarded for management approval.");
+      }
+      if (error.response?.status === 409) {
+        toast.error("Conflict: This ticket was modified by someone else.", { duration: 10000 });
       }
       throw error;
     }
@@ -235,5 +242,15 @@ export const requestService = {
       toast.error('Failed to load workload overview');
       throw error;
     }
+  },
+  
+  escalateToVendor: async (requestId: string, data: { vendorEmail: string; vendorCompany: string; message?: string }): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${requestId}/escalate`, data);
+    toast.success('Ticket escalated to vendor successfully');
+    return response.data.request;
+
+  getRootCauseAnalytics: async (): Promise<any> => {
+    const response = await api.get('/analytics/root-cause');
+    return response.data;
   }
 };
