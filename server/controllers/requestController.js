@@ -1099,6 +1099,35 @@ exports.deleteRequest = async (req, res) => {
       return res.status(403).json({ error: "Not authorized to delete this request" });
     }
 
+    const bucket = getGridFSBucket();
+
+    // 1. Delete standard attachments
+    if (request.attachments && request.attachments.length > 0) {
+      for (const attachment of request.attachments) {
+        if (attachment.filename) {
+          const files = await bucket.find({ filename: attachment.filename }).toArray();
+          for (const f of files) {
+            await bucket.delete(f._id);
+          }
+        }
+      }
+    }
+
+    // 2. Delete audio logs attached to comments (if they exist as GridFS filenames)
+    if (request.comments && request.comments.length > 0) {
+      for (const comment of request.comments) {
+        if (comment.audioUrl && comment.audioUrl.includes('audio-')) {
+          const filename = comment.audioUrl.split('/').pop();
+          if (filename) {
+            const files = await bucket.find({ filename: filename }).toArray();
+            for (const f of files) {
+              await bucket.delete(f._id);
+            }
+          }
+        }
+      }
+    }
+
     await withTransactionFallback(async (session) => {
       // Revert equipment status to active if deleting a non-completed request
       if (request.equipmentId && request.stage !== 'repaired' && request.stage !== 'scrap') {
