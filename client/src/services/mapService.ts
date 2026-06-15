@@ -22,4 +22,9 @@ export const mapService = {
   updateEquipmentCoordinates: async (updates: MapCoordinateUpdate[]): Promise<void> => {
     await api.put('/map/equipment/coordinates', { updates });
   },
+
+  getDowntimeHeatmap: async (): Promise<any[]> => {
+    const response = await api.get('/map/downtime-heatmap');
+    return response.data.data;
+  },
 };
