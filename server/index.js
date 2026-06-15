@@ -365,11 +365,13 @@ const startServer = async () => {
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');
     const webhookDispatcher = require('./jobs/webhookDispatcher');
     const { startTelemetryIngest } = require('./jobs/telemetryIngest');
+    const { startAutomatedHandovers } = require('./services/shiftHandoverService');
     
     startHealthScoreCron();
     startPreventiveSchedulerCron(io);
     webhookDispatcher.start();
     startTelemetryIngest(io);
+    startAutomatedHandovers(io);
 
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`\n🚀 GearGuard Server Running!`);
