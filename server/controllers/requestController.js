@@ -69,7 +69,10 @@ const decrementInventory = async (io, partsUsed, session) => {
     );
 
     if (!updatedPart) {
-      throw new Error(`Insufficient stock for part allocation (ID: ${partId})`);
+      const err = new Error(`Concurrency Conflict: Insufficient stock for part allocation (ID: ${partId}). Please refresh and try again.`);
+      err.statusCode = 409;
+      err.code = "INSUFFICIENT_STOCK";
+      throw err;
     }
 
     if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
@@ -915,6 +918,9 @@ exports.updateRequest = async (req, res) => {
 
     res.json(updatedRequest);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.code });
+    }
     res.status(400).json({ error: error.message });
   }
 };
@@ -1158,6 +1164,9 @@ exports.updateRequestStage = async (req, res) => {
 
     res.json(updatedRequest);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.code });
+    }
     res.status(400).json({ error: error.message });
   }
 };
@@ -1689,7 +1698,9 @@ exports.smartAssignInternal = async (requestId, io) => {
     technicians = technicians.filter(tech => {
       const techCerts = tech.certifications || [];
       return request.requiredCertifications.every(cert => techCerts.includes(cert));
-  
+    });
+  }
+
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
       const certs = tech.certifications || [];
@@ -1699,7 +1710,6 @@ exports.smartAssignInternal = async (requestId, io) => {
 
   if (technicians.length === 0) {
     throw new Error("No active technicians found possessing the required safety certifications for this request. Please assign manually or update certifications.");
-    throw new Error("No active technicians found with the required certifications for this request. Please assign manually.");
   }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
@@ -1864,38 +1874,53 @@ exports.predictSpareParts = async (req, res) => {
 exports.addPartToRequest = async (req, res) => {
   try {
     const { partId, quantityUsed } = req.body;
+    
+    await withTransactionFallback(async (session) => {
+      const request = await MaintenanceRequest.findById(req.params.id).session(session);
+      if (!request) {
+        const err = new Error("Request not found");
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const qty = quantityUsed || 1;
+
+      // Use findOneAndUpdate to atomically check and decrement stock to prevent race conditions
+      const updatedPart = await SparePart.findOneAndUpdate(
+        { _id: partId, quantityInStock: { $gte: qty } },
+        { $inc: { quantityInStock: -qty } },
+        { new: true, session }
+      );
+
+      if (!updatedPart) {
+        // Check if the part exists to return an appropriate error
+        const partExists = await SparePart.findById(partId).session(session);
+        if (!partExists) {
+          const err = new Error("Part not found");
+          err.statusCode = 404;
+          throw err;
+        }
+        const conflictErr = new Error("Concurrency Conflict: This spare part ran out of stock midway. Please refresh and try again.");
+        conflictErr.statusCode = 409;
+        throw conflictErr;
+      }
+
+      const existingIndex = request.partsUsed.findIndex(p => p.partId.toString() === partId);
+      if (existingIndex > -1) {
+        request.partsUsed[existingIndex].quantityUsed += qty;
+      } else {
+        request.partsUsed.push({ partId, quantityUsed: qty });
+      }
+
+      await request.save({ session });
+
+      if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold && updatedPart.reorderStatus === 'ok') {
+        updatedPart.reorderStatus = 'low-stock';
+        await updatedPart.save({ session });
+      }
+    });
+
     const request = await MaintenanceRequest.findById(req.params.id);
-    if (!request) return res.status(404).json({ error: "Request not found" });
-
-    const qty = quantityUsed || 1;
-
-    // Use findOneAndUpdate to atomically check and decrement stock to prevent race conditions
-    const updatedPart = await SparePart.findOneAndUpdate(
-      { _id: partId, quantityInStock: { $gte: qty } },
-      { $inc: { quantityInStock: -qty } },
-      { new: true }
-    );
-
-    if (!updatedPart) {
-      // Check if the part exists to return an appropriate error
-      const partExists = await SparePart.findById(partId);
-      if (!partExists) return res.status(404).json({ error: "Part not found" });
-      return res.status(400).json({ error: "Insufficient stock" });
-    }
-
-    const existingIndex = request.partsUsed.findIndex(p => p.partId.toString() === partId);
-    if (existingIndex > -1) {
-      request.partsUsed[existingIndex].quantityUsed += qty;
-    } else {
-      request.partsUsed.push({ partId, quantityUsed: qty });
-    }
-
-    await request.save();
-
-    if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold && updatedPart.reorderStatus === 'ok') {
-      updatedPart.reorderStatus = 'low-stock';
-      await updatedPart.save();
-    }
 
     const io = req.app.get("socketio");
     if (io) {
@@ -1907,11 +1932,15 @@ exports.addPartToRequest = async (req, res) => {
       // Ensure partsUsed is populated for the frontend to re-render properly if needed
       await updatedReq.populate('partsUsed.partId');
         
-      await NotificationService.notifyRequestChange(io, "request_updated", updatedReq, `Part ${part.name} added and checked out.`);
+      const addedPart = updatedReq.partsUsed.find(p => p.partId._id.toString() === partId)?.partId;
+      await NotificationService.notifyRequestChange(io, "request_updated", updatedReq, `Part ${addedPart?.name || 'added'} added and checked out.`);
     }
 
     res.status(200).json(request);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -2372,31 +2401,6 @@ exports.approveRequest = async (req, res) => {
   }
 };
 
-    // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
-    if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
-    }
-    if (request.approvalStatus === 'pending_tier2' && req.user.role !== 'Admin') {
-      return res.status(403).json({ error: "Admin approval required for Tier 2." });
-    }
-
-    const previousTier = request.approvalStatus.replace('pending_', '');
-    request.approvalStatus = 'approved';
-    request.approvalHistory.push({
-      tier: previousTier,
-      approvedBy: req.user._id,
-      approvedAt: new Date(),
-      comments: req.body.comments || "Approved",
-      status: 'approved'
-    });
-
-    await request.save();
-
-    res.json({ message: "Request approved successfully.", request });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
 
 // Reject Request Costs
 exports.rejectRequest = async (req, res) => {
@@ -2426,25 +2430,6 @@ exports.rejectRequest = async (req, res) => {
     res.status(200).json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });
-    if (!['Admin', 'Manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Unauthorized to reject requests." });
-    }
-
-    const previousTier = request.approvalStatus.replace('pending_', '');
-    request.approvalStatus = 'rejected';
-    request.approvalHistory.push({
-      tier: previousTier,
-      approvedBy: req.user._id,
-      approvedAt: new Date(),
-      comments: req.body.comments || "Rejected",
-      status: 'rejected'
-    });
-
-    await request.save();
-
-    res.json({ message: "Request rejected successfully.", request });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
   }
 };
 
