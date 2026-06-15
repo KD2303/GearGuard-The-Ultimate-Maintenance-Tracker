@@ -35,6 +35,11 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ equipmentId, metricType
 
     newSocket.emit('join:telemetry', equipmentId);
 
+    newSocket.off('server_ping');
+    newSocket.on('server_ping', () => {
+      newSocket.emit('client_pong');
+    });
+
     newSocket.on(`telemetry:${metricType}`, (payload: { value: number, timestamp: string }) => {
       setData(prev => {
         const newData = [...prev, { 

@@ -167,7 +167,24 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Custom Application-Level Heartbeat to reap ghost sockets
+  socket.isAlive = true;
+  socket.on("client_pong", () => {
+    socket.isAlive = true;
+  });
+
+  const heartbeatTimer = setInterval(() => {
+    if (!socket.isAlive) {
+      console.log(`Reaping ghost socket (no pong received): ${socket.id}`);
+      clearInterval(heartbeatTimer);
+      return socket.disconnect(true);
+    }
+    socket.isAlive = false;
+    socket.emit("server_ping");
+  }, 15000);
+
   socket.on("disconnect", () => {
+    clearInterval(heartbeatTimer);
     // Aggressive garbage collection of custom rooms
     if (socket.rooms && socket.rooms.size > 0) {
       for (const room of socket.rooms) {

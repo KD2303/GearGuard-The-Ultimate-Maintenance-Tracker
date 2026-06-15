@@ -35,6 +35,11 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
       auth: { token: localStorage.getItem('gearguard_token') }
     });
 
+    socket.off('server_ping');
+    socket.on('server_ping', () => {
+      socket.emit('client_pong');
+    });
+
     socket.on('tools_changed', () => {
       fetchAvailableTools();
       onUpdateRef.current(); // Re-fetch the request record to reflect checkout/returns across clients
