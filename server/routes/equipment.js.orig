@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 
-const { verifyToken, requireRole } = require('../middleware/auth');
 const protect = require('../middleware/auth');
 const { authorizeRoles } = require("../middleware/role");
 const { validate } = require('../middleware/validation');
@@ -51,15 +50,8 @@ router.put(
 // DELETE (Admin only)
 router.delete(
   '/:id',
-  requireRole(["Admin", "Manager"]),
+  authorizeRoles("Admin"),
   equipmentController.deleteEquipment
-);
-
-// DEDUCT HEALTH SCORE (Any technician, manager, or admin)
-router.patch(
-  '/:id/health-deduction',
-  authorizeRoles("Admin", "Manager", "Technician"),
-  equipmentController.deductHealthScore
 );
 
 module.exports = router;

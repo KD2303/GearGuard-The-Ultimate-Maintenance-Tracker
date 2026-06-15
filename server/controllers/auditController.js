@@ -1,10 +1,10 @@
-const AuditLog = require('../models/AuditLog');
+const SystemAuditLog = require('../models/SystemAuditLog');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 exports.getEntityAuditTrail = asyncHandler(async (req, res) => {
   const { entityType, id } = req.params;
 
-  const logs = await AuditLog.find({ entityType, entityId: id })
+  const logs = await SystemAuditLog.find({ entityType, entityId: id })
     .populate('userId', 'name email role')
     .sort({ createdAt: -1 });
 
@@ -15,7 +15,7 @@ const crypto = require('crypto');
 
 exports.verifyLedgerIntegrity = asyncHandler(async (req, res) => {
   // Fetch all logs in chronological order
-  const logs = await AuditLog.find().sort({ createdAt: 1 });
+  const logs = await SystemAuditLog.find().sort({ createdAt: 1 });
   
   if (logs.length === 0) {
     return res.status(200).json({ success: true, status: 'Intact', message: 'Ledger is empty.' });
@@ -33,6 +33,7 @@ exports.verifyLedgerIntegrity = asyncHandler(async (req, res) => {
       userId: log.userId,
       userName: log.userName,
       action: log.action,
+      description: log.description,
       changes: log.changes.map(c => ({
         field: c.field,
         oldValue: c.oldValue,

@@ -16,6 +16,7 @@ import SearchDropdown from '../components/SearchDropdown';
 import { getHighRiskEquipment } from '../services/predictiveService';
 import RequestModal from '../components/RequestModal';
 import NFCScanner from '../components/NFCScanner';
+import LeaderboardWidget from '../components/LeaderboardWidget';
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -361,9 +362,11 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* High Risk Equipment */}
-
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+      {/* High Risk Equipment + Leaderboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          {/* High Risk Equipment */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden h-full">
         <div className="bg-gradient-to-r from-red-500 to-pink-600 px-6 py-4">
           <h3 className="text-xl font-bold text-white">{t('dashboard.highRiskEquipment')}</h3>
         </div>
@@ -399,6 +402,12 @@ const Dashboard: React.FC = () => {
               ))}
             </div>
           )}
+        </div>
+      </div>
+        </div>
+
+        <div className="lg:col-span-1">
+          <LeaderboardWidget />
         </div>
       </div>
 
