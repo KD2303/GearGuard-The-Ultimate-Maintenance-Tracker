@@ -83,7 +83,6 @@ const RequestModal: React.FC<RequestModalProps> = ({
       
       const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
       
-      console.log('Formatted date:', formattedDate);
       return formattedDate;
     } catch (error) {
       console.error('Error formatting date:', error);

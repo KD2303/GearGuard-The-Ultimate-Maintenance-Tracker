@@ -46,7 +46,6 @@ api.interceptors.response.use(
 
     // If it's a network error and a mutation (POST/PUT/PATCH/DELETE), queue it
     if (!error.response && originalRequest && ['post', 'put', 'patch', 'delete'].includes(originalRequest.method?.toLowerCase() || '')) {
-      console.log('[Offline] Network error detected, queueing action:', originalRequest);
       await dbService.addSyncAction({
         url: originalRequest.url || '',
         method: originalRequest.method?.toUpperCase() as any,
