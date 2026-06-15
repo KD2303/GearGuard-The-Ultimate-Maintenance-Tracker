@@ -134,7 +134,7 @@ const LoginPage: React.FC = () => {
 
             <div className="mt-4 sm:mt-6 grid grid-cols-2 gap-2 sm:gap-3">
               <a
-                href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/auth/google`}
+                href={`${import.meta.env.VITE_API_URL || '/api/v1'}/auth/google`}
                 className="w-full inline-flex justify-center py-2 sm:py-2.5 px-2 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <span className="sr-only">Sign in with Google</span>
@@ -146,7 +146,7 @@ const LoginPage: React.FC = () => {
                 </svg>
               </a>
               <a
-                href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/auth/microsoft`}
+                href={`${import.meta.env.VITE_API_URL || '/api/v1'}/auth/microsoft`}
                 className="w-full inline-flex justify-center py-2 sm:py-2.5 px-2 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <span className="sr-only">Sign in with Microsoft</span>

@@ -9,7 +9,7 @@ interface TicketCommentsProps {
   currentUser: { _id?: string; id?: string; name: string } | null;
 }
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000';
+const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || '';
 
 // Custom sleek, glassmorphic Audio Player component
 const AudioPlayer: React.FC<{ src: string; duration?: number; isMe?: boolean }> = ({ src, duration, isMe }) => {
