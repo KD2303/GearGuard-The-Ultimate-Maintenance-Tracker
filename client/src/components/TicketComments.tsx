@@ -140,6 +140,10 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Voice-to-Text state
+  const [sourceLanguage, setSourceLanguage] = useState('en-US');
+  const speechRecognitionRef = useRef<any>(null);
 
   const requestId = request._id || request.id;
   const currentUserName = currentUser?.name || 'Unknown User';
@@ -204,6 +208,9 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
       }
       socket.disconnect();
       discardRecording();
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
     };
   }, [requestId]);
 
@@ -264,6 +271,36 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
       timerIntervalRef.current = setInterval(() => {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
+
+      // Initialize Speech Recognition
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = sourceLanguage;
+
+        let finalTranscript = newMessage; // Start with existing message
+        
+        recognition.onresult = (event: any) => {
+          let interimTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript + ' ';
+            } else {
+              interimTranscript += event.results[i][0].transcript;
+            }
+          }
+          setNewMessage(finalTranscript + interimTranscript);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+        };
+
+        recognition.start();
+        speechRecognitionRef.current = recognition;
+      }
     } catch (err: any) {
       console.error('Failed to start recording:', err);
       alert('Microphone access denied or not supported by browser.');
@@ -285,6 +322,11 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
       timerIntervalRef.current = null;
+    }
+
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      speechRecognitionRef.current = null;
     }
   };
 
@@ -329,7 +371,7 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
         setIsUploading(false);
       }
 
-      const addedComment = await requestService.addComment(requestId, content, uploadedAudioUrl, duration);
+      const addedComment = await requestService.addComment(requestId, content, uploadedAudioUrl, duration, sourceLanguage);
       
       setComments(prev => {
         const exists = prev.some(c => c._id === addedComment._id || (c.timestamp === addedComment.timestamp && c.authorId === addedComment.authorId));
@@ -480,15 +522,30 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
               />
               
               {!audioBlob && (
-                <button
-                  type="button"
-                  onClick={startRecording}
-                  disabled={isUploading}
-                  className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-all active:scale-95 disabled:opacity-50"
-                  title="Record Voice Note"
-                >
-                  <Mic className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-full pr-1">
+                  <select
+                    value={sourceLanguage}
+                    onChange={(e) => setSourceLanguage(e.target.value)}
+                    disabled={isUploading || isRecording}
+                    className="bg-transparent text-xs text-gray-600 dark:text-gray-300 pl-3 py-2 outline-none appearance-none cursor-pointer"
+                    title="Select spoken language"
+                  >
+                    <option value="en-US">EN</option>
+                    <option value="es-ES">ES</option>
+                    <option value="fr-FR">FR</option>
+                    <option value="de-DE">DE</option>
+                    <option value="zh-CN">ZH</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    disabled={isUploading}
+                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-all active:scale-95 disabled:opacity-50"
+                    title="Record Voice Note"
+                  >
+                    <Mic className="w-5 h-5" />
+                  </button>
+                </div>
               )}
               
               <button

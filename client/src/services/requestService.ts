@@ -167,8 +167,8 @@ export const requestService = {
     return response.data;
   },
 
-  addComment: async (requestId: string, content: string, audioUrl?: string, audioDuration?: number): Promise<any> => {
-    const response = await api.post(`/requests/${requestId}/comments`, { content, audioUrl, audioDuration });
+  addComment: async (requestId: string, content: string, audioUrl?: string, audioDuration?: number, sourceLanguage?: string): Promise<any> => {
+    const response = await api.post(`/requests/${requestId}/comments`, { content, audioUrl, audioDuration, sourceLanguage });
     return response.data;
   },
 

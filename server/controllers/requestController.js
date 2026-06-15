@@ -53,7 +53,10 @@ const checkCertifications = async (assignedToId, requiredSkills, session = null)
   const tech = await TeamMember.findById(assignedToId).session(session);
   if (!tech) return false;
   const techCerts = tech.certifications || [];
-  return requiredSkills.every(skill => techCerts.includes(skill));
+  return requiredSkills.every(skill => {
+    const cert = techCerts.find(c => c.skill === skill);
+    return cert && cert.isValid && new Date(cert.expiresAt) > new Date();
+  });
 };
 
 const decrementInventory = async (io, partsUsed, session) => {
@@ -334,7 +337,11 @@ exports.createRequest = async (req, res) => {
                 }
               };
               if (payload.requiredSkills && payload.requiredSkills.length > 0) {
-                query.certifications = { $all: payload.requiredSkills };
+                query.certifications = { 
+                  $all: payload.requiredSkills.map(skill => ({
+                    $elemMatch: { skill, isValid: true, expiresAt: { $gt: new Date() } }
+                  }))
+                };
               }
               const nearestTech = await TeamMember.findOne(query).session(session);
 
@@ -410,7 +417,10 @@ exports.createRequest = async (req, res) => {
         const technician = await TeamMember.findById(payload.assignedToId).session(session);
         if (technician) {
           const techCerts = technician.certifications || [];
-          const missingCerts = payload.requiredCertifications.filter(cert => !techCerts.includes(cert));
+          const missingCerts = payload.requiredCertifications.filter(cert => {
+            const found = techCerts.find(c => c.skill === cert);
+            return !(found && found.isValid && new Date(found.expiresAt) > new Date());
+          });
           if (missingCerts.length > 0) {
             const error = new Error(`Safety Compliance Error: Technician is missing required certifications (${missingCerts.join(', ')})`);
             error.status = 403;
@@ -627,7 +637,10 @@ exports.updateRequest = async (req, res) => {
       const technician = await TeamMember.findById(payload.assignedToId);
       if (technician) {
         const techCerts = technician.certifications || [];
-        const missingCerts = requiredCerts.filter(cert => !techCerts.includes(cert));
+        const missingCerts = requiredCerts.filter(cert => {
+          const found = techCerts.find(c => c.skill === cert);
+          return !(found && found.isValid && new Date(found.expiresAt) > new Date());
+        });
         if (missingCerts.length > 0) {
           return res.status(403).json({ error: `Safety Compliance Error: Technician is missing required certifications (${missingCerts.join(', ')})` });
         }
@@ -1679,12 +1692,20 @@ exports.addComment = async (req, res) => {
       return res.status(404).json({ error: "Request not found" });
     }
 
+    const TranslationService = require("../services/translationService");
+    const { content, audioUrl, audioDuration, sourceLanguage } = req.body;
+    
+    let finalContent = content || "";
+    if (finalContent && sourceLanguage && sourceLanguage !== 'en-US') {
+      finalContent = await TranslationService.translateToEnglish(finalContent, sourceLanguage);
+    }
+
     const newComment = {
       authorId: req.user.id,
       authorName: req.user.name,
-      content: req.body.content || "",
-      audioUrl: req.body.audioUrl,
-      audioDuration: req.body.audioDuration,
+      content: finalContent,
+      audioUrl: audioUrl,
+      audioDuration: audioDuration,
       timestamp: new Date()
     };
 
@@ -1788,6 +1809,10 @@ exports.smartAssignInternal = async (requestId, io) => {
   if (request.requiredCertifications && request.requiredCertifications.length > 0) {
     technicians = technicians.filter(tech => {
       const techCerts = tech.certifications || [];
+      return request.requiredCertifications.every(cert => {
+        const found = techCerts.find(c => c.skill === cert);
+        return found && found.isValid && new Date(found.expiresAt) > new Date();
+      });
       return request.requiredCertifications.every(cert => techCerts.includes(cert));
     });
   }
@@ -1795,8 +1820,11 @@ exports.smartAssignInternal = async (requestId, io) => {
 
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
-      const certs = tech.certifications || [];
-      return request.requiredSkills.every(skill => certs.includes(skill));
+      const techCerts = tech.certifications || [];
+      return request.requiredSkills.every(skill => {
+        const found = techCerts.find(c => c.skill === skill);
+        return found && found.isValid && new Date(found.expiresAt) > new Date();
+      });
     });
   }
 
@@ -2564,6 +2592,7 @@ exports.rejectRequest = async (req, res) => {
 
     const previousTier = request.approvalStatus.replace('pending_', '');
     request.approvalStatus = 'rejected';
+    request.stage = 'new'; // unlock it back to 'new' but maybe they should just modify parts
     if (!request.approvalHistory) request.approvalHistory = [];
     request.approvalHistory.push({
       tier: previousTier === 'pending' ? 'standard' : previousTier,

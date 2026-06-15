@@ -19,6 +19,7 @@ const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
 const { startSlaChecker } = require("./jobs/slaChecker");
 const { syncDatabase } = require("./models");
+const { startCertificationChecker } = require("./jobs/certificationChecker");
 const swaggerSpec = require("./config/swagger");
 const passport = require("./config/passport");
 
@@ -275,6 +276,7 @@ const defineRoutes = (router) => {
   router.use("/analytics", analyticsRoutes);
   router.use("/predictive", predictiveRoutes);
   router.use("/inventory", inventoryRoutes);
+  router.use("/parts", inventoryRoutes); // Alias for cannibalize feature
   router.use("/export", require("./routes/export"));
   router.use("/purchase-orders", purchaseOrderRoutes);
   router.use("/audit", auditRoutes);
@@ -360,6 +362,7 @@ const startServer = async () => {
     
     // Start SLA tracker cron job
     startSlaChecker(io);
+    startCertificationChecker();
 
     const { startHealthScoreCron } = require('./cron/healthScoreCron');
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');

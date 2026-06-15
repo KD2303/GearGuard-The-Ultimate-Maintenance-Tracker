@@ -9,6 +9,11 @@ const TeamMemberSchema = new Schema({
   avatar: { type: String },
   points: { type: Number, default: 0 },
   badges: [{ type: String }],
+  certifications: [{
+    skill: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+    isValid: { type: Boolean, default: true }
+  }],
   certifications: [{ type: String }],
   skills: [{ type: String }],
   isActive: { type: Boolean, default: true },

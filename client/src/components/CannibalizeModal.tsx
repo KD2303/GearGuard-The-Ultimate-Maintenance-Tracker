@@ -44,14 +44,15 @@ const CannibalizeModal: React.FC<CannibalizeModalProps> = ({
   const fetchCompatibleEquipment = async () => {
     try {
       setLoading(true);
-      const data = await equipmentService.getCompatibleWithPart(partId, currentEquipmentId);
-      setCompatibleEquipment(data);
-      if (data.length > 0) {
-        setSelectedEquipmentId(data[0]._id || '');
+      const data = await equipmentService.getCannibalizeCandidates(partId);
+      const filteredData = data.filter(eq => eq._id !== currentEquipmentId);
+      setCompatibleEquipment(filteredData);
+      if (filteredData.length > 0) {
+        setSelectedEquipmentId(filteredData[0]._id || '');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch compatible equipment:', error);
-      toast.error('Failed to load compatible equipment');
+      toast.error(error.response?.data?.error || 'Failed to load compatible equipment');
     } finally {
       setLoading(false);
     }

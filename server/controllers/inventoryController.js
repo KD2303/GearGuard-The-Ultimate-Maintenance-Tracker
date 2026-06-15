@@ -1,4 +1,4 @@
-const { SparePart } = require("../models");
+const { SparePart, Equipment } = require("../models");
 const { logActivity } = require("../utils/logActivity");
 const escapeRegex = require("../utils/escapeRegex");
 
@@ -182,5 +182,55 @@ exports.reorderPart = async (req, res) => {
     res.json(part);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+// Get candidates for cannibalization
+exports.getCannibalizeCandidates = async (req, res) => {
+  try {
+    const { id: partId } = req.params;
+
+    const part = await SparePart.findById(partId);
+    if (!part) {
+      return res.status(404).json({ error: "Spare part not found." });
+    }
+
+    if (part.quantityInStock > 0) {
+      return res.status(400).json({ error: "Part is in stock, no need to cannibalize." });
+    }
+
+    const mongoose = require('mongoose');
+    const pipeline = [
+      {
+        $match: {
+          compatibleParts: new mongoose.Types.ObjectId(partId),
+          $or: [
+            { status: 'retired' },
+            { priority: 'low' }
+          ]
+        }
+      },
+      {
+        $addFields: {
+          cannibalizeScore: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$status', 'retired'] }, then: 2 },
+                { case: { $eq: ['$priority', 'low'] }, then: 1 }
+              ],
+              default: 0
+            }
+          }
+        }
+      },
+      { $sort: { cannibalizeScore: -1, createdAt: -1 } },
+      { $limit: 10 }
+    ];
+
+    const candidates = await Equipment.aggregate(pipeline);
+
+    res.json(candidates);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
