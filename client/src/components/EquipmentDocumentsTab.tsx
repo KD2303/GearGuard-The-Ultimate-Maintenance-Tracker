@@ -173,7 +173,7 @@ const EquipmentDocumentsTab: React.FC<EquipmentDocumentsTabProps> = ({ equipment
                 
                 <div className="mt-auto flex justify-between items-center pt-3 border-t border-gray-100 dark:border-gray-700/50">
                   <a 
-                    href={doc.fileUrl.startsWith('http') ? doc.fileUrl : `http://localhost:5000${doc.fileUrl}`} 
+                    href={doc.fileUrl.startsWith('http') ? doc.fileUrl : `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || ''}${doc.fileUrl}`}
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center"

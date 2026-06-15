@@ -5,6 +5,10 @@ import toast from 'react-hot-toast';
 import { MaintenanceRequest } from '../types';
 
 export default function VendorTicketView() {
+  const API_BASE = import.meta.env.VITE_API_URL || '';
+  const VENDOR_API_BASE = API_BASE ? API_BASE.replace('/api/v1', '/api/vendor') : '/api/vendor';
+  const MEDIA_BASE = API_BASE ? API_BASE.replace('/api/v1', '') : '';
+  
   const { token } = useParams<{ token: string }>();
   const [ticket, setTicket] = useState<MaintenanceRequest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -14,7 +18,7 @@ export default function VendorTicketView() {
   useEffect(() => {
     const fetchTicket = async () => {
       try {
-        const response = await axios.get(`http://localhost:5001/api/vendor/ticket/${token}`);
+        const response = await axios.get(`${VENDOR_API_BASE}/ticket/${token}`);
         setTicket(response.data);
       } catch (err: any) {
         setError(err.response?.data?.error || "Failed to load ticket. The link may have expired.");
@@ -30,7 +34,7 @@ export default function VendorTicketView() {
     if (!noteContent.trim()) return;
 
     try {
-      const response = await axios.post(`http://localhost:5001/api/vendor/ticket/${token}/notes`, {
+      const response = await axios.post(`${VENDOR_API_BASE}/ticket/${token}/notes`, {
         content: noteContent
       });
       setTicket(prev => prev ? { ...prev, comments: [...(prev.comments || []), response.data] } : prev);
@@ -43,7 +47,7 @@ export default function VendorTicketView() {
 
   const handleMarkRepaired = async () => {
     try {
-      await axios.patch(`http://localhost:5001/api/vendor/ticket/${token}/stage`, {
+      await axios.patch(`${VENDOR_API_BASE}/ticket/${token}/stage`, {
         stage: 'repaired'
       });
       setTicket(prev => prev ? { ...prev, stage: 'repaired' } : prev);
@@ -61,7 +65,7 @@ export default function VendorTicketView() {
     files.forEach(file => formData.append('attachments', file));
 
     try {
-      const response = await axios.post(`http://localhost:5001/api/vendor/ticket/${token}/attachments`, formData, {
+      const response = await axios.post(`${VENDOR_API_BASE}/ticket/${token}/attachments`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setTicket(prev => prev ? { ...prev, attachments: [...(prev.attachments || []), ...response.data.attachments] } : prev);
@@ -237,7 +241,7 @@ export default function VendorTicketView() {
                       <svg className="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                       </svg>
-                      <a href={`http://localhost:5001${file.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline truncate">
+                      <a href={`${MEDIA_BASE}${file.fileUrl}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline truncate">
                         {file.filename}
                       </a>
                     </li>

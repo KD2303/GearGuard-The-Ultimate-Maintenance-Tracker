@@ -1451,7 +1451,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
                     <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Proof of Lockout</h4>
                     <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 aspect-video relative flex items-center justify-center">
                       <img 
-                        src={existingRequest.lotoAudit.proofImageUrl.startsWith('http') ? existingRequest.lotoAudit.proofImageUrl : `http://localhost:5000${existingRequest.lotoAudit.proofImageUrl}`} 
+                        src={existingRequest.lotoAudit.proofImageUrl.startsWith('http') ? existingRequest.lotoAudit.proofImageUrl : `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || ''}${existingRequest.lotoAudit.proofImageUrl}`} 
                         alt="LOTO Proof" 
                         className="max-w-full max-h-full object-contain"
                       />

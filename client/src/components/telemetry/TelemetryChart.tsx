@@ -29,7 +29,7 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ equipmentId, metricType
     if (!user) return;
 
     const token = localStorage.getItem('gearguard_token');
-    const newSocket = io(import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:5000', {
+    const newSocket = io(import.meta.env.VITE_API_URL?.replace('/api/v1', '') || '', {
       auth: { token }
     });
 
