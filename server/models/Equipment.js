@@ -38,6 +38,8 @@ const EquipmentSchema = new Schema({
       default: [0, 0]
     }
   },
+  latitude: { type: Number },
+  longitude: { type: Number },
   floorPlanId: { type: Schema.Types.ObjectId, ref: 'FloorPlan' },
   compatibleParts: [{ type: Schema.Types.ObjectId, ref: 'SparePart' }],
   
