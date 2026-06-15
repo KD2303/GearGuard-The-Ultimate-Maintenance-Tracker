@@ -16,5 +16,9 @@ export const adminService = {
   getRecentActivity: async () => {
     const response = await api.get('/admin/recent-activity');
     return response.data;
+  },
+  getLeaderboardAnalytics: async () => {
+    const response = await api.get('/analytics/leaderboard');
+    return response.data;
   }
 };
