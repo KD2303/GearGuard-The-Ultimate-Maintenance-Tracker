@@ -290,7 +290,7 @@ const ResourceManager = () => {
                 <div style={{ display: 'none' }}>
                   <QRCodeCanvas
                     id="rm-qr-gen"
-                    value={`${window.location.origin}/requests?action=newRequest&equipmentId=${selectedEquipment._id ?? selectedEquipment.id}`}
+                    value={`${window.location.origin}/requests/new?equipmentId=${selectedEquipment._id ?? selectedEquipment.id}`}
                     size={512}
                     level={"H"}
                     includeMargin={true}

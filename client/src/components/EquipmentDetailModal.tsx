@@ -344,7 +344,7 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
           <div style={{ display: 'none' }}>
             <QRCodeCanvas
               id="qr-gen"
-              value={`${window.location.origin}/requests?action=newRequest&equipmentId=${equipment.id || (equipment as any)._id}`}
+              value={`${window.location.origin}/requests/new?equipmentId=${equipment.id || (equipment as any)._id}`}
               size={512}
               level={"H"}
               includeMargin={true}
