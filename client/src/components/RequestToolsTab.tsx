@@ -62,6 +62,7 @@ const RequestToolsTab: React.FC<RequestToolsTabProps> = ({ requestRecord, onUpda
     });
 
     return () => {
+      socket.off();
       socket.off('server_ping');
       socket.off('tools_changed');
       socket.off('tool_locked');

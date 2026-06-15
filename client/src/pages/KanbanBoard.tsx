@@ -667,6 +667,7 @@ const KanbanBoard: React.FC =
       });
 
       return () => {
+        socket.off();
         socket.off('server_ping');
         socket.off('connect');
         socket.off('request_updated');

@@ -54,6 +54,7 @@ const TelemetryChart: React.FC<TelemetryChartProps> = ({ equipmentId, metricType
     setSocket(newSocket);
 
     return () => {
+      newSocket.off();
       newSocket.off('server_ping');
       newSocket.off(`telemetry:${metricType}`);
       newSocket.disconnect();
