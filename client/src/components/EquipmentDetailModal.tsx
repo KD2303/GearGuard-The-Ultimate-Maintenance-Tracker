@@ -136,9 +136,22 @@ const EquipmentDetailModal: React.FC<EquipmentDetailModalProps> = ({
             <MapPin className="h-4 w-4 mr-2 text-gray-600 dark:text-gray-400" />
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Location</p>
-              <p className="font-medium text-gray-900 dark:text-white">{equipment.location}</p>
+              <p className="font-medium text-gray-900 dark:text-white">
+                {equipment.location} 
+                {equipment.latitude !== undefined && equipment.longitude !== undefined && (
+                  <span className="text-xs text-gray-500 ml-2">({equipment.latitude}, {equipment.longitude})</span>
+                )}
+              </p>
             </div>
           </div>
+          {equipment.riskLevel && (
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Risk Level</p>
+              <Badge variant={equipment.riskLevel === 'High Risk' ? 'danger' : equipment.riskLevel === 'Medium Risk' ? 'warning' : 'success'}>
+                {equipment.riskLevel}
+              </Badge>
+            </div>
+          )}
           {equipment.department && (
             <div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Department</p>

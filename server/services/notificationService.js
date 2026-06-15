@@ -178,7 +178,14 @@ class NotificationService {
     }
 
     // 🔥 Decide who gets notification
-    const userId = request.assignedToId || request.createdById;
+    const resolvedAssignedTo = request.assignedTo?._id || request.assignedTo || request.assignedToId;
+    const resolvedCreatedBy = request.createdBy?._id || request.createdBy || request.createdById;
+    const userId = resolvedAssignedTo || resolvedCreatedBy;
+    console.log("DEBUG: resolvedAssignedTo =", resolvedAssignedTo);
+    console.log("DEBUG: resolvedCreatedBy =", resolvedCreatedBy);
+    console.log("DEBUG: userId =", userId);
+    console.log("DEBUG: request.assignedTo =", request.assignedTo);
+    console.log("DEBUG: request.createdBy =", request.createdBy);
 
     // Webhook Integration: Push to Slack/Discord/Teams if High/Urgent
     if (type === "request_created" && (request.priority === "high" || request.priority === "urgent" || request.priority === "critical")) {
