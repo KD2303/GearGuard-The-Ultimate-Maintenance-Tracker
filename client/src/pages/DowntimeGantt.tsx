@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { MaintenanceRequest } from '../types';
 import { requestService } from '../services/requestService';
-import { addDays, subDays, startOfDay, format, differenceInDays, isSameDay } from 'date-fns';
+import { addDays, subDays, startOfDay, format, differenceInDays, isSameDay, addMinutes, differenceInMinutes, endOfDay } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import Spinner from '../components/Spinner';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock } from 'lucide-react';
@@ -193,43 +193,64 @@ const DowntimeGantt: React.FC = () => {
 
                       {/* Request Blocks */}
                       <div className="absolute inset-0 pt-2 pb-2">
-                        {group.requests.map((req, reqIdx) => {
-                          if (!req.scheduledDate) return null;
-                          const reqStart = startOfDay(new Date(req.scheduledDate));
-                          const daysFromStart = differenceInDays(reqStart, startDate);
-                          
-                          // Calculate block width based on duration (1 day min)
+                        {group.requests.flatMap((req, reqIdx) => {
+                          if (!req.scheduledDate) return [];
+                          const reqStart = new Date(req.scheduledDate);
                           const durationHours = req.duration || 8; // Default 8 hours
-                          let spanDays = Math.max(1, Math.ceil(durationHours / 24));
+                          const reqEnd = addMinutes(reqStart, durationHours * 60);
+
+                          // Helper function to split cross-midnight events
+                          const splitCrossMidnightEvents = (start: Date, end: Date) => {
+                            const segments = [];
+                            let currentStart = start;
+
+                            while (!isSameDay(currentStart, end)) {
+                              const eod = endOfDay(currentStart);
+                              segments.push({ start: currentStart, end: eod, isSplit: true });
+                              currentStart = addMinutes(eod, 1);
+                            }
+                            segments.push({ start: currentStart, end, isSplit: segments.length > 0 });
+                            return segments;
+                          };
+
+                          const segments = splitCrossMidnightEvents(reqStart, reqEnd);
                           
-                          // If outside visible range, don't render
-                          if (daysFromStart + spanDays < 0 || daysFromStart >= daysToShow) return null;
-                          
-                          // Clamp rendering constraints
-                          const renderStart = Math.max(0, daysFromStart);
-                          const renderSpan = Math.min(daysToShow - renderStart, spanDays - (renderStart - daysFromStart));
-                          
-                          const leftPercent = (renderStart / daysToShow) * 100;
-                          const widthPercent = (renderSpan / daysToShow) * 100;
-                          
-                          return (
-                            <div
-                              key={req.id || reqIdx}
-                              className={`absolute top-2 h-10 rounded-md border shadow-sm flex items-center px-2 cursor-pointer transition-transform hover:scale-[1.02] ${getPriorityColor(req.priority)}`}
-                              style={{ 
-                                left: `${leftPercent}%`, 
-                                width: `calc(${widthPercent}% - 4px)`,
-                                marginLeft: '2px',
-                                marginTop: `${reqIdx * 48}px`, // Stagger overlapping requests vertically
-                                zIndex: 10
-                              }}
-                              title={`${req.subject}\nScheduled: ${format(new Date(req.scheduledDate), 'PPp')}\nPriority: ${req.priority}\nDuration: ${durationHours}h`}
-                            >
-                              <span className="text-xs font-semibold truncate">
-                                {req.subject}
-                              </span>
-                            </div>
-                          );
+                          const totalTimelineMinutes = daysToShow * 24 * 60;
+
+                          return segments.map((segment, segIdx) => {
+                            const startDiffMinutes = differenceInMinutes(segment.start, startDate);
+                            const endDiffMinutes = differenceInMinutes(segment.end, startDate);
+                            
+                            // If outside visible range, don't render
+                            if (endDiffMinutes < 0 || startDiffMinutes >= totalTimelineMinutes) return null;
+                            
+                            // Clamp rendering constraints
+                            const renderStartMins = Math.max(0, startDiffMinutes);
+                            const renderEndMins = Math.min(totalTimelineMinutes, endDiffMinutes);
+                            const renderSpanMins = renderEndMins - renderStartMins;
+                            
+                            const leftPercent = (renderStartMins / totalTimelineMinutes) * 100;
+                            const widthPercent = (renderSpanMins / totalTimelineMinutes) * 100;
+                            
+                            return (
+                              <div
+                                key={`${req.id || reqIdx}-${segIdx}`}
+                                className={`absolute top-2 h-10 rounded-md border shadow-sm flex items-center px-2 cursor-pointer transition-transform hover:scale-[1.02] ${getPriorityColor(req.priority)} ${segment.isSplit ? 'opacity-90 border-dashed' : ''}`}
+                                style={{ 
+                                  left: `${leftPercent}%`, 
+                                  width: `calc(${widthPercent}% - 4px)`,
+                                  marginLeft: '2px',
+                                  marginTop: `${reqIdx * 48}px`, // Stagger overlapping requests vertically
+                                  zIndex: 10
+                                }}
+                                title={`${req.subject}\nScheduled: ${format(segment.start, 'PPp')} - ${format(segment.end, 'p')}\nPriority: ${req.priority}\nDuration: ${durationHours}h`}
+                              >
+                                <span className="text-xs font-semibold truncate">
+                                  {req.subject}
+                                </span>
+                              </div>
+                            );
+                          }).filter(Boolean);
                         })}
                       </div>
                     </div>

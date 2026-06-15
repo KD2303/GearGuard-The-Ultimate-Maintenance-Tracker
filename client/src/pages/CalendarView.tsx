@@ -38,13 +38,19 @@ const CalendarView: React.FC = () => {
     loadEvents();
   }, []);
 
-  const calendarEvents = events.map((event) => ({
-    id: event.id,
-    title: `${event.subject} - ${event.equipment?.name || 'N/A'}`,
-    start: new Date(event.scheduledDate!),
-    end: new Date(event.scheduledDate!),
-    resource: event,
-  }));
+  const calendarEvents = events.map((event) => {
+    const start = new Date(event.scheduledDate!);
+    const durationHours = event.duration || 8;
+    const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
+
+    return {
+      id: event.id,
+      title: `${event.subject} - ${event.equipment?.name || 'N/A'}`,
+      start,
+      end,
+      resource: event,
+    };
+  });
 
   const handleSelectSlot = ({ start }: { start: Date }) => {
     setSelectedDate(start);
