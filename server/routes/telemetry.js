@@ -6,4 +6,7 @@ const telemetryController = require("../controllers/telemetryController");
 // High throughput endpoint
 router.post("/ingest", telemetryController.ingestTelemetry);
 
+// Fetch historical telemetry playback
+router.get("/playback/:equipmentId", telemetryController.getTelemetryPlayback);
+
 module.exports = router;
