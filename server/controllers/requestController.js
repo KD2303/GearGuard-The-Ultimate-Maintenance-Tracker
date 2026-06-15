@@ -630,6 +630,41 @@ exports.updateRequest = async (req, res) => {
     // NEW LOTO CHECK
     if (payload.stage === "in-progress" && prevStage !== "in-progress") {
       const prevRequestWithEq = await MaintenanceRequest.findById(req.params.id).populate('equipment');
+      
+      // GEO-FENCING VALIDATION
+      if (prevRequestWithEq && prevRequestWithEq.equipment?.riskLevel === 'High Risk') {
+        const lat = req.body.latitude;
+        const lng = req.body.longitude;
+        if (lat === undefined || lng === undefined) {
+          return res.status(403).json({ error: "Location coordinates required to start High Risk equipment work order." });
+        }
+
+        if (prevRequestWithEq.equipment.latitude && prevRequestWithEq.equipment.longitude) {
+          const deg2rad = (deg) => deg * (Math.PI / 180);
+          const R = 6371; // Radius of the earth in km
+          const dLat = deg2rad(prevRequestWithEq.equipment.latitude - lat);
+          const dLon = deg2rad(prevRequestWithEq.equipment.longitude - lng);
+          const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(deg2rad(lat)) * Math.cos(deg2rad(prevRequestWithEq.equipment.latitude)) * 
+            Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+          const distanceInMeters = R * c * 1000;
+
+          if (distanceInMeters > 500) {
+            await auditLog({
+              entityType: 'SecurityAudit',
+              entityId: prevRequestWithEq._id,
+              action: 'CREATE',
+              userId: req.user?._id,
+              userName: req.user?.name || "Unknown",
+              newDoc: { event: 'GEO_FENCE_VIOLATION', distance: distanceInMeters, technicianCoords: { latitude: lat, longitude: lng } }
+            });
+            return res.status(403).json({ error: `Security Violation: You are ${Math.round(distanceInMeters)} meters away. Must be within 500m of equipment.` });
+          }
+        }
+      }
+
       if (prevRequestWithEq && prevRequestWithEq.equipment?.lotoRequired) {
         if (!prevRequestWithEq.lotoAudit || !prevRequestWithEq.lotoAudit.isCompleted) {
           return res.status(400).json({ error: "LOTO Safety Audit is required before starting work on this equipment." });
@@ -882,7 +917,7 @@ exports.updateRequest = async (req, res) => {
 // Update request stage (for Kanban drag-and-drop)
 exports.updateRequestStage = async (req, res) => {
   try {
-    const { stage, partsCost, laborCost } = req.body;
+    const { stage, partsCost, laborCost, latitude, longitude } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("createdBy", "name email")
@@ -908,6 +943,39 @@ exports.updateRequestStage = async (req, res) => {
 
     if (stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
+    }
+
+    // GEO-FENCING VALIDATION
+    if (stage === 'in-progress' && request.equipment && request.equipment.riskLevel === 'High Risk') {
+      if (latitude === undefined || longitude === undefined) {
+        return res.status(403).json({ error: "Location coordinates required to start High Risk equipment work order." });
+      }
+
+      if (request.equipment.latitude && request.equipment.longitude) {
+        const deg2rad = (deg) => deg * (Math.PI / 180);
+        const R = 6371; // Radius of the earth in km
+        const dLat = deg2rad(request.equipment.latitude - latitude);
+        const dLon = deg2rad(request.equipment.longitude - longitude);
+        const a = 
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(deg2rad(latitude)) * Math.cos(deg2rad(request.equipment.latitude)) * 
+          Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+        const distanceInMeters = R * c * 1000;
+
+        if (distanceInMeters > 500) {
+          // Log security audit event
+          await auditLog({
+            entityType: 'SecurityAudit',
+            entityId: request._id,
+            action: 'CREATE',
+            userId: req.user?._id,
+            userName: req.user?.name || "Unknown",
+            newDoc: { event: 'GEO_FENCE_VIOLATION', distance: distanceInMeters, technicianCoords: { latitude, longitude } }
+          });
+          return res.status(403).json({ error: `Security Violation: You are ${Math.round(distanceInMeters)} meters away. Must be within 500m of equipment.` });
+        }
+      }
     }
 
     await auditLog({

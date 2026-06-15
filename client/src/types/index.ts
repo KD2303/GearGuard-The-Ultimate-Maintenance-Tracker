@@ -44,6 +44,9 @@ export interface Equipment {
   healthScore?: number;
   healthScoreBreakdown?: { factor: string; deduction: number }[];
   mapCoordinates?: { x: number; y: number };
+  latitude?: number;
+  longitude?: number;
+  riskLevel?: string;
   hourlyDowntimeCost?: number;
   lotoRequired?: boolean;
   lotoChecklist?: string[];
@@ -211,6 +214,9 @@ export interface CreateEquipmentDto {
   hourlyDowntimeCost?: number;
   lotoRequired?: boolean;
   lotoChecklist?: string[];
+  latitude?: number;
+  longitude?: number;
+  riskLevel?: string;
 }
 
 export interface CreateMaintenanceRequestDto {
