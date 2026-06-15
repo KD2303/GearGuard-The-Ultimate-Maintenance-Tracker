@@ -114,6 +114,7 @@ const sanitizeBody = (body) => {
     "teamId",
     "assignedToId",
     "createdById",
+    "clonedFromId",
   ];
   objectIdFields.forEach((f) => {
     if (cleaned[f] === "" || cleaned[f] === null) delete cleaned[f];

@@ -10,6 +10,7 @@ const RequestsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [initialEquipmentId, setInitialEquipmentId] = useState<string | undefined>();
   const [editRequestId, setEditRequestId] = useState<string | undefined>();
+  const [cloneRequestId, setCloneRequestId] = useState<string | undefined>();
 
   useEffect(() => {
     const isNewRequestRoute = window.location.pathname === '/requests/new';
@@ -38,6 +39,7 @@ const RequestsPage = () => {
     setIsModalOpen(false);
     setInitialEquipmentId(undefined);
     setEditRequestId(undefined);
+    setCloneRequestId(undefined);
   };
 
   return (
@@ -47,7 +49,7 @@ const RequestsPage = () => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Maintenance Requests</h2>
           <p className="text-gray-600 dark:text-gray-400 mt-1">Manage all maintenance requests and their status</p>
         </div>
-        <Button variant="primary" onClick={() => { setEditRequestId(undefined); setIsModalOpen(true); }}>
+        <Button variant="primary" onClick={() => { setEditRequestId(undefined); setCloneRequestId(undefined); setIsModalOpen(true); }}>
           <Plus className="w-4 h-4 mr-2" />
           New Request
         </Button>
@@ -55,7 +57,13 @@ const RequestsPage = () => {
 
       <DetailedRequestsTable 
         onEdit={(id) => {
+          setCloneRequestId(undefined);
           setEditRequestId(id);
+          setIsModalOpen(true);
+        }}
+        onClone={(id) => {
+          setEditRequestId(undefined);
+          setCloneRequestId(id);
           setIsModalOpen(true);
         }}
       />
@@ -65,6 +73,7 @@ const RequestsPage = () => {
         onClose={handleCloseModal}
         initialEquipmentId={initialEquipmentId}
         editRequestId={editRequestId}
+        cloneRequestId={cloneRequestId}
         onSuccess={() => {
           handleCloseModal();
           // Reload requests

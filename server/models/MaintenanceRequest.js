@@ -107,6 +107,7 @@ const MaintenanceRequestSchema = new Schema({
   downtimeDurationHours: { type: Number, default: 0 },
   totalDowntimeCost: { type: Number, default: 0 },
   syncId: { type: String, default: null }, // UUID from offline device to prevent replay attacks or resolve conflicts
+  clonedFromId: { type: Schema.Types.ObjectId, ref: 'MaintenanceRequest' },
   vendorEscalation: {
     isEscalated: { type: Boolean, default: false },
     vendorEmail: { type: String },

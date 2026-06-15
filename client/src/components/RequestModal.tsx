@@ -36,6 +36,7 @@ interface RequestModalProps {
   initialType?: 'corrective' | 'preventive';
   initialEquipmentId?: string;
   editRequestId?: string;
+  cloneRequestId?: string;
 }
 
 const RequestModal: React.FC<RequestModalProps> = ({
@@ -46,6 +47,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   initialType = 'corrective',
   initialEquipmentId,
   editRequestId,
+  cloneRequestId,
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools' | 'vendor'>('details');
@@ -233,10 +235,38 @@ const RequestModal: React.FC<RequestModalProps> = ({
           console.error(err);
           setLoadingPredictions(false);
         });
+    } else if (isOpen && cloneRequestId) {
+      requestService.getById(cloneRequestId)
+        .then(req => {
+          setExistingRequest(null);
+          // Auto-fill form data for cloning, stripping out state/ids
+          setFormData({
+            subject: `[CLONE] ${req.subject || ''}`,
+            description: req.description || '',
+            type: req.type,
+            priority: req.priority,
+            scheduledDate: formatDateForInput(new Date()),
+            equipmentId: typeof req.equipmentId === 'object' ? (req.equipmentId as any)._id : req.equipmentId || '',
+            teamId: typeof req.teamId === 'object' ? (req.teamId as any)._id : req.teamId || '',
+            assignedToId: '', // Reset assignment
+            checklist: req.checklist || [],
+            requiredCertifications: req.requiredCertifications || [],
+            expectedVendorQuote: req.expectedVendorQuote || 0,
+            requiredSkills: req.requiredSkills || [],
+          });
+          const eqId = typeof req.equipmentId === 'object' ? (req.equipmentId as any)._id : req.equipmentId;
+          if (eqId) {
+             handleEquipmentChange(eqId);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch request for cloning:', err);
+          toast.error('Failed to load request for cloning');
+        });
     } else {
       setExistingRequest(null);
     }
-  }, [isOpen, editRequestId]);
+  }, [isOpen, editRequestId, cloneRequestId]);
 
   useEffect(() => {
     if (existingRequest?.equipment?.category) {
@@ -417,6 +447,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
           partsUsed: selectedParts.filter(p => p.partId && p.quantityUsed > 0),
           requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
           expectedVendorQuote: formData.expectedVendorQuote,
+          clonedFromId: cloneRequestId,
         });
 
         if (attachments.length > 0 && newRequest._id) {
