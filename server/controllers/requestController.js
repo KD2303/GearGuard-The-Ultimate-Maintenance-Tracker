@@ -1616,6 +1616,8 @@ exports.smartAssignInternal = async (requestId, io) => {
     technicians = technicians.filter(tech => {
       const techCerts = tech.certifications || [];
       return request.requiredCertifications.every(cert => techCerts.includes(cert));
+    });
+  }
   
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
@@ -1626,7 +1628,6 @@ exports.smartAssignInternal = async (requestId, io) => {
 
   if (technicians.length === 0) {
     throw new Error("No active technicians found possessing the required safety certifications for this request. Please assign manually or update certifications.");
-    throw new Error("No active technicians found with the required certifications for this request. Please assign manually.");
   }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
@@ -2276,11 +2277,29 @@ exports.approveRequest = async (req, res) => {
       return res.status(403).json({ error: "Not authorized to approve financial requests." });
     }
 
-    if (request.approvalStatus !== 'pending') {
+    if (!request.approvalStatus || !request.approvalStatus.startsWith('pending')) {
       return res.status(400).json({ error: "Request is not pending approval." });
     }
 
+    // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
+    if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
+      return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
+    }
+    if (request.approvalStatus === 'pending_tier2' && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: "Admin approval required for Tier 2." });
+    }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
     request.approvalStatus = 'approved';
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Approved",
+      status: 'approved'
+    });
+
     request.approvedBy = req.user._id;
     request.approvalDate = new Date();
     request.stage = 'new'; // unlock it back to 'new' so work can begin
@@ -2299,32 +2318,6 @@ exports.approveRequest = async (req, res) => {
   }
 };
 
-    // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
-    if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
-    }
-    if (request.approvalStatus === 'pending_tier2' && req.user.role !== 'Admin') {
-      return res.status(403).json({ error: "Admin approval required for Tier 2." });
-    }
-
-    const previousTier = request.approvalStatus.replace('pending_', '');
-    request.approvalStatus = 'approved';
-    request.approvalHistory.push({
-      tier: previousTier,
-      approvedBy: req.user._id,
-      approvedAt: new Date(),
-      comments: req.body.comments || "Approved",
-      status: 'approved'
-    });
-
-    await request.save();
-
-    res.json({ message: "Request approved successfully.", request });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
 // Reject Request Costs
 exports.rejectRequest = async (req, res) => {
   try {
@@ -2335,9 +2328,20 @@ exports.rejectRequest = async (req, res) => {
       return res.status(403).json({ error: "Not authorized to reject financial requests." });
     }
 
-    if (request.approvalStatus !== 'pending') {
+    if (!request.approvalStatus || !request.approvalStatus.startsWith('pending')) {
       return res.status(400).json({ error: "Request is not pending approval." });
     }
+
+    const previousTier = request.approvalStatus.replace('pending_', '');
+    request.approvalStatus = 'rejected';
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
 
     request.approvalStatus = 'rejected';
     request.stage = 'new'; // unlock it back to 'new' but maybe they should just modify parts
@@ -2353,25 +2357,6 @@ exports.rejectRequest = async (req, res) => {
     res.status(200).json(request);
   } catch (error) {
     res.status(500).json({ error: error.message });
-    if (!['Admin', 'Manager'].includes(req.user.role)) {
-      return res.status(403).json({ error: "Unauthorized to reject requests." });
-    }
-
-    const previousTier = request.approvalStatus.replace('pending_', '');
-    request.approvalStatus = 'rejected';
-    request.approvalHistory.push({
-      tier: previousTier,
-      approvedBy: req.user._id,
-      approvedAt: new Date(),
-      comments: req.body.comments || "Rejected",
-      status: 'rejected'
-    });
-
-    await request.save();
-
-    res.json({ message: "Request rejected successfully.", request });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
   }
 };
 
