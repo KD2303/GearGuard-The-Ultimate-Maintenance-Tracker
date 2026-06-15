@@ -17,6 +17,8 @@ const { errorMiddleware } = require("./middleware/errorHandler");
 const { csrfProtection } = require("./middleware/csrfProtection");
 const NotificationService = require("./services/NotificationService");
 const { startOverdueChecker } = require("./jobs/overdueChecker");
+const { startWarrantyChecker } = require("./jobs/warrantyChecker");
+const { startCalibrationChecker } = require("./jobs/calibrationChecker");
 const { startSlaChecker } = require("./jobs/slaChecker");
 const { syncDatabase } = require("./models");
 const { startCertificationChecker } = require("./jobs/certificationChecker");
@@ -363,6 +365,8 @@ const startServer = async () => {
     // Start SLA tracker cron job
     startSlaChecker(io);
     startCertificationChecker();
+    startWarrantyChecker();
+    startCalibrationChecker();
 
     const { startHealthScoreCron } = require('./cron/healthScoreCron');
     const { startPreventiveSchedulerCron } = require('./cron/preventiveSchedulerCron');
