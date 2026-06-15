@@ -54,7 +54,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       auth: { token }
     });
 
-    newSocket.emit('join', user.id);
+    // Re-join rooms on reconnect
+    newSocket.on('connect', () => {
+      newSocket.emit('join', user.id);
+    });
+
+    // Handle custom heartbeat ping/pong
+    newSocket.on('server_ping', () => {
+      newSocket.emit('client_pong');
+    });
 
     // Listen for new notifications
     newSocket.on('notification:new', (notification: Notification) => {
