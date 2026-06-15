@@ -12,7 +12,9 @@ const RequestsPage = () => {
   const [editRequestId, setEditRequestId] = useState<string | undefined>();
 
   useEffect(() => {
-    if (searchParams.get('action') === 'newRequest') {
+    const isNewRequestRoute = window.location.pathname === '/requests/new';
+    
+    if (searchParams.get('action') === 'newRequest' || isNewRequestRoute) {
       const equipmentId = searchParams.get('equipmentId');
       if (equipmentId) {
         setInitialEquipmentId(equipmentId);
@@ -20,10 +22,15 @@ const RequestsPage = () => {
       setIsModalOpen(true);
       
       // Clean up the URL to prevent reopening on refresh
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('action');
-      newParams.delete('equipmentId');
-      setSearchParams(newParams, { replace: true });
+      if (searchParams.get('action') === 'newRequest') {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('action');
+        newParams.delete('equipmentId');
+        setSearchParams(newParams, { replace: true });
+      } else if (isNewRequestRoute) {
+        // Redirect to standard requests page silently so it doesn't reopen modal on refresh
+        window.history.replaceState(null, '', '/requests-all');
+      }
     }
   }, [searchParams, setSearchParams]);
 

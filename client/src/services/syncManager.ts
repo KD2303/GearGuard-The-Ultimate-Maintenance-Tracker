@@ -27,40 +27,46 @@ class SyncManager {
 
       console.log(`[SyncManager] Found ${actions.length} actions to sync`);
 
-      // Attempt to batch sync if there's a backend endpoint for it
-      try {
-        const response = await api.post('/api/sync/batch', { actions });
-        
-        if (response.data.success) {
-          let conflictCount = 0;
-          let successCount = 0;
+      // Attempt to sync each request individually to its original URL
+      let successCount = 0;
+      let failCount = 0;
 
-          // Process results
-          for (const result of response.data.results) {
-            if (result.status === 'success') {
-              successCount++;
-              if (result.id !== undefined) await dbService.clearSyncAction(result.id);
-            } else if (result.status === 'conflict_logged') {
-              conflictCount++;
-              if (result.id !== undefined) await dbService.clearSyncAction(result.id);
-            }
-          }
+      for (const action of actions) {
+        try {
+          // Replay the request
+          await api.request({
+            url: action.url,
+            method: action.method,
+            data: action.payload,
+          });
           
-          if (successCount > 0) {
-            toast.success(`Successfully synced ${successCount} offline actions.`);
+          successCount++;
+          if (action.id !== undefined) {
+            await dbService.clearSyncAction(action.id);
           }
-          if (conflictCount > 0) {
-            toast.error(`${conflictCount} offline changes conflicted with server updates and require admin review.`, { duration: 6000 });
+        } catch (error: any) {
+          console.error(`[SyncManager] Failed to replay action ${action.id} to ${action.url}:`, error);
+          // If it's a 4xx/5xx error (not a network error), we might want to drop it to avoid infinite loops
+          // However, for 409 Conflict, we keep it or let the user resolve it.
+          // To keep it simple, if there is a response from the server, we consider it processed (even if it failed validation)
+          // so it doesn't block the queue forever, except for specific codes if needed.
+          if (error.response && error.response.status !== 409 && error.response.status !== 500) {
+             if (action.id !== undefined) {
+               await dbService.clearSyncAction(action.id);
+             }
           }
-          
-          console.log('[SyncManager] Batch synchronization complete');
-        } else {
-           console.error('[SyncManager] Batch sync failed:', response.data);
-           toast.error('Failed to sync offline changes.');
+          failCount++;
         }
-      } catch (error) {
-        console.error('[SyncManager] Failed to sync batch:', error);
       }
+
+      if (successCount > 0) {
+        toast.success(`Successfully synced ${successCount} offline actions.`);
+      }
+      if (failCount > 0) {
+        toast.error(`Failed to sync ${failCount} offline actions. Please check your connection.`);
+      }
+
+      console.log('[SyncManager] Synchronization complete');
 
     } catch (error) {
       console.error('[SyncManager] Error during synchronization:', error);
