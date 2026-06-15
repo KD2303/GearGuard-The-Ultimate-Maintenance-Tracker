@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
+const { verifyToken, requireRole } = require('../middleware/auth');
 const protect = require('../middleware/auth');
 const { authorizeRoles } = require("../middleware/role");
 const { validate } = require('../middleware/validation');
@@ -50,7 +51,7 @@ router.put(
 // DELETE (Admin only)
 router.delete(
   '/:id',
-  authorizeRoles("Admin"),
+  requireRole(["Admin", "Manager"]),
   equipmentController.deleteEquipment
 );
 
