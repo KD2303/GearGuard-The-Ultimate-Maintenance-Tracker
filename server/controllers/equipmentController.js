@@ -400,3 +400,36 @@ exports.getEquipmentByCompatiblePart = asyncHandler(async (req, res, next) => {
     data: equipment,
   });
 });
+
+// Deduct Health Score atomically
+exports.deductHealthScore = asyncHandler(async (req, res, next) => {
+  const { deduction, reason } = req.body;
+
+  if (deduction === undefined || typeof deduction !== 'number' || deduction <= 0) {
+    throw new ErrorHandler("Valid deduction amount is required", ERROR_TYPES.VALIDATION_ERROR);
+  }
+
+  const payload = {
+    factor: reason || 'Maintenance Deduction',
+    deduction: deduction,
+    date: new Date()
+  };
+
+  const updatedEquipment = await Equipment.findByIdAndUpdate(
+    req.params.id,
+    {
+      $inc: { healthScore: -deduction },
+      $push: { healthScoreBreakdown: payload }
+    },
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedEquipment) {
+    throw new ErrorHandler("Equipment not found", ERROR_TYPES.NOT_FOUND_ERROR);
+  }
+
+  res.status(200).json({
+    success: true,
+    data: updatedEquipment
+  });
+});
