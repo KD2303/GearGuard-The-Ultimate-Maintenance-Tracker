@@ -69,7 +69,10 @@ const decrementInventory = async (io, partsUsed, session) => {
     );
 
     if (!updatedPart) {
-      throw new Error(`Insufficient stock for part allocation (ID: ${partId})`);
+      const err = new Error(`Concurrency Conflict: Insufficient stock for part allocation (ID: ${partId}). Please refresh and try again.`);
+      err.statusCode = 409;
+      err.code = "INSUFFICIENT_STOCK";
+      throw err;
     }
 
     if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold) {
@@ -145,6 +148,7 @@ exports.getAllRequests = async (req, res) => {
       startDate,
       endDate,
       search,
+      ids,
       page = 1,
       limit = 20,
       sortBy = "createdAt",
@@ -152,6 +156,10 @@ exports.getAllRequests = async (req, res) => {
     } = req.query;
 
     const query = {};
+
+    if (ids) {
+      query._id = { $in: ids.split(',') };
+    }
 
     if (stage) query.stage = stage;
     if (type) query.type = type;
@@ -311,21 +319,19 @@ exports.createRequest = async (req, res) => {
           await Equipment.findByIdAndUpdate(
             equipmentDoc._id,
             {
-              $set: { status: "under-maintenance" },
-              $push: {
-                history: {
-                  eventType: 'STATUS_CHANGE',
-                  description: `Status changed to under-maintenance due to new request ${requestNumber}`,
-                  date: new Date(),
-                  recordedBy: req.user?._id,
-                  userId: req.user?._id,
-                  userName: req.user?.name || "System",
-                  notes: 'Status updated automatically on request creation'
-                }
-              }
+              $set: { status: "under-maintenance" }
             },
             { session }
           );
+
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: equipmentDoc._id,
+            action: 'STATUS_CHANGE',
+            description: `Status changed to under-maintenance due to new request ${requestNumber}`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          });
         }
       }
 
@@ -634,13 +640,16 @@ exports.updateRequest = async (req, res) => {
         payload.completedDate = new Date();
         if (prevRequest.equipmentId) {
           await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
-            $set: { status: "active" },
-            $push: { history: {
-              eventType: 'REPAIR_COMPLETED',
-              description: `Request marked as repaired. Status changed to active.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: "active" }
+          });
+          
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: prevRequest.equipmentId,
+            action: 'REPAIR_COMPLETED',
+            description: `Request marked as repaired. Status changed to active.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
           });
         }
       }
@@ -648,13 +657,16 @@ exports.updateRequest = async (req, res) => {
         payload.completedDate = new Date();
         if (prevRequest.equipmentId) {
           await Equipment.findByIdAndUpdate(prevRequest.equipmentId, {
-            $set: { status: "scrapped" },
-            $push: { history: {
-              eventType: 'SCRAPPED',
-              description: `Request marked as scrap. Status changed to scrapped.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: "scrapped" }
+          });
+          
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: prevRequest.equipmentId,
+            action: 'SCRAPPED',
+            description: `Request marked as scrap. Status changed to scrapped.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
           });
         }
       }
@@ -664,6 +676,41 @@ exports.updateRequest = async (req, res) => {
     // NEW LOTO CHECK
     if (payload.stage === "in-progress" && prevStage !== "in-progress") {
       const prevRequestWithEq = await MaintenanceRequest.findById(req.params.id).populate('equipment');
+      
+      // GEO-FENCING VALIDATION
+      if (prevRequestWithEq && prevRequestWithEq.equipment?.riskLevel === 'High Risk') {
+        const lat = req.body.latitude;
+        const lng = req.body.longitude;
+        if (lat === undefined || lng === undefined) {
+          return res.status(403).json({ error: "Location coordinates required to start High Risk equipment work order." });
+        }
+
+        if (prevRequestWithEq.equipment.latitude && prevRequestWithEq.equipment.longitude) {
+          const deg2rad = (deg) => deg * (Math.PI / 180);
+          const R = 6371; // Radius of the earth in km
+          const dLat = deg2rad(prevRequestWithEq.equipment.latitude - lat);
+          const dLon = deg2rad(prevRequestWithEq.equipment.longitude - lng);
+          const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(deg2rad(lat)) * Math.cos(deg2rad(prevRequestWithEq.equipment.latitude)) * 
+            Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+          const distanceInMeters = R * c * 1000;
+
+          if (distanceInMeters > 500) {
+            await auditLog({
+              entityType: 'SecurityAudit',
+              entityId: prevRequestWithEq._id,
+              action: 'CREATE',
+              userId: req.user?._id,
+              userName: req.user?.name || "Unknown",
+              newDoc: { event: 'GEO_FENCE_VIOLATION', distance: distanceInMeters, technicianCoords: { latitude: lat, longitude: lng } }
+            });
+            return res.status(403).json({ error: `Security Violation: You are ${Math.round(distanceInMeters)} meters away. Must be within 500m of equipment.` });
+          }
+        }
+      }
+
       if (prevRequestWithEq && prevRequestWithEq.equipment?.lotoRequired) {
         if (!prevRequestWithEq.lotoAudit || !prevRequestWithEq.lotoAudit.isCompleted) {
           return res.status(400).json({ error: "LOTO Safety Audit is required before starting work on this equipment." });
@@ -720,21 +767,18 @@ exports.updateRequest = async (req, res) => {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
               {
-                $set: { status: "active" },
-                $push: {
-                  history: {
-                    eventType: 'STATUS_CHANGE',
-                    description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
-                    date: new Date(),
-                    recordedBy: req.user?._id,
-                    userId: req.user?._id,
-                    userName: req.user?.name || "System",
-                    notes: 'Status updated automatically on request repaired'
-                  }
-                }
+                $set: { status: "active" }
               },
               { session }
             );
+            await auditLog({
+              entityType: 'Equipment',
+              entityId: prevRequest.equipmentId,
+              action: 'STATUS_CHANGE',
+              description: `Status changed to active as request ${prevRequest.subject || prevRequest.requestNumber} was marked repaired`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            });
           }
         }
         if (payload.stage === "scrap") {
@@ -742,21 +786,18 @@ exports.updateRequest = async (req, res) => {
             await Equipment.findByIdAndUpdate(
               prevRequest.equipmentId,
               {
-                $set: { status: "scrapped" },
-                $push: {
-                  history: {
-                    eventType: 'STATUS_CHANGE',
-                    description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
-                    date: new Date(),
-                    recordedBy: req.user?._id,
-                    userId: req.user?._id,
-                    userName: req.user?.name || "System",
-                    notes: 'Status updated automatically on request scrapped'
-                  }
-                }
+                $set: { status: "scrapped" }
               },
               { session }
             );
+            await auditLog({
+              entityType: 'Equipment',
+              entityId: prevRequest.equipmentId,
+              action: 'STATUS_CHANGE',
+              description: `Status changed to scrapped as request ${prevRequest.subject || prevRequest.requestNumber} was marked scrap`,
+              userId: req.user?._id,
+              userName: req.user?.name || "System"
+            });
           }
         }
       }
@@ -920,6 +961,8 @@ exports.updateRequest = async (req, res) => {
         dbVersion: currentDoc,
         clientVersion: req.body
       });
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.code });
     }
     res.status(400).json({ error: error.message });
   }
@@ -929,6 +972,7 @@ exports.updateRequest = async (req, res) => {
 exports.updateRequestStage = async (req, res) => {
   try {
     const { stage, partsCost, laborCost, __v } = req.body;
+    const { stage, partsCost, laborCost, latitude, longitude } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
       .populate("createdBy", "name email")
@@ -954,6 +998,39 @@ exports.updateRequestStage = async (req, res) => {
 
     if (stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
        return res.status(400).json({ error: "Cannot start an in-progress ticket while blocked awaiting parts." });
+    }
+
+    // GEO-FENCING VALIDATION
+    if (stage === 'in-progress' && request.equipment && request.equipment.riskLevel === 'High Risk') {
+      if (latitude === undefined || longitude === undefined) {
+        return res.status(403).json({ error: "Location coordinates required to start High Risk equipment work order." });
+      }
+
+      if (request.equipment.latitude && request.equipment.longitude) {
+        const deg2rad = (deg) => deg * (Math.PI / 180);
+        const R = 6371; // Radius of the earth in km
+        const dLat = deg2rad(request.equipment.latitude - latitude);
+        const dLon = deg2rad(request.equipment.longitude - longitude);
+        const a = 
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(deg2rad(latitude)) * Math.cos(deg2rad(request.equipment.latitude)) * 
+          Math.sin(dLon / 2) * Math.sin(dLon / 2); 
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
+        const distanceInMeters = R * c * 1000;
+
+        if (distanceInMeters > 500) {
+          // Log security audit event
+          await auditLog({
+            entityType: 'SecurityAudit',
+            entityId: request._id,
+            action: 'CREATE',
+            userId: req.user?._id,
+            userName: req.user?.name || "Unknown",
+            newDoc: { event: 'GEO_FENCE_VIOLATION', distance: distanceInMeters, technicianCoords: { latitude, longitude } }
+          });
+          return res.status(403).json({ error: `Security Violation: You are ${Math.round(distanceInMeters)} meters away. Must be within 500m of equipment.` });
+        }
+      }
     }
 
     await auditLog({
@@ -1045,14 +1122,17 @@ exports.updateRequestStage = async (req, res) => {
         if (request.equipmentId) {
           const newStatus = stage === "scrap" ? "scrapped" : "active";
           await Equipment.findByIdAndUpdate(request.equipmentId, {
-            $set: { status: newStatus },
-            $push: { history: {
-              eventType: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
-              description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
-              userId: req.user?._id,
-              userName: req.user?.name || "System"
-            }}
+            $set: { status: newStatus }
           }, { session });
+
+          await auditLog({
+            entityType: 'Equipment',
+            entityId: request.equipmentId,
+            action: stage === "scrap" ? 'SCRAPPED' : 'REPAIR_COMPLETED',
+            description: `Request stage updated to ${stage}. Status changed to ${newStatus}.`,
+            userId: req.user?._id,
+            userName: req.user?.name || "System"
+          });
         }
       }
 
@@ -1145,6 +1225,9 @@ exports.updateRequestStage = async (req, res) => {
       });
     }
     console.error("Other Error:", error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.code });
+    }
     res.status(400).json({ error: error.message });
   }
 };
@@ -1194,21 +1277,19 @@ exports.deleteRequest = async (req, res) => {
         await Equipment.findByIdAndUpdate(
           request.equipmentId,
           {
-            $set: { status: "active" },
-            $push: {
-              history: {
-                eventType: 'STATUS_CHANGE',
-                description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
-                date: new Date(),
-                recordedBy: req.user?._id,
-                userId: req.user?._id,
-                userName: req.user?.name || "System",
-                notes: 'Status reverted automatically on request deletion'
-              }
-            }
+            $set: { status: "active" }
           },
           { session }
         );
+        
+        await auditLog({
+          entityType: 'Equipment',
+          entityId: request.equipmentId,
+          action: 'STATUS_CHANGE',
+          description: `Status reverted to active as request ${request.subject || request.requestNumber} was deleted`,
+          userId: req.user?._id,
+          userName: req.user?.name || "System"
+        });
       }
       await releaseReservations(request.requiredParts);
       await MaintenanceRequest.findByIdAndDelete(req.params.id, { session });
@@ -1679,6 +1760,7 @@ exports.smartAssignInternal = async (requestId, io) => {
     });
   }
   
+
   if (request.requiredSkills && request.requiredSkills.length > 0) {
     technicians = technicians.filter(tech => {
       const certs = tech.certifications || [];
@@ -1686,9 +1768,32 @@ exports.smartAssignInternal = async (requestId, io) => {
     });
   }
 
+  // Extract skills from text
+  const textToAnalyze = ((request.subject || '') + ' ' + (request.description || '')).toLowerCase();
+  
+  // Find all unique skills among these technicians
+  const allAvailableSkills = new Set();
+  technicians.forEach(tech => {
+    (tech.skills || []).forEach(skill => allAvailableSkills.add(skill.toLowerCase()));
+  });
+
+  // Which of these skills are actually mentioned in the request?
+  const requiredImplicitSkills = Array.from(allAvailableSkills).filter(skill => textToAnalyze.includes(skill));
+
+  if (requiredImplicitSkills.length > 0) {
+    // Filter technicians to those who have AT LEAST ONE of the required implicit skills
+    technicians = technicians.filter(tech => {
+      const techSkills = (tech.skills || []).map(s => s.toLowerCase());
+      return requiredImplicitSkills.some(reqSkill => techSkills.includes(reqSkill));
+    });
+  }
+
   if (technicians.length === 0) {
-    throw new Error("No active technicians found possessing the required safety certifications for this request. Please assign manually or update certifications.");
-    throw new Error("No active technicians found with the required certifications for this request. Please assign manually.");
+    // Assign to Fallback Queue / Manager
+    request.assignedToId = null;
+    request.stage = 'new';
+    await request.save();
+    throw new Error("No skilled worker is available for the specialized tasks identified in this request. It has been routed to the Fallback Queue.");
   }
 
     // 3. Query workload counts for these technicians (new and in-progress requests)
@@ -1853,38 +1958,53 @@ exports.predictSpareParts = async (req, res) => {
 exports.addPartToRequest = async (req, res) => {
   try {
     const { partId, quantityUsed } = req.body;
+    
+    await withTransactionFallback(async (session) => {
+      const request = await MaintenanceRequest.findById(req.params.id).session(session);
+      if (!request) {
+        const err = new Error("Request not found");
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const qty = quantityUsed || 1;
+
+      // Use findOneAndUpdate to atomically check and decrement stock to prevent race conditions
+      const updatedPart = await SparePart.findOneAndUpdate(
+        { _id: partId, quantityInStock: { $gte: qty } },
+        { $inc: { quantityInStock: -qty } },
+        { new: true, session }
+      );
+
+      if (!updatedPart) {
+        // Check if the part exists to return an appropriate error
+        const partExists = await SparePart.findById(partId).session(session);
+        if (!partExists) {
+          const err = new Error("Part not found");
+          err.statusCode = 404;
+          throw err;
+        }
+        const conflictErr = new Error("Concurrency Conflict: This spare part ran out of stock midway. Please refresh and try again.");
+        conflictErr.statusCode = 409;
+        throw conflictErr;
+      }
+
+      const existingIndex = request.partsUsed.findIndex(p => p.partId.toString() === partId);
+      if (existingIndex > -1) {
+        request.partsUsed[existingIndex].quantityUsed += qty;
+      } else {
+        request.partsUsed.push({ partId, quantityUsed: qty });
+      }
+
+      await request.save({ session });
+
+      if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold && updatedPart.reorderStatus === 'ok') {
+        updatedPart.reorderStatus = 'low-stock';
+        await updatedPart.save({ session });
+      }
+    });
+
     const request = await MaintenanceRequest.findById(req.params.id);
-    if (!request) return res.status(404).json({ error: "Request not found" });
-
-    const qty = quantityUsed || 1;
-
-    // Use findOneAndUpdate to atomically check and decrement stock to prevent race conditions
-    const updatedPart = await SparePart.findOneAndUpdate(
-      { _id: partId, quantityInStock: { $gte: qty } },
-      { $inc: { quantityInStock: -qty } },
-      { new: true }
-    );
-
-    if (!updatedPart) {
-      // Check if the part exists to return an appropriate error
-      const partExists = await SparePart.findById(partId);
-      if (!partExists) return res.status(404).json({ error: "Part not found" });
-      return res.status(400).json({ error: "Insufficient stock" });
-    }
-
-    const existingIndex = request.partsUsed.findIndex(p => p.partId.toString() === partId);
-    if (existingIndex > -1) {
-      request.partsUsed[existingIndex].quantityUsed += qty;
-    } else {
-      request.partsUsed.push({ partId, quantityUsed: qty });
-    }
-
-    await request.save();
-
-    if (updatedPart.quantityInStock <= updatedPart.minReorderThreshold && updatedPart.reorderStatus === 'ok') {
-      updatedPart.reorderStatus = 'low-stock';
-      await updatedPart.save();
-    }
 
     const io = req.app.get("socketio");
     if (io) {
@@ -1896,11 +2016,15 @@ exports.addPartToRequest = async (req, res) => {
       // Ensure partsUsed is populated for the frontend to re-render properly if needed
       await updatedReq.populate('partsUsed.partId');
         
-      await NotificationService.notifyRequestChange(io, "request_updated", updatedReq, `Part ${part.name} added and checked out.`);
+      const addedPart = updatedReq.partsUsed.find(p => p.partId._id.toString() === partId)?.partId;
+      await NotificationService.notifyRequestChange(io, "request_updated", updatedReq, `Part ${addedPart?.name || 'added'} added and checked out.`);
     }
 
     res.status(200).json(request);
   } catch (error) {
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -2209,10 +2333,14 @@ exports.escalateToVendor = async (req, res) => {
     
     if (!request) return res.status(404).json({ error: "Request not found" });
 
-    // Generate magic token
-    const crypto = require('crypto');
-    const magicToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 hours
+    // Generate signed JWT token expiring in 72 hours
+    const jwt = require('jsonwebtoken');
+    const magicToken = jwt.sign(
+      { requestId: request._id },
+      process.env.JWT_SECRET || 'fallback_secret_for_vendor',
+      { expiresIn: '72h' }
+    );
+    const tokenExpiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000); // 72 hours
 
     request.vendorEscalation = {
       isEscalated: true,
@@ -2227,7 +2355,7 @@ exports.escalateToVendor = async (req, res) => {
 
     res.status(200).json({ 
       message: "Escalated to vendor successfully", 
-      magicLink: `/vendor/ticket/${magicToken}`
+      magicLink: `/vendor/portal/${magicToken}`
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -2362,6 +2490,10 @@ exports.approveRequest = async (req, res) => {
     request.approvedBy = req.user._id;
     request.approvalDate = new Date();
     request.stage = 'in-progress'; 
+    request.approvalStatus = 'approved';
+    request.approvedBy = req.user._id;
+    request.approvalDate = new Date();
+    request.stage = 'new'; // unlock it back to 'new' so work can begin
 
     await request.save();
 
@@ -2376,6 +2508,7 @@ exports.approveRequest = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 // Reject Request Costs
 exports.rejectRequest = async (req, res) => {
@@ -2495,6 +2628,12 @@ exports.getLeaderboard = async (req, res) => {
               ]
             }
           }
+exports.getRootCauseAnalytics = async (req, res) => {
+  try {
+    const data = await MaintenanceRequest.aggregate([
+      {
+        $match: {
+          rootCause: { $exists: true, $ne: null, $ne: "" }
         }
       },
       {
@@ -2571,5 +2710,49 @@ exports.escalateToVendor = async (req, res) => {
   } catch (error) {
     console.error('Vendor Escalation Error:', error);
     res.status(500).json({ error: error.message });
+          from: 'equipments',
+          localField: 'equipmentId',
+          foreignField: '_id',
+          as: 'equipment'
+        }
+      },
+      {
+        $unwind: '$equipment'
+      },
+      {
+        $group: {
+          _id: {
+            category: '$equipment.category',
+            rootCause: '$rootCause'
+          },
+          count: { $sum: 1 },
+          requestIds: { $push: '$_id' }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.category',
+          children: {
+            $push: {
+              name: '$_id.rootCause',
+              value: '$count',
+              requestIds: '$requestIds'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          name: '$_id',
+          children: 1
+        }
+      }
+    ]);
+
+    res.json({ name: 'Root Cause Analysis', children: data });
+  } catch (error) {
+    console.error('Root Cause Analytics Error:', error);
+    res.status(500).json({ message: 'Failed to fetch root cause analytics' });
   }
 };

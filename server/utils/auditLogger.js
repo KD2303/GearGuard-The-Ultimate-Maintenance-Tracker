@@ -1,4 +1,4 @@
-const AuditLog = require("../models/AuditLog");
+const SystemAuditLog = require("../models/SystemAuditLog");
 
 /**
  * Deep compare two objects/values and return array of changed fields
@@ -48,7 +48,8 @@ async function auditLog({
   oldDoc,
   newDoc,
   userId,
-  userName = ""
+  userName = "",
+  description = ""
 }) {
   try {
     let changes = [];
@@ -64,7 +65,7 @@ async function auditLog({
       changes = [{ field: 'document', oldValue: 'Deleted', newValue: null }];
     }
 
-    const lastLog = await AuditLog.findOne().sort({ createdAt: -1 });
+    const lastLog = await SystemAuditLog.findOne().sort({ createdAt: -1 });
     const previousHash = lastLog ? lastLog.hash : 'GENESIS';
 
     const payload = {
@@ -73,13 +74,14 @@ async function auditLog({
       userId,
       userName,
       action,
+      description,
       changes
     };
 
     const hashString = previousHash + JSON.stringify(payload);
     const hash = require('crypto').createHash('sha256').update(hashString).digest('hex');
 
-    await AuditLog.create({
+    await SystemAuditLog.create({
       ...payload,
       previousHash,
       hash

@@ -1,23 +1,28 @@
 const MaintenanceRequest = require('../models/MaintenanceRequest');
 
+const jwt = require('jsonwebtoken');
+
 // Middleware to authenticate via magic token
 exports.authenticateVendorToken = async (req, res, next) => {
   try {
     const token = req.params.token;
     if (!token) return res.status(401).json({ error: "No token provided" });
 
+    // Verify JWT
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_for_vendor');
+    } catch (err) {
+      return res.status(403).json({ error: "Invalid or expired magic link" });
+    }
+
     // Find the request with this token, ensuring we select the hidden magicToken field to check
-    const request = await MaintenanceRequest.findOne({ 'vendorEscalation.magicToken': token })
+    const request = await MaintenanceRequest.findOne({ _id: decoded.requestId, 'vendorEscalation.magicToken': token })
                                             .select('+vendorEscalation.magicToken')
                                             .populate('equipmentId');
 
     if (!request) {
       return res.status(404).json({ error: "Invalid token or ticket not found" });
-    }
-
-    // Check expiration
-    if (request.vendorEscalation.tokenExpiresAt && new Date() > request.vendorEscalation.tokenExpiresAt) {
-      return res.status(403).json({ error: "Link expired" });
     }
 
     req.vendorTicket = request;
@@ -111,6 +116,38 @@ exports.updateVendorStage = async (req, res) => {
     }
 
     res.status(200).json({ message: "Stage updated successfully", stage: request.stage });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.uploadVendorAttachments = async (req, res) => {
+  try {
+    const request = req.vendorTicket;
+    
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: "No files uploaded" });
+    }
+
+    const newAttachments = req.files.map(file => ({
+      filename: file.originalname,
+      fileUrl: `/uploads/${file.filename}`,
+      fileType: file.mimetype,
+    }));
+
+    request.attachments.push(...newAttachments);
+    await request.save();
+
+    const io = req.app.get("socketio");
+    if (io) {
+      const NotificationService = require('../services/notificationService');
+      await NotificationService.notifyRequestChange(io, "request_updated", request, `Vendor uploaded ${req.files.length} diagnostic file(s).`);
+    }
+
+    res.status(200).json({
+      message: "Files uploaded successfully",
+      attachments: newAttachments
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

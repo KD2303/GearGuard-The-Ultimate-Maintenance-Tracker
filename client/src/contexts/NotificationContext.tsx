@@ -54,7 +54,24 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       auth: { token }
     });
 
-    newSocket.emit('join', user.id);
+    // Re-join rooms on reconnect
+    newSocket.on('connect', () => {
+      newSocket.emit('join', user.id);
+    });
+
+    // Handle custom heartbeat ping/pong
+    newSocket.on('server_ping', () => {
+      newSocket.emit('client_pong');
+    });
+
+    // Ensure listeners are cleared to avoid duplication
+    newSocket.off('server_ping');
+    newSocket.off('notification:new');
+
+    // Respond to custom ping to prevent ghost socket disconnection
+    newSocket.on('server_ping', () => {
+      newSocket.emit('client_pong');
+    });
 
     // Listen for new notifications
     newSocket.on('notification:new', (notification: Notification) => {

@@ -21,6 +21,7 @@ import axios from 'axios';
 import RCAWizardModal from './RCAWizardModal';
 import LOTOModal from './LOTOModal';
 import CannibalizeModal from './CannibalizeModal';
+import DowntimeTicker from './DowntimeTicker';
 import Select from "react-select";
 import { CERTIFICATION_OPTIONS } from "../utils/certifications";
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -558,6 +559,15 @@ const RequestModal: React.FC<RequestModalProps> = ({
 
       {activeTab === 'details' && (
       <div className="space-y-6">
+        {existingRequest && (
+          <DowntimeTicker 
+            createdAt={existingRequest.createdAt || new Date().toISOString()}
+            hourlyDowntimeCost={existingRequest.equipment?.hourlyDowntimeCost || 0}
+            isResolved={['repaired', 'scrap'].includes(existingRequest.stage)}
+            totalResolvedCost={existingRequest.totalDowntimeCost}
+          />
+        )}
+
         {existingRequest && (existingRequest.approvalStatus === 'pending_tier1' || existingRequest.approvalStatus === 'pending_tier2') && (
           <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50 rounded-xl">
             <div className="flex items-start justify-between">
