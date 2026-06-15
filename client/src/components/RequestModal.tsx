@@ -1329,6 +1329,40 @@ const RequestModal: React.FC<RequestModalProps> = ({
           </Button>
         </div>
       </form>
+
+      {existingRequest?.signaturePayload && (
+        <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-green-500" />
+            Digital Signature Authorization
+          </h3>
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col md:flex-row items-center gap-6">
+            <div className="w-full md:w-1/2 flex justify-center">
+              <img 
+                src={existingRequest.signaturePayload.signatureBase64} 
+                alt="Digital Signature" 
+                className="max-h-24 object-contain bg-white rounded border border-gray-200 p-2"
+              />
+            </div>
+            <div className="w-full md:w-1/2 flex flex-col text-xs space-y-2 text-gray-600 dark:text-gray-400">
+              <div className="flex justify-between border-b border-gray-200 dark:border-gray-700 pb-1">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
+                <span className="font-mono">{new Date(existingRequest.signaturePayload.signedAt).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 dark:border-gray-700 pb-1">
+                <span className="font-medium text-gray-700 dark:text-gray-300">Signed By:</span>
+                <span className="font-mono">{existingRequest.signaturePayload.signedBy}</span>
+              </div>
+              <div className="flex flex-col pt-1">
+                <span className="font-medium text-gray-700 dark:text-gray-300 mb-1">Cryptographic Verification Hash (SHA-256):</span>
+                <span className="font-mono text-[10px] break-all bg-gray-200 dark:bg-gray-900 p-1.5 rounded select-all">
+                  {existingRequest.signaturePayload.hash}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
       )}
 

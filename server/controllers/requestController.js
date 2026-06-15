@@ -14,6 +14,7 @@ const { logActivity } = require("../utils/logActivity");
 const { auditLog } = require("../utils/auditLogger");
 const NotificationService = require("../services/notificationService");
 const { withTransactionFallback } = require("../utils/transaction");
+const crypto = require('crypto');
 const { calculateAndUpdateHealthScore } = require("../services/healthScoreService");
 const escapeRegex = require("../utils/escapeRegex");
 const generateRequestNumber = require("../utils/generateRequestNumber");
@@ -1020,6 +1021,7 @@ exports.updateRequest = async (req, res) => {
 // Update request stage (for Kanban drag-and-drop)
 exports.updateRequestStage = async (req, res) => {
   try {
+    const { stage, partsCost, laborCost, latitude, longitude, __v, syncId, signatureBase64 } = req.body;
     const { stage, partsCost, laborCost, latitude, longitude, __v, syncId } = req.body;
     const request = await MaintenanceRequest.findById(req.params.id)
       .populate("equipment")
@@ -1134,6 +1136,10 @@ exports.updateRequestStage = async (req, res) => {
       if (request.checkedOutTools && request.checkedOutTools.length > 0) {
         return res.status(400).json({ error: "Cannot close ticket. All tools must be returned first." });
       }
+
+      if (!signatureBase64) {
+      }
+    }
     }
 
     const isCompleted = prevStage === "repaired" || prevStage === "scrap";
@@ -1144,6 +1150,18 @@ exports.updateRequestStage = async (req, res) => {
     if (partsCost !== undefined) updateData.partsCost = partsCost;
     if (laborCost !== undefined) updateData.laborCost = laborCost;
     if (syncId) updateData.syncId = syncId;
+
+    if (signatureBase64 && nowCompleted) {
+      const timestamp = new Date();
+      const hashInput = `${signatureBase64}-${timestamp.toISOString()}-${req.user._id}`;
+      const hash = crypto.createHash('sha256').update(hashInput).digest('hex');
+      updateData.signaturePayload = {
+        signatureBase64,
+        hash,
+        signedAt: timestamp,
+        signedBy: req.user._id
+      };
+    }
 
     if (shouldProcessCompletion) {
       updateData.completionProcessed = true;
@@ -2560,6 +2578,23 @@ exports.approveRequest = async (req, res) => {
       return res.status(403).json({ error: "Admin approval required for Tier 2." });
     }
 
+    const { signatureBase64 } = req.body;
+    if (!signatureBase64) {
+      return res.status(400).json({ error: "A digital signature is legally required for approval." });
+    }
+
+    const timestamp = new Date();
+    const crypto = require('crypto');
+    const hashInput = `${signatureBase64}-${timestamp.toISOString()}-${req.user._id}`;
+    const hash = crypto.createHash('sha256').update(hashInput).digest('hex');
+
+    request.signaturePayload = {
+      signatureBase64,
+      hash,
+      signedAt: timestamp,
+      signedBy: req.user._id
+    };
+
     const previousTier = request.approvalStatus.replace('pending_', '');
     request.approvalStatus = 'approved';
     if (!request.approvalHistory) request.approvalHistory = [];
@@ -2571,10 +2606,6 @@ exports.approveRequest = async (req, res) => {
       status: 'approved'
     });
     
-    request.approvedBy = req.user._id;
-    request.approvalDate = new Date();
-    request.stage = 'in-progress'; 
-    request.approvalStatus = 'approved';
     request.approvedBy = req.user._id;
     request.approvalDate = new Date();
     request.stage = 'new'; // unlock it back to 'new' so work can begin

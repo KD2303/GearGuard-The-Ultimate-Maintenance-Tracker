@@ -206,6 +206,11 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
       if (requestId) {
         socket.emit('leave_ticket', requestId);
       }
+      socket.off('server_ping');
+      socket.off('new_comment');
+      socket.off('delete_comment');
+      socket.off('user_typing');
+      socket.off('user_stop_typing');
       socket.disconnect();
       discardRecording();
       if (speechRecognitionRef.current) {

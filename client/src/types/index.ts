@@ -130,6 +130,12 @@ export interface MaintenanceRequest {
   approvalDate?: string;
   equipmentId?: string;
   equipment?: Equipment;
+  signaturePayload?: {
+    signatureBase64: string;
+    hash: string;
+    signedAt: string;
+    signedBy: string;
+  };
   teamId?: string;
   team?: MaintenanceTeam;
   assignedToId?: string;

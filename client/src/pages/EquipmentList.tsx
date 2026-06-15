@@ -4,6 +4,7 @@ import React, {
 } from "react";
 
 import { Equipment } from "../types";
+import { useSearchParams } from "react-router-dom";
 
 import { equipmentService } from "../services/equipmentService";
 
@@ -41,6 +42,7 @@ const EquipmentList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { notifications } = useNotifications();
   const { t } = useTranslation();
@@ -49,6 +51,15 @@ const EquipmentList: React.FC = () => {
     try {
       const data = await equipmentService.getAll();
       setEquipment(data);
+      const equipmentId = searchParams.get('id');
+      if (equipmentId) {
+        const target = data.find(e => e.id === equipmentId || (e as any)._id === equipmentId);
+        if (target) {
+          setSelectedEquipment(target);
+          searchParams.delete('id');
+          setSearchParams(searchParams, { replace: true });
+        }
+      }
     } catch (error) {
       console.error("Failed to load equipment:", error);
     } finally {
