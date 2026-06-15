@@ -62,4 +62,11 @@ router.patch(
   equipmentController.deductHealthScore
 );
 
+// Assign Smart Socket
+router.patch(
+  '/:id/smart-socket',
+  authorizeRoles("Admin", "Manager", "Technician"),
+  equipmentController.assignSmartSocket
+);
+
 module.exports = router;
