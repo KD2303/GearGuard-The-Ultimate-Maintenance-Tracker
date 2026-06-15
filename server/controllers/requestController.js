@@ -376,10 +376,12 @@ exports.createRequest = async (req, res) => {
 
       let isBlocked = false;
       let estimatedPartsCost = 0;
+      let hasHighValuePart = false;
       if (payload.requiredParts && payload.requiredParts.length > 0) {
         for (const reqPart of payload.requiredParts) {
           const partDoc = await SparePart.findById(reqPart.partId).session(session);
           if (partDoc) {
+             if (partDoc.isHighValue) hasHighValuePart = true;
              estimatedPartsCost += (partDoc.unitCost || 0) * (reqPart.quantityNeeded || 1);
              const updatedPart = await SparePart.findOneAndUpdate(
                { 
@@ -407,9 +409,9 @@ exports.createRequest = async (req, res) => {
 
       payload.estimatedCost = estimatedPartsCost + (payload.expectedVendorQuote || 0);
 
-      if (payload.estimatedCost >= 5000) {
+      if (payload.estimatedCost >= 5000 || hasHighValuePart) {
         payload.stage = 'awaiting-approval';
-        payload.approvalStatus = 'pending';
+        payload.approvalStatus = 'pending_tier2';
       }
 
       // Certification Check
@@ -653,20 +655,22 @@ exports.updateRequest = async (req, res) => {
     if (payload.requiredParts || payload.expectedVendorQuote !== undefined) {
       const partsToUse = payload.requiredParts || prevRequest.requiredParts || [];
       let newPartsCost = 0;
+      let hasHighValuePart = false;
       for (const reqPart of partsToUse) {
         const partDoc = await SparePart.findById(reqPart.partId);
         if (partDoc) {
+          if (partDoc.isHighValue) hasHighValuePart = true;
           newPartsCost += (partDoc.unitCost || 0) * (reqPart.quantityNeeded || 1);
         }
       }
       currentEstimatedCost = newPartsCost + (payload.expectedVendorQuote !== undefined ? payload.expectedVendorQuote : (prevRequest.expectedVendorQuote || 0));
       payload.estimatedCost = currentEstimatedCost;
       
-      if (currentEstimatedCost >= 5000 && currentApprovalStatus !== 'approved') {
+      if ((currentEstimatedCost >= 5000 || hasHighValuePart) && currentApprovalStatus !== 'approved') {
         payload.stage = 'awaiting-approval';
-        payload.approvalStatus = 'pending';
-        currentApprovalStatus = 'pending';
-      } else if (currentEstimatedCost < 5000 && currentApprovalStatus === 'pending') {
+        payload.approvalStatus = hasHighValuePart ? 'pending_tier2' : 'pending';
+        currentApprovalStatus = payload.approvalStatus;
+      } else if (currentEstimatedCost < 5000 && !hasHighValuePart && currentApprovalStatus === 'pending') {
         if (prevRequest.stage === 'awaiting-approval' && !payload.stage) {
           payload.stage = 'new';
         }
@@ -675,8 +679,8 @@ exports.updateRequest = async (req, res) => {
       }
     }
 
-    if (payload.stage === 'in-progress' && currentApprovalStatus === 'pending') {
-      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost ticket." });
+    if (payload.stage === 'in-progress' && (currentApprovalStatus === 'pending' || currentApprovalStatus === 'pending_tier1' || currentApprovalStatus === 'pending_tier2')) {
+      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost or high-value ticket." });
     }
 
     // Handle stage side-effects (equipment status updates)
@@ -1037,8 +1041,8 @@ exports.updateRequestStage = async (req, res) => {
 
     const prevStage = request.stage;
 
-    if (stage === 'in-progress' && request.approvalStatus === 'pending') {
-      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost ticket." });
+    if (stage === 'in-progress' && (request.approvalStatus === 'pending' || request.approvalStatus === 'pending_tier1' || request.approvalStatus === 'pending_tier2')) {
+      return res.status(403).json({ error: "Financial approval is required before work can begin on this high-cost or high-value ticket." });
     }
 
     if (stage === 'in-progress' && prevStage === 'new' && request.isBlockedAwaitingParts) {
