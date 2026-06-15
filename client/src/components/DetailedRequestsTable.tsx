@@ -344,6 +344,11 @@ const DetailedRequestsTable: React.FC<DetailedRequestsTableProps> = ({ onEdit, o
                         Pending {request.approvalStatus === 'pending_tier1' ? 'Manager' : 'Admin'}
                       </div>
                     )}
+                    {request.blockedByIds && request.blockedByIds.length > 0 && request.stage !== 'repaired' && request.stage !== 'scrap' && (
+                      <div className="mt-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-sm inline-flex items-center">
+                        🔗 BLOCKED ({request.blockedByIds.length})
+                      </div>
+                    )}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">
