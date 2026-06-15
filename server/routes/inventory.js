@@ -10,6 +10,7 @@ router.get('/:id', inventoryController.getPartById);
 router.post('/', inventoryController.createPart);
 router.put('/:id', inventoryController.updatePart);
 router.delete('/:id', inventoryController.deletePart);
+router.get('/:id/cannibalize', inventoryController.getCannibalizeCandidates);
 router.post('/:id/reorder', inventoryController.reorderPart);
 
 module.exports = router;

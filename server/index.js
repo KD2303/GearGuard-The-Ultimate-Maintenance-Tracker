@@ -255,6 +255,7 @@ const defineRoutes = (router) => {
   router.use("/analytics", analyticsRoutes);
   router.use("/predictive", predictiveRoutes);
   router.use("/inventory", inventoryRoutes);
+  router.use("/parts", inventoryRoutes); // Alias for cannibalize feature
   router.use("/export", require("./routes/export"));
   router.use("/purchase-orders", purchaseOrderRoutes);
   router.use("/audit", auditRoutes);

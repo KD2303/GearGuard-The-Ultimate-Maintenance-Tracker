@@ -32,6 +32,11 @@ export const equipmentService = {
     return response.data.data || response.data;
   },
 
+  getCannibalizeCandidates: async (partId: string): Promise<Equipment[]> => {
+    const response = await api.get(`/parts/${partId}/cannibalize`);
+    return response.data;
+  },
+
   create: async (data: CreateEquipmentDto): Promise<Equipment> => {
     const response = await api.post('/equipment', data);
     toast.success('Equipment created successfully');
