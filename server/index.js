@@ -173,16 +173,6 @@ io.on("connection", (socket) => {
     socket.isAlive = true;
   });
 
-  const heartbeatTimer = setInterval(() => {
-    if (!socket.isAlive) {
-      console.log(`Reaping ghost socket (no pong received): ${socket.id}`);
-      clearInterval(heartbeatTimer);
-      return socket.disconnect(true);
-    }
-    socket.isAlive = false;
-    socket.emit("server_ping");
-  }, 15000);
-
   socket.on("disconnect", () => {
     clearInterval(heartbeatTimer);
     // Aggressive garbage collection of custom rooms
@@ -196,6 +186,19 @@ io.on("connection", (socket) => {
     console.log(`❌ User disconnected: ${socket.id}`);
   });
 });
+
+// Periodic Heartbeat check to terminate ghost connections
+setInterval(() => {
+  if (!io || !io.sockets || !io.sockets.sockets) return;
+  io.sockets.sockets.forEach((socket) => {
+    if (socket.isAlive === false) {
+      console.log(`🔌 Heartbeat failed. Force disconnecting ghost socket: ${socket.id}`);
+      return socket.disconnect(true);
+    }
+    socket.isAlive = false;
+    socket.emit("server_ping");
+  });
+}, 30000);
 
 // Admin Audit Tooling: Socket Health Check
 app.get('/api/health/sockets', async (req, res) => {
