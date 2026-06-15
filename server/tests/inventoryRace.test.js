@@ -73,7 +73,6 @@ describe("Race Condition: Spare Parts Inventory Allocation", () => {
       const newReq = await MaintenanceRequest.create({
         requestNumber: `REQ-RACE-${i}-${Date.now()}`,
         subject: `Race Test Request ${i}`,
-        description: "Testing concurrent allocation",
         priority: "medium",
         stage: "in-progress",
         createdById: adminUser._id,

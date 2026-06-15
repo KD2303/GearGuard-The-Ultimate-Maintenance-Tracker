@@ -692,6 +692,8 @@ const KanbanBoard: React.FC =
         ));
 
         try {
+          const request = requests.find((r) => r.id === requestId || r._id === requestId);
+          await requestService.updateStage(requestId, newStage, undefined, undefined, request?.__v);
           let lat: number | undefined;
           let lng: number | undefined;
 
@@ -725,7 +727,8 @@ const KanbanBoard: React.FC =
     const handleClosureSubmit = async (partsCost: number, laborCost: number) => {
       if (!closureModalData) return;
       try {
-        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost);
+        const request = requests.find((r) => r.id === closureModalData.requestId || r._id === closureModalData.requestId);
+        await requestService.updateStage(closureModalData.requestId, closureModalData.newStage, partsCost, laborCost, request?.__v);
         await loadRequests();
       } catch (error) {
         console.error("Failed to update request stage with costs:", error);
@@ -893,6 +896,7 @@ const KanbanBoard: React.FC =
                 setLotoModalData(null);
                 // After successful LOTO, we can automatically transition to in-progress
                 try {
+                  await requestService.updateStage(lotoModalData.request.id || lotoModalData.request._id || "", "in-progress", undefined, undefined, lotoModalData.request.__v);
                   let lat: number | undefined;
                   let lng: number | undefined;
                   if (lotoModalData.request.equipment?.riskLevel === 'High Risk') {

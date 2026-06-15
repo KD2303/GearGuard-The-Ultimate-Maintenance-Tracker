@@ -403,6 +403,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
       if (editRequestId) {
         await requestService.update(editRequestId, {
           ...formData,
+          __v: existingRequest?.__v,
           requiredParts: requiredParts.filter(p => p.partId && p.quantityNeeded > 0),
           expectedVendorQuote: formData.expectedVendorQuote,
         });
@@ -424,10 +425,17 @@ const RequestModal: React.FC<RequestModalProps> = ({
       }
 
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create/update request:', error);
-      const errorMsg = (error as any).response?.data?.error || (error as any).message || 'Failed to save request';
-      toast.error(errorMsg);
+      if (error.response?.status === 409) {
+        toast.error(error.response.data.error, { duration: 10000 });
+        if (error.response.data.dbVersion) {
+            setExistingRequest(error.response.data.dbVersion);
+        }
+      } else {
+        const errorMsg = error.response?.data?.error || error.message || 'Failed to save request';
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
