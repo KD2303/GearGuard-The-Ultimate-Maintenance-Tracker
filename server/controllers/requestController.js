@@ -1820,6 +1820,7 @@ exports.smartAssignInternal = async (requestId, io) => {
   }
 
   if (technicians.length === 0) {
+    throw new Error("No active technicians found possessing the required safety certifications for this request. Please assign manually or update certifications.");
     // Assign to Fallback Queue / Manager
     request.assignedToId = null;
     request.stage = 'new';
@@ -2500,6 +2501,7 @@ exports.approveRequest = async (req, res) => {
       return res.status(400).json({ error: "Request is not pending approval." });
     }
 
+    // Authorization: Manager can approve Tier 1. Admin can approve Tier 1 & Tier 2.
     if (request.approvalStatus === 'pending_tier1' && !['Admin', 'Manager'].includes(req.user.role)) {
       return res.status(403).json({ error: "Manager or Admin approval required for Tier 1." });
     }
@@ -2522,6 +2524,10 @@ exports.approveRequest = async (req, res) => {
     request.approvalDate = new Date();
     request.stage = 'in-progress'; 
     request.approvalStatus = 'approved';
+    request.approvedBy = req.user._id;
+    request.approvalDate = new Date();
+    request.stage = 'new'; // unlock it back to 'new' so work can begin
+
     request.approvedBy = req.user._id;
     request.approvalDate = new Date();
     request.stage = 'new'; // unlock it back to 'new' so work can begin
@@ -2556,6 +2562,16 @@ exports.rejectRequest = async (req, res) => {
     }
 
     const previousTier = request.approvalStatus.replace('pending_', '');
+    request.approvalStatus = 'rejected';
+    if (!request.approvalHistory) request.approvalHistory = [];
+    request.approvalHistory.push({
+      tier: previousTier === 'pending' ? 'standard' : previousTier,
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      comments: req.body.comments || "Rejected",
+      status: 'rejected'
+    });
+
     request.approvalStatus = 'rejected';
     request.stage = 'new';
     
