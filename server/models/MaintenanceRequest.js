@@ -100,7 +100,9 @@ const MaintenanceRequestSchema = new Schema({
     checklistResponses: [{
       step: { type: String },
       checked: { type: Boolean }
-    }]
+    }],
+    lotoRemoved: { type: Boolean, default: false },
+    removedAt: { type: Date }
   },
   downtimeDurationHours: { type: Number, default: 0 },
   totalDowntimeCost: { type: Number, default: 0 },

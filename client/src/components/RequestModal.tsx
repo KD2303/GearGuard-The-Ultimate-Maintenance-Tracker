@@ -19,6 +19,7 @@ import ImageGallery from "./ImageGallery";
 import AudioDiagnosticLogger from "./AudioDiagnosticLogger";
 import axios from 'axios';
 import RCAWizardModal from './RCAWizardModal';
+import LOTOModal from './LOTOModal';
 import CannibalizeModal from './CannibalizeModal';
 import Select from "react-select";
 import { CERTIFICATION_OPTIONS } from "../utils/certifications";
@@ -46,6 +47,7 @@ const RequestModal: React.FC<RequestModalProps> = ({
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'loto' | 'tools' | 'vendor'>('details');
   const [existingRequest, setExistingRequest] = useState<MaintenanceRequest | null>(null);
+  const [showLotoRemoveModal, setShowLotoRemoveModal] = useState(false);
   // Helper function to format date for datetime-local input
   const formatDateForInput = (dateInput?: Date | string): string => {
     if (!dateInput) return '';
@@ -1295,9 +1297,25 @@ const RequestModal: React.FC<RequestModalProps> = ({
                       </li>
                     ))}
                     {existingRequest.lotoAudit?.isCompleted && (
-                      <div className="flex items-center text-green-600 dark:text-green-400 mt-2">
-                        <CheckCircle className="h-4 w-4 mr-1.5" />
-                        <span className="text-sm">LOTO Verified</span>
+                      <div className="flex flex-col gap-2 mt-4">
+                        <div className="flex items-center text-green-600 dark:text-green-400">
+                          <CheckCircle className="h-4 w-4 mr-1.5" />
+                          <span className="text-sm">LOTO Verified</span>
+                        </div>
+                        {existingRequest.lotoAudit?.lotoRemoved ? (
+                          <div className="flex items-center text-blue-600 dark:text-blue-400">
+                            <CheckCircle className="h-4 w-4 mr-1.5" />
+                            <span className="text-sm">LOTO Removed ({new Date(existingRequest.lotoAudit.removedAt!).toLocaleString()})</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setShowLotoRemoveModal(true)}
+                            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none"
+                          >
+                            Remove Lockout/Tagout (LOTO)
+                          </button>
+                        )}
                       </div>
                     )}
                   </ul>
@@ -1380,6 +1398,20 @@ const RequestModal: React.FC<RequestModalProps> = ({
           category={existingRequest.equipment.category}
           onClose={() => setShowRCAWizard(false)}
           onComplete={handleRCAComplete}
+        />
+      )}
+      {showLotoRemoveModal && existingRequest && (
+        <LOTOModal
+          isOpen={showLotoRemoveModal}
+          onClose={() => setShowLotoRemoveModal(false)}
+          onSuccess={() => {
+            setShowLotoRemoveModal(false);
+            if (editRequestId) {
+              requestService.getById(editRequestId).then(setExistingRequest);
+            }
+          }}
+          requestRecord={existingRequest}
+          mode="remove"
         />
       )}
     </>
