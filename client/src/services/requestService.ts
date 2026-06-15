@@ -82,18 +82,22 @@ export const requestService = {
     id: string,
     stage: string,
     partsCost?: number,
-    laborCost?: number
+    laborCost?: number,
+    __v?: number
   ): Promise<MaintenanceRequest> => {
     try {
       const response = await api.patch(
         `/requests/${id}/stage`,
-        { stage, partsCost, laborCost }
+        { stage, partsCost, laborCost, __v }
       );
       toast.success("Request stage updated");
       return response.data;
     } catch (error: any) {
       if (error.response?.data?.requiresApproval) {
         toast.error("Cost exceeded limit. Forwarded for management approval.");
+      }
+      if (error.response?.status === 409) {
+        toast.error("Conflict: This ticket was modified by someone else.", { duration: 10000 });
       }
       throw error;
     }
