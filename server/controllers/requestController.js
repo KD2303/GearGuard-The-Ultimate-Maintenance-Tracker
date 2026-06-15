@@ -2473,3 +2473,43 @@ exports.getLeaderboard = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch leaderboard data' });
   }
 };
+
+exports.escalateToVendor = async (req, res) => {
+  try {
+    const request = await MaintenanceRequest.findById(req.params.id).populate('equipmentId');
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    const { vendorEmail, vendorCompany, message } = req.body;
+    if (!vendorEmail || !vendorCompany) {
+      return res.status(400).json({ error: 'Vendor email and company are required' });
+    }
+
+    // Update Request Schema
+    request.vendorEscalation = {
+      isEscalated: true,
+      vendorEmail,
+      vendorCompany,
+      message,
+      tokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    };
+    
+    await request.save();
+
+    // Send the email
+    const NotificationService = require('../services/notificationService');
+    const emailHtml = NotificationService.vendorEscalationTemplate(request, request.equipmentId, message);
+    
+    await NotificationService.sendEmail(
+      vendorEmail, 
+      `[ESCALATION] Maintenance Required: ${request.equipmentId?.name || 'Equipment'} (${request.requestNumber})`, 
+      emailHtml
+    );
+
+    res.json({ message: 'Successfully escalated to vendor', request });
+  } catch (error) {
+    console.error('Vendor Escalation Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -235,5 +235,11 @@ export const requestService = {
       toast.error('Failed to load workload overview');
       throw error;
     }
+  },
+  
+  escalateToVendor: async (requestId: string, data: { vendorEmail: string; vendorCompany: string; message?: string }): Promise<MaintenanceRequest> => {
+    const response = await api.post(`/requests/${requestId}/escalate`, data);
+    toast.success('Ticket escalated to vendor successfully');
+    return response.data.request;
   }
 };
