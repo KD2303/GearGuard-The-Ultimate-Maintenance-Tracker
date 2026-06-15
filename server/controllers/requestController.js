@@ -540,6 +540,34 @@ exports.updateRequest = async (req, res) => {
     const prevRequest = await MaintenanceRequest.findById(req.params.id);
     if (!prevRequest) return res.status(404).json({ error: "Request not found" });
 
+    // Detect Financial Tampering post-completion
+    const isCompletedOrApproved = prevRequest.stage === 'repaired' || prevRequest.stage === 'scrap' || prevRequest.approvalStatus === 'approved';
+    if (isCompletedOrApproved) {
+      let partsCostChanged = false;
+      let laborCostChanged = false;
+
+      if ('partsCost' in payload && Number(payload.partsCost) !== Number(prevRequest.partsCost || 0)) {
+        partsCostChanged = true;
+      }
+      if ('laborCost' in payload && Number(payload.laborCost) !== Number(prevRequest.laborCost || 0)) {
+        laborCostChanged = true;
+      }
+
+      if (partsCostChanged || laborCostChanged) {
+        const { auditLog } = require('../utils/auditLogger');
+        await auditLog({
+          entityType: 'MaintenanceRequest',
+          entityId: prevRequest._id,
+          action: 'FINANCIAL_TAMPERING',
+          oldDoc: prevRequest,
+          newDoc: { ...prevRequest.toObject(), partsCost: payload.partsCost, laborCost: payload.laborCost },
+          userId: req.user?._id,
+          userName: req.user?.name || 'System'
+        });
+        return res.status(403).json({ error: 'Financial tampering detected. Costs cannot be changed after a ticket is completed or approved.' });
+      }
+    }
+
     if (payload.assignedToId) {
       const reqSkills = payload.requiredSkills || prevRequest.requiredSkills;
       const isCertified = await checkCertifications(payload.assignedToId, reqSkills);
