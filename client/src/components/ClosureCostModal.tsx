@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import { DollarSign } from 'lucide-react';
+import SignaturePad from './SignaturePad';
+import toast from 'react-hot-toast';
 
 interface ClosureCostModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (partsCost: number, laborCost: number) => void;
+  onSubmit: (partsCost: number, laborCost: number, signatureBase64: string) => void;
   title: string;
 }
 
@@ -18,12 +20,17 @@ const ClosureCostModal: React.FC<ClosureCostModalProps> = ({
 }) => {
   const [partsCost, setPartsCost] = useState<string>('');
   const [laborCost, setLaborCost] = useState<string>('');
+  const [signature, setSignature] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!signature) {
+      toast.error('A digital signature is legally required to close this ticket.');
+      return;
+    }
     const parsedParts = parseFloat(partsCost) || 0;
     const parsedLabor = parseFloat(laborCost) || 0;
-    onSubmit(parsedParts, parsedLabor);
+    onSubmit(parsedParts, parsedLabor, signature);
   };
 
   return (
@@ -72,6 +79,8 @@ const ClosureCostModal: React.FC<ClosureCostModalProps> = ({
             />
           </div>
         </div>
+
+        <SignaturePad onSign={setSignature} />
 
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button type="button" variant="secondary" onClick={onClose}>

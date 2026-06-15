@@ -117,7 +117,13 @@ const MaintenanceRequestSchema = new Schema({
     tokenExpiresAt: { type: Date }
   },
   rootCause: { type: String }, // Used by the RCA logic tree wizard
-  rcaNodeId: { type: Schema.Types.ObjectId, ref: 'DiagnosticNode' } // Final leaf node of the RCA tree
+  rcaNodeId: { type: Schema.Types.ObjectId, ref: 'DiagnosticNode' }, // Final leaf node of the RCA tree
+  signaturePayload: {
+    signatureBase64: { type: String },
+    hash: { type: String },
+    signedAt: { type: Date },
+    signedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+  }
 }, { timestamps: true });
 
 MaintenanceRequestSchema.virtual('equipment', {
