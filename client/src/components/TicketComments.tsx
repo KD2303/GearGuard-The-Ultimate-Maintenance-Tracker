@@ -159,6 +159,12 @@ const TicketComments: React.FC<TicketCommentsProps> = ({ request, currentUser })
       socket.emit('join_ticket', requestId);
     }
 
+    // Ping-Pong Heartbeat
+    socket.off('server_ping');
+    socket.on('server_ping', () => {
+      socket.emit('client_pong');
+    });
+
     socket.on('new_comment', (data: { ticketId: string, comment: any }) => {
       if (data.ticketId === requestId) {
         setComments(prev => {

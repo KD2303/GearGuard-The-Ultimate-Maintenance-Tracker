@@ -76,7 +76,7 @@ describe("Race Condition: Spare Parts Inventory Allocation", () => {
         description: "Testing concurrent allocation",
         priority: "medium",
         stage: "in-progress",
-        createdBy: adminUser._id,
+        createdById: adminUser._id,
         partsUsed: [{ partId: partDoc._id, quantityUsed: 1 }]
       });
       requestIds.push(newReq._id);
