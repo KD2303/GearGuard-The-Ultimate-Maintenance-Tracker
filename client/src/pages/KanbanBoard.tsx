@@ -25,6 +25,7 @@ import {
 } from "../services/requestService";
 
 import { getRelativeDateLabel } from "../utils/dateUtils";
+import { getCurrentPosition } from "../utils/geoUtils";
 
 import Badge from "../components/Badge";
 
@@ -637,6 +638,11 @@ const KanbanBoard: React.FC =
         withCredentials: true,
       });
 
+      socket.off('server_ping');
+      socket.on('server_ping', () => {
+        socket.emit('client_pong');
+      });
+
       socket.on("connect", () => {
         loadRequests();
       });
@@ -679,13 +685,32 @@ const KanbanBoard: React.FC =
         ));
 
         try {
-          await requestService.updateStage(requestId, newStage);
+          let lat: number | undefined;
+          let lng: number | undefined;
+
+          if (newStage === "in-progress" && request.equipment?.riskLevel === 'High Risk') {
+            try {
+              const position = await getCurrentPosition();
+              lat = position.latitude;
+              lng = position.longitude;
+            } catch (err: any) {
+              setRequests(prevRequests);
+              toast.error("Location permission is required to start High-Risk work orders.");
+              return;
+            }
+          }
+
+          await requestService.updateStage(requestId, newStage, undefined, undefined, lat, lng);
           // Wait for backend to be fully synced
           await loadRequests();
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to update request stage:", error);
           setRequests(prevRequests);
-          toast.error("Failed to move ticket. You might be offline.");
+          if (error.response?.status === 403) {
+            toast.error(error.response.data.error || "Security Violation");
+          } else {
+            toast.error("Failed to move ticket. You might be offline.");
+          }
         }
       }
     };
@@ -861,10 +886,24 @@ const KanbanBoard: React.FC =
                 setLotoModalData(null);
                 // After successful LOTO, we can automatically transition to in-progress
                 try {
-                  await requestService.updateStage(lotoModalData.request.id || lotoModalData.request._id || "", "in-progress");
+                  let lat: number | undefined;
+                  let lng: number | undefined;
+                  if (lotoModalData.request.equipment?.riskLevel === 'High Risk') {
+                    const position = await getCurrentPosition();
+                    lat = position.latitude;
+                    lng = position.longitude;
+                  }
+                  await requestService.updateStage(lotoModalData.request.id || lotoModalData.request._id || "", "in-progress", undefined, undefined, lat, lng);
                   await loadRequests();
-                } catch (e) {
+                } catch (e: any) {
                   console.error("Failed to move to in-progress after LOTO", e);
+                  if (e.response?.status === 403) {
+                    toast.error(e.response.data.error || "Security Violation");
+                  } else if (e.message?.includes("Geolocation")) {
+                    toast.error("Location permission is required to start High-Risk work orders.");
+                  } else {
+                    toast.error("Failed to start ticket.");
+                  }
                 }
               }}
               requestRecord={lotoModalData.request}

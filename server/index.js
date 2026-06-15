@@ -167,13 +167,14 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Custom Ping/Pong Heartbeat to resolve memory leaks
+  // Custom Application-Level Heartbeat to reap ghost sockets
   socket.isAlive = true;
   socket.on("client_pong", () => {
     socket.isAlive = true;
   });
 
   socket.on("disconnect", () => {
+    clearInterval(heartbeatTimer);
     // Aggressive garbage collection of custom rooms
     if (socket.rooms && socket.rooms.size > 0) {
       for (const room of socket.rooms) {

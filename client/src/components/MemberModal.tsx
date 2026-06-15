@@ -166,10 +166,10 @@ const MemberModal: React.FC<MemberModalProps> = ({
             value={CERTIFICATION_OPTIONS.filter((option) =>
               formData.certifications?.includes(option.value)
             )}
-            onChange={(selected) => {
+            onChange={(selected: any) => {
               setFormData({
                 ...formData,
-                certifications: selected ? selected.map((s) => s.value) : [],
+                certifications: selected ? selected.map((s: any) => s.value) : [],
               });
             }}
             className="text-gray-900"
